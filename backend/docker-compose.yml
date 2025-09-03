@@ -1,0 +1,30 @@
+services:
+  mongodb:
+    image: bitnami/mongodb:7.0
+    container_name: thesocial-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      # Root user credentials
+      - MONGODB_ROOT_USER=root
+      - MONGODB_ROOT_PASSWORD=rootpassword123
+    volumes:
+      - mongodb_data:/bitnami/mongodb
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - thesocial-network
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+volumes:
+  mongodb_data:
+
+networks:
+  thesocial-network:
+    driver: bridge

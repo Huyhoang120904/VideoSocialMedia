@@ -1,0 +1,278 @@
+# ====================
+# SPRING BOOT BACKEND
+# ====================
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Gradle
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# STS (Spring Tool Suite)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# ====================
+# REACT NATIVE FRONTEND
+# ====================
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+
+# React Native
+*.orig.*
+web-build/
+
+# Metro
+.metro-health-check*
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.gradle/
+local.properties
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+
+# iOS
+*.ipa
+*.xcarchive
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Pods (iOS)
+ios/Pods/
+ios/build/
+
+# CocoaPods
+Podfile.lock
+
+# Flipper
+ios/Flipper-Folly
+
+# ====================
+# GENERAL
+# ====================
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary folders
+tmp/
+temp/
+
+# ====================
+# DATABASE & CONFIGS
+# ====================
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Application configuration files (adjust as needed)
+application-local.properties
+application-dev.properties
+application-prod.properties
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# ====================
+# SECURITY
+# ====================
+
+# SSH keys
+*.pem
+*.key
+id_rsa
+id_dsa
+
+# Certificate files
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# JWT secrets
+jwt-secret.txt
+
+# ====================
+# DEVELOPMENT TOOLS
+# ====================
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+.loadpath
+.recommenders
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ====================
+# BUILD & DEPLOYMENT
+# ====================
+
+# JAR files
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# WAR files
+*.war
+
+# EAR files
+*.ear
+
+# Class files
+*.class
+
+# Package Files
+*.zip
+*.tar.gz
+*.rar
+
+# Virtual machine crash logs
+hs_err_pid*
+
+# Spring Boot DevTools
+.reloadtrigger
+
+# ====================
+# TESTING
+# ====================
+
+# Test results
+test-results/
+coverage/
+.nyc_output/
+
+# ====================
+# MOBILE SPECIFIC
+# ====================
+
+# React Native packager cache
+.metro-health-check*
+
+# Bundle artifacts
+*.bundle
+
+# Android Gradle files
+android/.gradle/
+android/app/build/
+android/build/
+
+# iOS build files
+ios/build/
