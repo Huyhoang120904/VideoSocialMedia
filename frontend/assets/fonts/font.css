@@ -1,0 +1,20 @@
+@font-face {
+    font-family: "TikTokSans-Regular";
+    src: url("../fonts/TikTokSans-Regular.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "TikTokSans-Bold";
+    src: url("../fonts/TikTokSans-Bold.ttf") format("truetype");
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "TikTokSans-SemiBold";
+    src: url("../fonts/TikTokSans-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+}

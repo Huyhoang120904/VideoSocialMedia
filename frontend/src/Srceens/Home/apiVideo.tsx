@@ -1,0 +1,96 @@
+import type { Video } from '../../store/videoSlice';
+
+const initialVideos: Video[] = [
+    {
+        id: "1",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        title: "Big Buck Bunny - Chú thỏ vui vẻ",
+        likes: 1200,
+        comments: 540,
+        shares: 210,
+        outstanding: 8
+    },
+    {
+        id: "2",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+        title: "Elephant Dream - Giấc mơ của những chú voi",
+        likes: 850,
+        comments: 300,
+        shares: 150,
+        outstanding: 5
+    },
+    {
+        id: "3",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+        title: "For Bigger Blazes - Đốt cháy đam mê",
+        likes: 2500,
+        comments: 980,
+        shares: 450,
+        outstanding: 9
+    },
+    {
+        id: "4",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+        title: "For Bigger Escapes - Cuộc trốn thoát vĩ đại",
+        likes: 950,
+        comments: 420,
+        shares: 180,
+        outstanding: 6
+    },
+    {
+        id: "5",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+        title: "For Bigger Fun - Hài hước mỗi ngày",
+        likes: 3100,
+        comments: 1250,
+        shares: 670,
+        outstanding: 10
+    },
+    {
+        id: "6",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+        title: "For Bigger Joyrides - Những chuyến đi vui vẻ",
+        likes: 1800,
+        comments: 780,
+        shares: 350,
+        outstanding: 7
+    },
+    {
+        id: "7",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+        title: "For Bigger Meltdowns - Những khoảnh khắc vỡ òa",
+        likes: 750,
+        comments: 250,
+        shares: 90,
+        outstanding: 4
+    },
+    {
+        id: "8",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+        title: "Sintel - Chuyện tình của rồng",
+        likes: 4000,
+        comments: 1800,
+        shares: 750,
+        outstanding: 9
+    },
+    {
+        id: "9",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+        title: "Subaru Outback - Khám phá đường phố và địa hình",
+        likes: 1500,
+        comments: 650,
+        shares: 280,
+        outstanding: 7
+    },
+    {
+        id: "10",
+        uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+        title: "Tears of Steel - Giọt nước mắt của thép",
+        likes: 2200,
+        comments: 1000,
+        shares: 400,
+        outstanding: 8
+    }
+];
+
+export default initialVideos;
