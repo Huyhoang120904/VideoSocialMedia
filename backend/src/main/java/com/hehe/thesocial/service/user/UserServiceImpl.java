@@ -48,6 +48,7 @@ public class UserServiceImpl implements UserService {
 
     @Transactional
     @Override
+
     public UserResponse register(RegisterRequest request) {
         User user = userMapper.toUser(request);
 

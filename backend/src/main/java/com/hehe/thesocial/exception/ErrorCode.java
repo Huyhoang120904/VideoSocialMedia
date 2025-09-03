@@ -9,6 +9,9 @@ public enum ErrorCode {
 
     UNAUTHENTICATED(HttpStatus.BAD_REQUEST, 1001, "Invalid authentication info"),
 
+    INVALID_FILE(HttpStatus.BAD_REQUEST, 1051, "File uploaded not valid!"),
+    ERROR_UPLOADING_FILE(HttpStatus.INTERNAL_SERVER_ERROR, 1052, "File uploaded having trouble"),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1053, "File not found!"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, 1101, "User not found!"),
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 1102, "Role not found!"),

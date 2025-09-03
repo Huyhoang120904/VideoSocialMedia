@@ -39,4 +39,17 @@ public class User extends BaseDocument {
 
     @DBRef
     Set<Role> roles = new HashSet<>();
+
+    // Cloudinary-specific fields
+    private String publicId;
+    private String url;
+    private String secureUrl;
+    private String format;
+    private String resourceType;
+
+    // Optional additional Cloudinary metadata
+    private int width;
+    private int height;
+    private String etag;
+
 }

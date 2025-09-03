@@ -10,7 +10,6 @@ import org.mapstruct.Mapper;
         PermissionMapper.class
 })
 public interface RoleMapper {
-
     Role toRole(RoleRequest request);
 
     RoleResponse toRoleResponse(Role role);

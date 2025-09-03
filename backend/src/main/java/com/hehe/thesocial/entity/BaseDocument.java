@@ -14,7 +14,6 @@ import java.time.Instant;
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BaseDocument {
-
     @CreatedDate
     Instant createdAt;
 
