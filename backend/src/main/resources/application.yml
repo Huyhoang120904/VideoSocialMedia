@@ -5,6 +5,10 @@ spring:
     mongodb:
       uri: ${MONGODB_URL}
       auto-index-creation: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 50MB
 
 server:
   port: 8081
@@ -17,6 +21,10 @@ jwt:
   expiration: ${JWT_DURATION}
   refreshable: ${JWT_REFRESH_DURATION}
 
+cloudinary:
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  cloud-name: ${CLOUD_NAME}
 
 
 
