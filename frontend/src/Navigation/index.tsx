@@ -8,7 +8,6 @@ import TopVideoScreen from "./topVideoTabNavigation"
 
 export default function RootNavigation() {
     const Stack = createStackNavigator()
-    console.log(homeBottomTabNavigation);
 
     return (
         <>
@@ -19,7 +18,7 @@ export default function RootNavigation() {
                     </Stack.Screen>
 
                     {/* Màn hình video chi tiết */}
-                    <Stack.Screen name="TopVideo" component={TopVideoScreen} />
+                    {/* <Stack.Screen name="TopVideo" component={TopVideoScreen} /> */}
                 </Stack.Navigator>
             </NavigationContainer>
         </>

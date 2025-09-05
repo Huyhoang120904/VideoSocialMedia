@@ -4,24 +4,43 @@ const { height, width } = Dimensions.get("screen");
 
 const styles = StyleSheet.create({
     container: {
-        width,
-        backgroundColor: "black",
-        position: "relative",
+        width: '100%',
+        backgroundColor: '#000',
+
     },
     video: {
-        ...StyleSheet.absoluteFillObject,
+        backgroundColor: '#000',
+    },
+    videoContainer: {
+        width: '100%',
+        backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: "relative"
     },
     touchArea: {
         ...StyleSheet.absoluteFillObject,
         zIndex: 1,
     },
     overlay: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgba(0,0,0,0.3)",
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1,
     },
-
+    // playButton: {
+    //     backgroundColor: 'rgba(0,0,0,0.5)',
+    //     borderRadius: 50,
+    //     width: 60,
+    //     height: 60,
+    //     justifyContent: 'center',
+    //     alignItems: 'center',
+    //     marginLeft: 10,
+    // },
     // RightVideo styles
     rightVideoContainer: {
         position: "absolute",
@@ -67,6 +86,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "flex-end",
         zIndex: 10,
+        bottom: 0,
     },
     contentLeft: {
         flex: 1,
@@ -119,77 +139,7 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
 
-    // Progress Bar Styles - Tối ưu vùng touch
-    progressContainer: {
-        position: "absolute",
-        left: 10,
-        right: 10,
-        height: 70,
-        justifyContent: "flex-end",
-        zIndex: 1000,
-    },
-    timeContainer: {
-        alignSelf: "flex-end",
-        marginBottom: 10,
-        backgroundColor: "rgba(0, 0, 0, 0.75)",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-    },
-    timeText: {
-        color: "#fff",
-        fontSize: 13,
-        fontWeight: "600",
-    },
 
-    // Vùng touch lớn (60px height) nhưng thanh progress nhỏ
-    progressTouchArea: {
-        height: 60, // Vùng touch lớn
-        justifyContent: "center",
-        width: "100%",
-        // backgroundColor: 'rgba(255,0,0,0.1)', // Debug - uncomment để thấy vùng touch
-    },
-
-    // Thanh progress thực tế nhỏ, nằm giữa vùng touch
-    progressTrack: {
-        height: 3, // Thanh progress nhỏ
-        justifyContent: "center",
-        position: "relative",
-        width: "100%",
-    },
-    progressBackground: {
-        height: 3,
-        backgroundColor: "rgba(255, 255, 255, 0.4)",
-        borderRadius: 1.5,
-        width: "100%",
-    },
-    progressForeground: {
-        height: 3,
-        backgroundColor: "#fff",
-        borderRadius: 1.5,
-        position: "absolute",
-        top: 0,
-        shadowColor: "#fff",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 3,
-        elevation: 4,
-    },
-    progressThumb: {
-        position: "absolute",
-        top: -5.5, // Center với thanh progress 3px: (3-14)/2 = -5.5
-        width: 14,
-        height: 14,
-        backgroundColor: "#fff",
-        borderRadius: 7,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.5,
-        shadowRadius: 5,
-        elevation: 8,
-        borderWidth: 1.5,
-        borderColor: "rgba(255,255,255,0.9)",
-    },
 });
 
 export default styles;
