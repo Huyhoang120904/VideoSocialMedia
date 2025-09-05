@@ -96,6 +96,8 @@ public class SecuritySetting {
         return source;
     }
 
+
+
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
