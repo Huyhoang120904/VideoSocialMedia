@@ -2,7 +2,9 @@
   "expo": {
     "name": "TiktokClone",
     "slug": "TiktokClone",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "assets": [
       "./src/fonts"
     ],
@@ -27,11 +29,13 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-video",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }

@@ -18,8 +18,6 @@ public class FileDocument extends BaseDocument {
     String id;
 
     String fileName;
-    String uploadedBy;
-    FileType fileType;
     Long size;
 
     // Cloudinary-specific fields
@@ -32,5 +30,4 @@ public class FileDocument extends BaseDocument {
     // Optional additional Cloudinary metadata
     int width;
     int height;
-    String etag;
 }
