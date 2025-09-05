@@ -47,7 +47,7 @@ public class FileServiceImpl implements FileService {
         try {
             Map uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), params);
 
-            FileDocument fileDocument = FileDocument.builder().fileName(multipartFile.getOriginalFilename()).size(multipartFile.getSize()).uploadedBy(uploader).publicId((String) uploadResult.get("public_id")).url((String) uploadResult.get("url")).secureUrl((String) uploadResult.get("secure_url")).format((String) uploadResult.get("format")).resourceType((String) uploadResult.get("resource_type")).build();
+            FileDocument fileDocument = FileDocument.builder().fileName(multipartFile.getOriginalFilename()).size(multipartFile.getSize()).publicId((String) uploadResult.get("public_id")).url((String) uploadResult.get("url")).secureUrl((String) uploadResult.get("secure_url")).format((String) uploadResult.get("format")).resourceType((String) uploadResult.get("resource_type")).build();
 
             if (uploadResult.containsKey("height") && uploadResult.containsKey("width")) {
                 fileDocument.setHeight((int) uploadResult.get("height"));

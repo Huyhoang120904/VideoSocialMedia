@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        zIndex: 10,
+        zIndex: 100,
         height: 50,
     },
     titleTop: {

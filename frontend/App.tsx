@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Provider } from "react-redux";
-import { store } from "./src/store";
+import { store } from "./src/store/index";
 import Navigation from "./src/Navigation";
 import * as Font from "expo-font";
 import { setCustomText } from "react-native-global-props";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import "./src/Navigation/global.css";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import Register from "./src/Srceens/Register";
 
 export default function App() {
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -31,7 +35,9 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <Navigation />
+      <SafeAreaProvider>
+        <Navigation />
+      </SafeAreaProvider>
     </Provider>
   );
 }
