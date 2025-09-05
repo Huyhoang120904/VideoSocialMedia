@@ -8,7 +8,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -47,7 +46,6 @@ public class User extends BaseDocument {
     private String format;
     private String resourceType;
 
-    // Optional additional Cloudinary metadata
     private int width;
     private int height;
     private String etag;
