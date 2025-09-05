@@ -1,15 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, Animated, Pressable } from 'react-native';
 import styles from "./styles";
+import { useNavigation } from '@react-navigation/native';
 
-export default function TopVideo() {
-    const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"];
+
+const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
+
+interface TopVideoProps {
+    activeTab: typeof tabs[number];
+    setActiveTab: (tab: typeof tabs[number]) => void;
+}
+
+
+export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [underlineWidth, setUnderlineWidth] = useState(20);
     const translateX = useRef(new Animated.Value(0)).current;
 
     const containerRef = useRef<View>(null);
     const tabRefs = useRef<Array<View | null>>([]);
+    const navigation = useNavigation();
 
     const moveUnderline = (index: number) => {
         const tab = tabRefs.current[index];
@@ -31,15 +41,15 @@ export default function TopVideo() {
             setUnderlineWidth(newWidth);
         }, () => { });
     };
-
     const handlePress = (index: number) => {
-        setActiveIndex(index);
+        setActiveTab(tabs[index]); // thay đổi tab
         moveUnderline(index);
     };
-
     useEffect(() => {
-        setTimeout(() => moveUnderline(0), 0);
-    }, []);
+        // Cập nhật underline khi activeTab thay đổi
+        const index = tabs.indexOf(activeTab);
+        moveUnderline(index);
+    }, [activeTab]);
 
     return (
         <View style={styles.topVideoContainer}>
@@ -55,7 +65,7 @@ export default function TopVideo() {
                             <Text
                                 style={[
                                     styles.titleTop,
-                                    activeIndex === index && { fontWeight: "800", color: "#fff" },
+                                    activeTab === item && { fontWeight: "800", color: "#fff" },
                                 ]}
                             >
                                 {item}

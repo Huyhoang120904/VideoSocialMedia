@@ -6,6 +6,7 @@ import {
   ViewToken,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { setVideos } from "../../store/videoSlice";
@@ -14,6 +15,8 @@ import type { RootState } from "../../store/index";
 import type { Video } from "../../store/videoSlice";
 import videoData from "./apiVideo";
 import TopVideo from "../../Components/Post/TopVideo";
+import TopVideoTabs from "../../Components/Post/TopVideo";
+import ExploreScreen from "./ExploreScreen";
 
 const { height } = Dimensions.get("screen");
 const SCROLL_THRESHOLD = 50; // Ngưỡng để chuyển video
@@ -123,31 +126,57 @@ export default function Home() {
     }, 100);
   }, []);
 
+
+  const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
+
+  type TabType = typeof tabs[number]; // "Khám phá" | "Bạn bè" | "Đã follow" | "Đề xuất"
+
+  const [activeTab, setActiveTab] = useState<TabType>("Khám phá");
+  const renderContent = () => {
+    switch (activeTab) {
+      case "Khám phá":
+        return <ExploreScreen />; // hình ảnh
+      case "Bạn bè":
+      case "Đã follow":
+      case "Đề xuất":
+        return <ExploreScreen />; // feed video
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
-      <TopVideo />
-      <FlatList<Video>
-        ref={flatListRef}
-        data={videos}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        showsVerticalScrollIndicator={false}
-        pagingEnabled
-        snapToInterval={height}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        bounces={false}
-        onScrollBeginDrag={handleScrollBegin}
-        onScroll={handleScroll}
-        onMomentumScrollEnd={handleScrollEnd}
-        scrollEventThrottle={16}
-        initialNumToRender={2}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        removeClippedSubviews
-        getItemLayout={getItemLayout}
-        onScrollToIndexFailed={handleScrollToIndexFailed}
-      />
+      <View style={{ flex: 1 }}>
+        <TopVideoTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        {activeTab === "Khám phá" ? (
+          <ExploreScreen /> // lưới hình ảnh
+        ) : (
+          <FlatList<Video>
+            ref={flatListRef}
+            data={videos}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            showsVerticalScrollIndicator={false}
+            pagingEnabled
+            snapToInterval={height}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            bounces={false}
+            onScrollBeginDrag={handleScrollBegin}
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleScrollEnd}
+            scrollEventThrottle={16}
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={3}
+            removeClippedSubviews
+            getItemLayout={getItemLayout}
+            onScrollToIndexFailed={handleScrollToIndexFailed}
+          />
+        )}
+      </View>
+
     </>
   );
 }

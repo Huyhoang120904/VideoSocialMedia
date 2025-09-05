@@ -116,9 +116,8 @@ const LoginScreen = () => {
 
               {/* Login Button */}
               <TouchableOpacity
-                className={`w-full bg-pink-600 rounded-lg py-4 items-center justify-center ${
-                  isLoading ? "opacity-70" : ""
-                }`}
+                className={`w-full bg-pink-600 rounded-lg py-4 items-center justify-center ${isLoading ? "opacity-70" : ""
+                  }`}
                 onPress={handleLogin}
                 disabled={isLoading}
                 activeOpacity={0.8}
