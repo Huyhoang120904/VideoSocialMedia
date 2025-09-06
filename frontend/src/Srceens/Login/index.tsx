@@ -32,9 +32,20 @@ const LoginScreen = () => {
     }
     try {
       await login(username, password);
-    } catch (e) {
-      console.error(e);
-      // Alert.alert("Error", msg);
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      console.log("Error details:", JSON.stringify(error, null, 2));
+
+      // Safely access error properties
+      if (error instanceof Error) {
+        console.log("Error name:", error.name);
+        console.log("Error message:", error.message);
+        console.log("Error stack:", error.stack);
+        Alert.alert("Login Error", `Failed to login: ${error.message}`);
+      } else {
+        console.log("Unknown error type:", typeof error);
+        Alert.alert("Login Error", "An unexpected error occurred during login");
+      }
     }
   };
 

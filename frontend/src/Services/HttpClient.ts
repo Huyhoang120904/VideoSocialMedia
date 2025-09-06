@@ -48,8 +48,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<any>) => {
-    const original = error.config as any;
+    // Log any response error in detail
+    console.log("API Error:", {
+      message: error.message,
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method,
+    });
 
+    if (error.response) {
+      console.log(
+        "Full response error data:",
+        JSON.stringify(error.response.data, null, 2)
+      );
+    }
+
+    const original = error.config as any;
     const status = error.response?.status;
 
     if (status !== 401 || original?._retry) {
