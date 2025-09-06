@@ -45,21 +45,31 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
         setIsLoading(false);
       }
     };
-
     bootstrap();
   });
 
   const login = async (username: string, password: string) => {
-    const res = await LoginRequest({ username, password });
+    try {
+      const res = await LoginRequest({ username, password });
 
-    const token = res.result.token;
+      // Check if we have a valid response with token
+      if (!res || !res.result || !res.result.token) {
+        console.error("Invalid login response:", JSON.stringify(res, null, 2));
+        throw new Error("Invalid response from server");
+      }
 
-    console.log(`token`, token);
+      const token = res.result.token;
+      console.log(`Token received successfully`);
 
-    setAuthToken(token);
-    console.log(`JSON.stringify(token): `, token);
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-    setHasSession(true);
+      setAuthToken(token);
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      setHasSession(true);
+    } catch (error) {
+      console.error("Login request failed:", error);
+
+      // Rethrow the error so it can be caught and displayed in the Login component
+      throw error;
+    }
   };
   const logout = async () => {
     clearAuthToken();
