@@ -17,8 +17,8 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
-  login: async () => {},
-  logout: async () => {},
+  login: async () => { },
+  logout: async () => { },
 });
 
 const TOKEN_KEY = "APP_TOKEN";

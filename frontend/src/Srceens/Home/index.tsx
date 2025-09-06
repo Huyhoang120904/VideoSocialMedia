@@ -1,3 +1,4 @@
+// Home.tsx - TikTok-like scrolling behavior
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   FlatList,
@@ -5,21 +6,20 @@ import {
   ViewToken,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { setVideos } from "../../Store/videoSlice";
+import { setVideos } from "../../store/videoSlice";
 import Post from "../../Components/Post";
-import type { RootState } from "../../Store/index";
-import type { Video } from "../../Store/videoSlice";
+import type { RootState } from "../../store/index";
+import type { Video } from "../../store/videoSlice";
 import videoData from "./apiVideo";
+import TopVideo from "../../Components/Post/TopVideo";
+import TopVideoTabs from "../../Components/Post/TopVideo";
+import ExploreScreen from "./ExploreScreen";
 
 const { height } = Dimensions.get("screen");
-const SCROLL_THRESHOLD = height / 2;
-
-interface ViewableItemsChanged {
-  viewableItems: ViewToken[];
-  changed: ViewToken[];
-}
+const SCROLL_THRESHOLD = 50; // Ngưỡng để chuyển video
 
 interface GetItemLayoutData {
   length: number;
@@ -46,8 +46,9 @@ export default function Home() {
     if (videos.length === 0) {
       dispatch(setVideos(videoData));
     }
-  }, []);
+  }, [videos, dispatch]);
 
+  // Bắt đầu scroll
   const handleScrollBegin = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       scrollStartOffset.current = event.nativeEvent.contentOffset.y;
@@ -56,6 +57,7 @@ export default function Home() {
     []
   );
 
+  // Xử lý khi scroll
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (!isManualScrolling.current) return;
@@ -86,6 +88,7 @@ export default function Home() {
     [currentIndex, videos.length]
   );
 
+  // Kết thúc scroll
   const handleScrollEnd = useCallback(() => {
     isManualScrolling.current = false;
     flatListRef.current?.scrollToIndex({
@@ -96,10 +99,7 @@ export default function Home() {
   }, [currentIndex]);
 
   const getItemLayout = useCallback(
-    (
-      _data: Array<Video> | null | undefined,
-      index: number
-    ): GetItemLayoutData => ({
+    (_data: ArrayLike<Video> | null | undefined, index: number) => ({
       length: height,
       offset: height * index,
       index,
@@ -109,53 +109,74 @@ export default function Home() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: Video; index: number }) => (
-      <Post video={item} isActive={index === currentIndex} />
+      <Post video={item} isActive={index === currentIndex} itemHeight={height} />
     ),
     [currentIndex]
   );
 
   const keyExtractor = useCallback((item: Video) => item.id, []);
 
-  const handleScrollToIndexFailed = useCallback(
-    (info: ScrollToIndexFailInfo) => {
-      const wait = new Promise((resolve) => setTimeout(resolve, 100));
-      wait.then(() => {
-        flatListRef.current?.scrollToIndex({
-          index: info.index,
-          animated: true,
-          viewPosition: 0,
-        });
+  const handleScrollToIndexFailed = useCallback((info: ScrollToIndexFailInfo) => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToIndex({
+        index: info.index,
+        animated: true,
+        viewPosition: 0,
       });
-    },
-    []
-  );
+    }, 100);
+  }, []);
+
+
+  const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
+
+  type TabType = typeof tabs[number]; // "Khám phá" | "Bạn bè" | "Đã follow" | "Đề xuất"
+
+  const [activeTab, setActiveTab] = useState<TabType>("Khám phá");
+  const renderContent = () => {
+    switch (activeTab) {
+      case "Khám phá":
+        return <ExploreScreen />; // hình ảnh
+      case "Bạn bè":
+      case "Đã follow":
+      case "Đề xuất":
+        return <ExploreScreen />; // feed video
+      default:
+        return null;
+    }
+  };
 
   return (
-    <FlatList<Video>
-      ref={flatListRef}
-      data={videos}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      showsVerticalScrollIndicator={false}
-      pagingEnabled
-      snapToInterval={height}
-      snapToAlignment="start"
-      decelerationRate={0.9}
-      bounces={false}
-      onScrollBeginDrag={handleScrollBegin}
-      onScroll={handleScroll}
-      onMomentumScrollEnd={handleScrollEnd}
-      scrollEventThrottle={16}
-      initialNumToRender={2}
-      maxToRenderPerBatch={2}
-      windowSize={3}
-      removeClippedSubviews={true}
-      getItemLayout={getItemLayout}
-      maintainVisibleContentPosition={{
-        minIndexForVisible: 0,
-        autoscrollToTopThreshold: 1,
-      }}
-      onScrollToIndexFailed={handleScrollToIndexFailed}
-    />
+    <>
+      <View style={{ flex: 1 }}>
+        <TopVideoTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        {activeTab === "Khám phá" ? (
+          <ExploreScreen /> // lưới hình ảnh
+        ) : (
+          <FlatList<Video>
+            ref={flatListRef}
+            data={videos}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            showsVerticalScrollIndicator={false}
+            pagingEnabled
+            snapToInterval={height}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            bounces={false}
+            onScrollBeginDrag={handleScrollBegin}
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleScrollEnd}
+            scrollEventThrottle={16}
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={3}
+            removeClippedSubviews
+            getItemLayout={getItemLayout}
+            onScrollToIndexFailed={handleScrollToIndexFailed}
+          />
+        )}
+      </View>
+
+    </>
   );
 }

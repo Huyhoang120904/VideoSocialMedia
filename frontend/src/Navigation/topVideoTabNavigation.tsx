@@ -4,8 +4,8 @@ import { Text, View } from "react-native";
 
 function ExploreScreen() {
   return (
-    <View>
-      <Text>Khám phá</Text>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <Text>Khám phá (Grid ảnh)</Text>
     </View>
   );
 }
@@ -16,13 +16,9 @@ export default function TopVideo() {
   return (
     <TopTab.Navigator
       screenOptions={{
-        tabBarLabelStyle: {
-          fontFamily: "TikTokSans-Regular",
-          fontSize: 10,
-        },
-        tabBarStyle: {
-          backgroundColor: "#000",
-        },
+        tabBarShowLabel: false, // tắt label mặc định
+        tabBarStyle: { backgroundColor: "#000" },
+        swipeEnabled: true, // cho phép swipe ngang
       }}
     >
       <TopTab.Screen
