@@ -75,11 +75,10 @@ const ConversationScreen = () => {
     item: { id: string; text: string; sender: string; timestamp: string };
   }) => (
     <View
-      className={`px-4 py-3 mb-2 max-w-[80%] rounded-2xl ${
-        item.sender === "me"
+      className={`px-4 py-3 mb-2 max-w-[80%] rounded-2xl ${item.sender === "me"
           ? "bg-pink-600 self-end rounded-br-none"
           : "bg-gray-100 self-start rounded-bl-none"
-      }`}
+        }`}
     >
       <Text
         className={`${item.sender === "me" ? "text-white" : "text-gray-800"}`}

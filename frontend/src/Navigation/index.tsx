@@ -1,7 +1,6 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import React from "react";
-import Home from "../Srceens/Home";
 import HomeBottomTabNavigation from "./homeBottomTabNavigation";
 import TopVideoScreen from "./topVideoTabNavigation";
 import "./global.css";
@@ -46,21 +45,4 @@ export default function RootNavigation() {
       </AuthProvider>
     </SafeAreaProvider>
   );
-
-  // return (
-  //   <>
-  //     <NavigationContainer>
-  //       <Stack.Navigator
-  //         screenOptions={{ headerShown: false }}
-  //         // initialRouteName="Login"
-  //       >
-  //         {/* <Stack.Screen name="Login" component={LoginScreen} />
-  //         <Stack.Screen name="Register" component={RegisterScreen} /> */}
-  //         <Stack.Screen name="MainTabs" component={HomeBottomTabNavigation} />
-  //         {/* Màn hình video chi tiết */}
-  //         <Stack.Screen name="TopVideo" component={TopVideoScreen} />
-  //       </Stack.Navigator>
-  //     </NavigationContainer>
-  //   </>
-  // );
 }
