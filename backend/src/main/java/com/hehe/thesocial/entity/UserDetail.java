@@ -1,8 +1,9 @@
 package com.hehe.thesocial.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
@@ -15,22 +16,27 @@ import java.util.Set;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserDetail extends BaseDocument{
+public class UserDetail extends BaseDocument {
     @MongoId
     String id;
-    String userId;
+
+    @DBRef
+    User user;
+
     FileDocument avatar;
     String displayName;
     String bio;
 
-    @Indexed(unique = true)
+
     String shownName;
 
+    @JsonIgnore
+    @DBRef
     Set<UserDetail> following;
     int followingCount;
 
+    @JsonIgnore
+    @DBRef
     Set<UserDetail> follower;
     int followerCount;
-
-
 }

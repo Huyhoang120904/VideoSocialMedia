@@ -1,6 +1,9 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.41.84:8081/api/v1";
+
+console.log("Using API URL:", API_URL);
 
 let accessToken: string | null = null;
 let isRefreshing = false;

@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.7",
     "@react-navigation/material-top-tabs": "^7.3.7",
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/stack": "^7.4.8",
     "@reduxjs/toolkit": "^2.8.2",
+    "@stomp/stompjs": "^7.1.1",
     "axios": "^1.11.0",
     "expo": "~53.0.22",
     "expo-av": "^15.1.7",
@@ -38,6 +40,7 @@
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "^0.20.0",
     "react-redux": "^9.2.0",
+    "sockjs-client": "^1.6.1",
     "tailwindcss": "^3.4.17",
     "zustand": "^5.0.8"
   },
@@ -47,6 +50,7 @@
     "@types/react-native": "^0.72.8",
     "@types/react-native-global-props": "^1.1.6",
     "@types/react-native-vector-icons": "^6.4.18",
+    "@types/sockjs-client": "^1.5.4",
     "typescript": "~5.8.3"
   },
   "private": true

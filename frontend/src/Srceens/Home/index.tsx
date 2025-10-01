@@ -9,10 +9,10 @@ import {
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { setVideos } from "../../store/videoSlice";
+import { setVideos } from "../../Store/videoSlice";
 import Post from "../../Components/Post";
-import type { RootState } from "../../store/index";
-import type { Video } from "../../store/videoSlice";
+import type { RootState } from "../../Store/index";
+import type { Video } from "../../Store/videoSlice";
 import videoData from "./apiVideo";
 import TopVideo from "../../Components/Post/TopVideo";
 import TopVideoTabs from "../../Components/Post/TopVideo";
@@ -109,27 +109,33 @@ export default function Home() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: Video; index: number }) => (
-      <Post video={item} isActive={index === currentIndex} itemHeight={height} />
+      <Post
+        video={item}
+        isActive={index === currentIndex}
+        itemHeight={height}
+      />
     ),
     [currentIndex]
   );
 
   const keyExtractor = useCallback((item: Video) => item.id, []);
 
-  const handleScrollToIndexFailed = useCallback((info: ScrollToIndexFailInfo) => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: true,
-        viewPosition: 0,
-      });
-    }, 100);
-  }, []);
-
+  const handleScrollToIndexFailed = useCallback(
+    (info: ScrollToIndexFailInfo) => {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: info.index,
+          animated: true,
+          viewPosition: 0,
+        });
+      }, 100);
+    },
+    []
+  );
 
   const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
 
-  type TabType = typeof tabs[number]; // "Khám phá" | "Bạn bè" | "Đã follow" | "Đề xuất"
+  type TabType = (typeof tabs)[number]; // "Khám phá" | "Bạn bè" | "Đã follow" | "Đề xuất"
 
   const [activeTab, setActiveTab] = useState<TabType>("Khám phá");
   const renderContent = () => {
@@ -176,7 +182,6 @@ export default function Home() {
           />
         )}
       </View>
-
     </>
   );
 }

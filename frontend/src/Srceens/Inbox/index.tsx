@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,68 +12,21 @@ import {
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MessageBox, { MessageProps } from "../../Components/Inbox/MessageBox";
-
-// Mock data for messages
-const mockMessages: MessageProps[] = [
-  {
-    id: "1",
-    username: "john_doe",
-    message: "Hey, how are you?",
-    time: "2h",
-    avatar: require("../../../assets/avatar.png"),
-    unread: 2,
-  },
-  {
-    id: "2",
-    username: "jane_smith",
-    message: "Loved your new video!",
-    time: "5h",
-    avatar: require("../../../assets/avatar.png"),
-    unread: 0,
-  },
-  {
-    id: "3",
-    username: "mike_wilson",
-    message: "Check out my new dance video",
-    time: "1d",
-    avatar: require("../../../assets/avatar.png"),
-    unread: 1,
-  },
-  {
-    id: "4",
-    username: "sara_johnson",
-    message: "Are you coming to the event?",
-    time: "2d",
-    avatar: require("../../../assets/avatar.png"),
-    unread: 0,
-  },
-  {
-    id: "5",
-    username: "alex_turner",
-    message: "Thanks for the follow!",
-    time: "3d",
-    avatar: require("../../../assets/avatar.png"),
-    unread: 0,
-  },
-];
+import MessageBox from "../../Components/Inbox/MessageBox";
+import ConversationService from "../../Services/ConversationService";
+import { ConversationResponse } from "../../Types/ConversationResponse";
+import { useConversations } from "../../Context/ConversationProvider";
 
 export default function Inbox() {
   const [activeTab, setActiveTab] = useState("Messages");
   const navigation = useNavigation();
-
-  const handleMessagePress = (messageId: string) => {
-    console.log(`Message ${messageId} pressed`);
-    // Find the message data to pass to the conversation screen
-    const messageData = mockMessages.find((msg) => msg.id === messageId);
-    if (messageData) {
-      // Use any type casting to work around type checking for navigation
-      (navigation as any).navigate("Conversation", {
-        userId: messageId,
-        username: messageData.username,
-        avatar: messageData.avatar,
-      });
-    }
+  const { conversations, isLoading } = useConversations();
+  const handleMessagePress = (item: ConversationResponse) => {
+    (navigation as any).navigate("Conversation", {
+      conversationId: item.conversationId,
+      conversationName: item.conversationName,
+      avatar: item.avatar,
+    });
   };
 
   const navigateToSearch = () => {
@@ -85,8 +38,8 @@ export default function Inbox() {
     Alert.alert("Create Group", "Create group chat functionality");
   };
 
-  const renderMessageItem = ({ item }: { item: MessageProps }) => (
-    <MessageBox {...item} onPress={() => handleMessagePress(item.id)} />
+  const renderMessageItem = ({ item }: { item: ConversationResponse }) => (
+    <MessageBox onPress={() => handleMessagePress(item)} item={item} />
   );
 
   return (
@@ -137,23 +90,28 @@ export default function Inbox() {
         </View>
 
         {/* Message List */}
-        {activeTab === "Messages" && (
-          <FlatList
-            data={mockMessages}
-            renderItem={renderMessageItem}
-            keyExtractor={(item) => item.id}
-            className="flex-1"
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View className="flex-1 items-center justify-center py-20">
-                <Feather name="message-circle" size={60} color="#ccc" />
-                <Text className="text-gray-400 mt-4 text-lg">
-                  No messages yet
-                </Text>
-              </View>
-            }
-          />
-        )}
+        {activeTab === "Messages" &&
+          (!isLoading ? (
+            <FlatList
+              data={conversations}
+              renderItem={renderMessageItem}
+              keyExtractor={(item) => item.conversationId}
+              className="flex-1"
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View className="flex-1 items-center justify-center py-20">
+                  <Feather name="message-circle" size={60} color="#ccc" />
+                  <Text className="text-gray-400 mt-4 text-lg">
+                    No messages yet
+                  </Text>
+                </View>
+              }
+            />
+          ) : (
+            <View>
+              <Text> Loading...</Text>
+            </View>
+          ))}
 
         {/* Notifications Tab */}
         {activeTab === "Notifications" && (

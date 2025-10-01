@@ -4,12 +4,14 @@ import com.hehe.thesocial.constant.PredefinedRoles;
 import com.hehe.thesocial.dto.request.user.RegisterRequest;
 import com.hehe.thesocial.dto.request.user.UserUpdateRequest;
 import com.hehe.thesocial.dto.response.user.UserResponse;
+import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.user.UserMapper;
 import com.hehe.thesocial.entity.Role;
 import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.repository.RoleRepository;
+import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +32,9 @@ public class UserServiceImpl implements UserService {
 
     UserMapper userMapper;
     UserRepository userRepository;
+    UserDetailRepository userDetailRepository;
     RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
+    PasswordEncoder passwordEncoder;
 
     @Override
     public Page<UserResponse> findAllUserBypage(Pageable pageable) {
@@ -48,22 +51,26 @@ public class UserServiceImpl implements UserService {
 
     @Transactional
     @Override
-
     public UserResponse register(RegisterRequest request) {
         User user = userMapper.toUser(request);
-
         Role userRole = roleRepository.findByRoleName(PredefinedRoles.USER_ROLE).
                 orElseGet(() ->
                         roleRepository.save(Role.builder()
                                 .roleName(PredefinedRoles.USER_ROLE)
                                 .build())
                 );
-
         user.setRoles(new HashSet<>(List.of(userRole)));
-
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-
         user = userRepository.save(user);
+
+        //Create user detail when registering
+        UserDetail userDetail = UserDetail.builder()
+                .user(user)
+                .shownName("@"+user.getUsername())
+                .build();
+        userDetail = userDetailRepository.save(userDetail);
+        userDetailRepository.findById(userDetail.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED));
         return userMapper.toUserResponse(user);
     }
 
@@ -74,7 +81,6 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         user.setPassword(userUpdateRequest.getPassword());
         user.setMail(userUpdateRequest.getMail());
-        user.setPhoneNumber(userUpdateRequest.getPhoneNumber());
         user = userRepository.save(user);
         return userMapper.toUserResponse(user);
     }
