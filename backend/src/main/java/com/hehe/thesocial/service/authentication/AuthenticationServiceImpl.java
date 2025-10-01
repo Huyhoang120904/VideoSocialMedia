@@ -81,16 +81,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     public IntrospectResponse introspectToken(IntrospectRequest request) {
         boolean isValid = true;
-        String username = null;
+        String userId = null;
         try {
             SignedJWT signedJWT = verify(request.getToken(), false);
-            username = signedJWT.getJWTClaimsSet().getSubject();
+            userId = signedJWT.getJWTClaimsSet().getSubject();
         } catch (ParseException | JOSEException | AppException e) {
             isValid = false;
         }
         return IntrospectResponse.builder()
                 .isValid(isValid)
-                .username(username)
+                .userId(userId)
                 .build();
     }
 
@@ -168,7 +168,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getUsername())
+                .subject(user.getId())
                 .issueTime(new Date())
                 .issuer("TheSocial Auth System")
                 .expirationTime(new Date(

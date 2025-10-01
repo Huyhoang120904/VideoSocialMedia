@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Provider } from "react-redux";
-import { store } from "./src/store/index";
+import { store } from "./src/Store/index";
 import Navigation from "./src/Navigation";
 import * as Font from "expo-font";
 import { setCustomText } from "react-native-global-props";

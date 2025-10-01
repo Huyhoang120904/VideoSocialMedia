@@ -6,6 +6,7 @@ import {
   setAuthToken,
 } from "../Services/HttpClient";
 import { LoginRequest } from "../Services/AuthService";
+import { useConversations } from "./ConversationProvider";
 
 type AuthContextType = {
   isLoading: boolean;
@@ -17,8 +18,8 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
-  login: async () => { },
-  logout: async () => { },
+  login: async () => {},
+  logout: async () => {},
 });
 
 const TOKEN_KEY = "APP_TOKEN";
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
           const token = JSON.parse(raw);
           setAuthToken(token);
           setHasSession(true);
+          setIsAuthenticated(true); // Set authenticated if we have a valid token
         }
       } catch {
         // ignore
@@ -46,7 +48,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       }
     };
     bootstrap();
-  });
+  }, []); // Add dependency array to prevent infinite re-renders
 
   const login = async (username: string, password: string) => {
     try {
@@ -59,8 +61,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       }
 
       const token = res.result.token;
-      console.log(`Token received successfully`);
-
+      console.log(`Token received successfully: ` + token);
+      setIsAuthenticated(true);
       setAuthToken(token);
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       setHasSession(true);
@@ -75,14 +77,14 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
     clearAuthToken();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setHasSession(false);
+    setIsAuthenticated(false);
   };
 
   const value = useMemo(
     () => ({
       isLoading,
-      // isAuthenticated: hasSession && !!getAuthToken(),
-      isAuthenticated: true,
-
+      isAuthenticated: hasSession && !!getAuthToken() && isAuthenticated,
+      // isAuthenticated: true,
       login,
       logout,
     }),

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Image, Text, Pressable } from "react-native";
 import { useDispatch } from "react-redux";
-import { updateVideo } from "../../store/videoSlice";
+import { updateVideo } from "../../Store/videoSlice";
 import AntDesign from "react-native-vector-icons/AntDesign";
 import FontAwesome6 from "react-native-vector-icons/FontAwesome6";
 import Ionicons from "react-native-vector-icons/Ionicons";

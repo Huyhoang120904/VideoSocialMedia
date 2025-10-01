@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../Context/AuthProvider";
+import { useConversations } from "../../Context/ConversationProvider";
 
 const LoginScreen = () => {
   const [username, setUsername] = useState("");
@@ -20,9 +21,8 @@ const LoginScreen = () => {
 
   const navigation = useNavigation();
   const { login, isLoading } = useAuth();
-
   const handleSignUpNav = () => {
-    navigation.navigate("Register");
+    (navigation as any).navigate("Register");
   };
 
   const handleLogin = async () => {
@@ -127,8 +127,9 @@ const LoginScreen = () => {
 
               {/* Login Button */}
               <TouchableOpacity
-                className={`w-full bg-pink-600 rounded-lg py-4 items-center justify-center ${isLoading ? "opacity-70" : ""
-                  }`}
+                className={`w-full bg-pink-600 rounded-lg py-4 items-center justify-center ${
+                  isLoading ? "opacity-70" : ""
+                }`}
                 onPress={handleLogin}
                 disabled={isLoading}
                 activeOpacity={0.8}
@@ -178,6 +179,12 @@ const LoginScreen = () => {
               >
                 Don't have an account?{" "}
                 <Text className="text-pink-600 font-medium">Sign Up</Text>
+              </Text>
+
+              {/* Debug Info - Remove in production */}
+              <Text className="text-gray-400 text-xs mt-8">
+                If you're having connection issues, make sure your backend
+                server is running and accessible from your device's network.
               </Text>
             </View>
           </View>

@@ -21,6 +21,7 @@ public class FeedItem extends BaseDocument {
 
     //content
     FeedItemType feedItemType;
+
     Video video;
     ImageSlide imageSlide;
     String caption;
