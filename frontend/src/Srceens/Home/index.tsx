@@ -109,28 +109,34 @@ export default function Home() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: Video; index: number }) => (
-      <Post video={item} isActive={index === currentIndex} itemHeight={height} />
+      <Post
+        video={item}
+        isActive={index === currentIndex}
+        itemHeight={height}
+      />
     ),
     [currentIndex]
   );
 
   const keyExtractor = useCallback((item: Video) => item.id, []);
 
-  const handleScrollToIndexFailed = useCallback((info: ScrollToIndexFailInfo) => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: true,
-        viewPosition: 0,
-      });
-    }, 100);
-  }, []);
+  const handleScrollToIndexFailed = useCallback(
+    (info: ScrollToIndexFailInfo) => {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: info.index,
+          animated: true,
+          viewPosition: 0,
+        });
+      }, 100);
+    },
+    []
+  );
 
   // Top tabs logic
   const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
   type TabType = typeof tabs[number];
   const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
-
   const renderContent = () => {
     switch (activeTab) {
       case "Khám phá":

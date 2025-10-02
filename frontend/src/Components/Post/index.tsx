@@ -167,7 +167,7 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
           player={player}
           contentFit="cover"
           nativeControls={false}
-          allowsFullscreen={false}
+          fullscreenOptions={{ enable: false }}
           allowsPictureInPicture={false}
         />
 

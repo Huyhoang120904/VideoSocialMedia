@@ -5,7 +5,6 @@ const { width, height } = Dimensions.get("window");
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.85)",
         justifyContent: "flex-end",
     },
     modalContainer: {
@@ -107,6 +106,8 @@ const styles = StyleSheet.create({
         marginRight: 12,
         borderWidth: 2,
         borderColor: "rgba(254, 44, 85, 0.3)",
+        zIndex: 10,
+        elevation: 10,
     },
     commentContent: {
         flex: 1,
@@ -147,6 +148,8 @@ const styles = StyleSheet.create({
         marginLeft: 16,
         paddingVertical: 2,
         paddingHorizontal: 4,
+        zIndex: 10,
+        elevation: 10,
     },
     likeCount: {
         color: "#999",
@@ -302,6 +305,8 @@ const styles = StyleSheet.create({
     replyLink: {
         marginLeft: 16,
         paddingVertical: 2,
+        zIndex: 10,
+        elevation: 10,
     },
     replyLinkText: {
         color: "#666",

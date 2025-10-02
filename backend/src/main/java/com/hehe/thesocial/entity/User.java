@@ -31,23 +31,10 @@ public class User extends BaseDocument {
     @Indexed(unique = true)
     String username;
 
-    @Indexed(unique = true)
-    String phoneNumber;
-
     boolean enable;
 
     @DBRef
     Set<Role> roles = new HashSet<>();
 
-    // Cloudinary-specific fields
-    private String publicId;
-    private String url;
-    private String secureUrl;
-    private String format;
-    private String resourceType;
-
-    private int width;
-    private int height;
-    private String etag;
 
 }

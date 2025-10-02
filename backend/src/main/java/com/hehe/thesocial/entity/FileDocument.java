@@ -30,4 +30,6 @@ public class FileDocument extends BaseDocument {
     // Optional additional Cloudinary metadata
     int width;
     int height;
+
+
 }
