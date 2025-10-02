@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Text, View, Animated, Pressable } from 'react-native';
+import { Text, View, Animated, Pressable, PanResponder } from 'react-native';
 import styles from "./styles";
 import { useNavigation } from '@react-navigation/native';
 
@@ -51,8 +51,37 @@ export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
         moveUnderline(index);
     }, [activeTab]);
 
+    // PanResponder để xử lý swipe trái/phải cho top tabs
+    const panResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
+            // Chỉ kích hoạt khi swipe ngang
+            return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+        },
+        onPanResponderRelease: (evt, gestureState) => {
+            const currentIndex = tabs.indexOf(activeTab);
+            const swipeThreshold = 30;
+
+            console.log('TopVideo gesture dx:', gestureState.dx, 'Current tab:', activeTab);
+
+            if (gestureState.dx > swipeThreshold) {
+                // Swipe right - chuyển sang tab trước đó
+                if (currentIndex > 0) {
+                    console.log('Switching to previous tab:', tabs[currentIndex - 1]);
+                    handlePress(currentIndex - 1);
+                }
+            } else if (gestureState.dx < -swipeThreshold) {
+                // Swipe left - chuyển sang tab tiếp theo
+                if (currentIndex < tabs.length - 1) {
+                    console.log('Switching to next tab:', tabs[currentIndex + 1]);
+                    handlePress(currentIndex + 1);
+                }
+            }
+        },
+    });
+
     return (
-        <View style={styles.topVideoContainer}>
+        <View style={styles.topVideoContainer} {...panResponder.panHandlers}>
             {/* Container con để căn giữa */}
             <View ref={containerRef} style={{ flexDirection: 'row', alignSelf: 'center' }}>
                 {tabs.map((item, index) => (

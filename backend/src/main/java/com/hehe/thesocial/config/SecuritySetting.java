@@ -48,7 +48,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**",
+            "/auth/**", "/ws/**", "/ws-native/**"
     };
 
 
@@ -85,18 +85,16 @@ public class SecuritySetting {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
-        corsConfiguration.addAllowedOrigin(CORS_URL);
+//        corsConfiguration.addAllowedOrigin(CORS_URL);
+        corsConfiguration.addAllowedOrigin("*");
         corsConfiguration.addAllowedMethod("*");
         corsConfiguration.addAllowedHeader("*");
-        corsConfiguration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", corsConfiguration);
 
         return source;
     }
-
-
 
     @Bean
     PasswordEncoder passwordEncoder() {

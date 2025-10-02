@@ -2,6 +2,7 @@ package com.hehe.thesocial.entity;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
@@ -27,5 +28,6 @@ public class Comment extends BaseDocument{
     String userDetailId;
     String avatarUrl;
 
+    @DBRef
     Set<Comment> replies;
 }
