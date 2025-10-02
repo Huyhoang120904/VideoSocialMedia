@@ -14,22 +14,12 @@ const getResponsiveFontSize = (baseFontSize: number) => {
     // Kết hợp cả hai phương pháp
     let finalScale = widthScale * densityScale;
 
-    // Debug logs
-    console.log('=== FONT RESPONSIVE DEBUG ===');
-    console.log('Screen:', { width, height });
-    console.log('PixelRatio:', pixelRatio);
-    console.log('Width Scale:', widthScale);
-    console.log('Density Scale:', densityScale);
-    console.log('Combined Scale:', finalScale);
-
     // Giới hạn scale 
     const minScale = 0.7;
     const maxScale = 1.8;
     finalScale = Math.max(minScale, Math.min(maxScale, finalScale));
 
     const finalSize = Math.round(baseFontSize * finalScale);
-    console.log(`FINAL: ${baseFontSize} -> ${finalSize} (scale: ${finalScale})`);
-    console.log('===============================');
 
     return finalSize;
 };

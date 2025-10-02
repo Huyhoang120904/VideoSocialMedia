@@ -9,9 +9,19 @@ spring:
     multipart:
       max-file-size: 20MB
       max-request-size: 50MB
-
+      enabled: true
+  kafka:
+      bootstrap-servers: localhost:9092
+      producer:
+        key-serializer: org.apache.kafka.common.serialization.StringSerializer
+        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      consumer:
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+        properties:
+          spring.json.trusted.packages: "*"
 server:
-  port: 8081
+  port: 8082
   servlet:
     context-path: /api/v1
   cors: ${CORS_URL}
@@ -26,5 +36,10 @@ cloudinary:
   api-secret: ${CLOUDINARY_API_SECRET}
   cloud-name: ${CLOUD_NAME}
 
+
+logging:
+  level:
+    org.apache.kafka.clients.NetworkClient: ERROR
+    org.apache.kafka.clients.admin.AdminClient: ERROR
 
 

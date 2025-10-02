@@ -1,4 +1,4 @@
-import type { Video } from "../../Store/videoSlice";
+import type { Video } from "../../store/videoSlice";
 
 const initialVideos: Video[] = [
   {

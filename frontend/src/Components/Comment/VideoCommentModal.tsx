@@ -87,7 +87,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     const defaultComments: Comment[] = [
         {
             id: '1',
-            username: '🍗🍟🍕',
+            username: 'Nguyễn Quang Huy',
             avatar: 'https://picsum.photos/40/40?random=1',
             comment: '127k luôn vạt đồ ăn và nước à shop',
             timeAgo: '23 giờ',
@@ -97,7 +97,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '2',
-            username: 'Kha Han',
+            username: 'Nguyễn Huy Hoàng',
             avatar: 'https://picsum.photos/40/40?random=2',
             comment: 'có vạt k a',
             timeAgo: '23 giờ',
@@ -107,7 +107,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '3',
-            username: 'Foresstella',
+            username: 'Dương Hoàng Huy',
             avatar: 'https://picsum.photos/40/40?random=3',
             comment: 'những mà đi thực tế rồi mới thấy đồ ăn lúc nào cũng thừa thốt, ko được đầy đặn như trên clip 😂',
             timeAgo: '9 giờ',
@@ -117,7 +117,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '4',
-            username: 'foodie2024',
+            username: 'Nguyễn Xuân Hồ',
             avatar: 'https://picsum.photos/40/40?random=4',
             comment: 'Nhìn ngon ghê 🤤',
             timeAgo: '5 giờ',
@@ -127,7 +127,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '5',
-            username: 'vietnam_eats',
+            username: 'Lê Trường Giang',
             avatar: 'https://picsum.photos/40/40?random=5',
             comment: 'Đói bụng quá rồi',
             timeAgo: '4 giờ',
@@ -137,7 +137,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '6',
-            username: 'student_life',
+            username: 'Nguyễn Quốc Huy',
             avatar: 'https://picsum.photos/40/40?random=6',
             comment: 'Tiền đâu mà ăn 😭',
             timeAgo: '3 giờ',
@@ -147,7 +147,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '7',
-            username: 'saigon_boy',
+            username: 'Võ Đăng Khoa',
             avatar: 'https://picsum.photos/40/40?random=7',
             comment: 'Shop ở đâu vậy admin?',
             timeAgo: '2 giờ',
@@ -157,7 +157,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '8',
-            username: 'hungry_girl',
+            username: 'Trần Ngọc Huyền',
             avatar: 'https://picsum.photos/40/40?random=8',
             comment: 'Tối nay ăn gì đây 🤔',
             timeAgo: '1 giờ',
@@ -167,7 +167,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         },
         {
             id: '9',
-            username: 'food_lover',
+            username: 'Lê Mẫn Nghi',
             avatar: 'https://picsum.photos/40/40?random=9',
             comment: 'Giá cả thế nào?',
             timeAgo: '45 phút',
@@ -175,22 +175,9 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
             isLiked: false,
             replies: []
         },
-        {
-            id: '10',
-            username: 'midnight_eater',
-            avatar: 'https://picsum.photos/40/40?random=10',
-            comment: '3h sáng xem này là sai lầm 😭',
-            timeAgo: '30 phút',
-            likes: 18,
-            isLiked: true,
-            replies: []
-        }
     ];
 
     const [commentsList, setCommentsList] = useState<Comment[]>(defaultComments);
-
-    console.log('Comments count:', commentsList.length);
-    console.log('Comments data:', commentsList.map(c => c.username));
 
     const handleSendComment = () => {
         if (newComment.trim()) {
@@ -236,9 +223,19 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         inputRef.current?.focus();
     };
 
+    const handleAvatarPress = (username: string) => {
+        console.log('Navigate to profile:', username);
+        // TODO: Navigate to user profile
+    };
+
     const renderComment = ({ item }: { item: Comment }) => (
         <View style={styles.commentItem}>
-            <Image source={{ uri: item.avatar }} style={styles.commentAvatar} />
+            <TouchableOpacity
+                onPress={() => handleAvatarPress(item.username)}
+                activeOpacity={0.8}
+            >
+                <Image source={{ uri: item.avatar }} style={styles.commentAvatar} />
+            </TouchableOpacity>
             <View style={styles.commentContent}>
                 <View style={styles.commentHeader}>
                     <Text style={styles.commentUsername}>{item.username}</Text>
@@ -325,9 +322,6 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 bounces={true}
                                 alwaysBounceVertical={true}
                                 scrollEventThrottle={16}
-                                onScroll={(event) => {
-                                    console.log('ScrollView scrolling:', event.nativeEvent.contentOffset.y);
-                                }}
                             >
                                 {commentsList.length === 0 ? (
                                     <View style={styles.emptyContainer}>
