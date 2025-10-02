@@ -1,7 +1,6 @@
 package com.hehe.thesocial.exception;
 
 import com.hehe.thesocial.dto.ApiResponse;
-import com.mongodb.MongoWriteException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -16,8 +15,8 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiResponse> runtimeExceptionHandler(RuntimeException ex) {
         log.error("Runtime Error: ", ex);
         ApiResponse<Void> apiResponse = ApiResponse.<Void>builder().build();
-        apiResponse.setCode(ErrorCode.UNCATERGORIZED.getCode());
-        apiResponse.setMessage(ErrorCode.UNCATERGORIZED.getMessage());
+        apiResponse.setCode(ErrorCode.UNCATEGORIZED.getCode());
+        apiResponse.setMessage(ErrorCode.UNCATEGORIZED.getMessage());
         return ResponseEntity.internalServerError().body(apiResponse);
     }
 

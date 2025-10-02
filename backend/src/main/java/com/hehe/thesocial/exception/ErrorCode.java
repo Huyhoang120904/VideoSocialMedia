@@ -5,7 +5,9 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ErrorCode {
-    UNCATERGORIZED(HttpStatus.INTERNAL_SERVER_ERROR, 9999, "Unknown Error"),
+    UNCATEGORIZED(HttpStatus.INTERNAL_SERVER_ERROR, 9999, "Unknown Error"),
+
+
 
     UNAUTHENTICATED(HttpStatus.BAD_REQUEST, 1001, "Invalid authentication info"),
 
@@ -15,7 +17,8 @@ public enum ErrorCode {
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, 1101, "User not found!"),
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 1102, "Role not found!"),
-
+    CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1103, "Conversation not found!"),
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1104, "Message not found!")
 
     ;
 

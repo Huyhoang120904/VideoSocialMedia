@@ -7,7 +7,9 @@ import "./global.css";
 import LoginScreen from "../Srceens/Login";
 import RegisterScreen from "../Srceens/Register";
 import { AuthProvider, useAuth } from "../Context/AuthProvider";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { ConversationProvider } from "../Context/ConversationProvider";
+import { SocketProvider } from "../Context/SocketProvider";
 
 export default function RootNavigation() {
   const Stack = createStackNavigator();
@@ -39,9 +41,13 @@ export default function RootNavigation() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <Switcher />
-        </NavigationContainer>
+        <ConversationProvider>
+          <NavigationContainer>
+            <SocketProvider>
+              <Switcher />
+            </SocketProvider>
+          </NavigationContainer>
+        </ConversationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
