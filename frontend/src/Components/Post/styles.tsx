@@ -1,8 +1,52 @@
-import { Dimensions, StyleSheet } from "react-native";
+import { Dimensions, StyleSheet, PixelRatio } from "react-native";
 
 const { height, width } = Dimensions.get("screen");
 
-const styles = StyleSheet.create({
+// Function để tính responsive font size với nhiều phương pháp
+const getResponsiveFontSize = (baseFontSize: number) => {
+    // Phương pháp 1: Dựa trên width
+    const widthScale = width / 375; // iPhone X standard
+
+    // Phương pháp 2: Dựa trên PixelRatio và density
+    const pixelRatio = PixelRatio.get();
+    const densityScale = pixelRatio > 2 ? 1.2 : pixelRatio > 1.5 ? 1.1 : 1.0;
+
+    // Kết hợp cả hai phương pháp
+    let finalScale = widthScale * densityScale;
+
+    // Debug logs
+    console.log('=== FONT RESPONSIVE DEBUG ===');
+    console.log('Screen:', { width, height });
+    console.log('PixelRatio:', pixelRatio);
+    console.log('Width Scale:', widthScale);
+    console.log('Density Scale:', densityScale);
+    console.log('Combined Scale:', finalScale);
+
+    // Giới hạn scale 
+    const minScale = 0.7;
+    const maxScale = 1.8;
+    finalScale = Math.max(minScale, Math.min(maxScale, finalScale));
+
+    const finalSize = Math.round(baseFontSize * finalScale);
+    console.log(`FINAL: ${baseFontSize} -> ${finalSize} (scale: ${finalScale})`);
+    console.log('===============================');
+
+    return finalSize;
+};
+
+// 🎯 GIẢI PHÁP TỰ ĐỘNG: Không cần truyền giá trị!
+const AutoFontSizes = {
+    // Tự động tính toán dựa trên màn hình (giảm một chút)
+    get small() { return getResponsiveFontSize(10); },    // 12 -> 10
+    get medium() { return getResponsiveFontSize(12); },   // 14 -> 12
+    get large() { return getResponsiveFontSize(14); },    // 16 -> 14
+    get xlarge() { return getResponsiveFontSize(16); },   // 18 -> 16
+
+    // Hoặc tự động theo category (giảm một chút)
+    get titleTop() { return getResponsiveFontSize(12); }, // 14 -> 12
+    get iconText() { return getResponsiveFontSize(7); },  // 8 -> 7
+    get description() { return getResponsiveFontSize(10); }, // 12 -> 10
+}; const styles = StyleSheet.create({
     container: {
         width: '100%',
         backgroundColor: '#000',
@@ -45,9 +89,9 @@ const styles = StyleSheet.create({
     rightVideoContainer: {
         position: "absolute",
         right: 10,
-        top: 410,
+        top: 350,
         alignItems: "center",
-        zIndex: 10,
+        zIndex: 40, // Higher than video player controls
     },
     avatarContainer: {
         alignItems: "center",
@@ -72,7 +116,7 @@ const styles = StyleSheet.create({
     },
     iconText: {
         color: "#fff",
-        fontSize: 8,
+        fontSize: AutoFontSizes.small, // Tăng lên để dễ đọc hơn
         fontFamily: "TikTokSans-Bold",
         marginTop: 0,
         fontWeight: "500",
@@ -82,7 +126,7 @@ const styles = StyleSheet.create({
     bottomVideoContainer: {
         position: "absolute",
         left: 10,
-        right: 10,
+        right: 10, // Tăng right để tránh chồng right video
         flexDirection: "row",
         alignItems: "flex-end",
         zIndex: 10,
@@ -90,16 +134,17 @@ const styles = StyleSheet.create({
     },
     contentLeft: {
         flex: 1,
+        marginRight: 10, // Thêm khoảng cách với music icon
     },
     title: {
         color: "#fff",
-        fontSize: 12,
+        fontSize: AutoFontSizes.large, // Tăng lên lớn hơn nữa
         marginBottom: 5,
         fontFamily: "TikTokSans-Bold",
     },
     description: {
         color: "#fff",
-        fontSize: 12,
+        fontSize: AutoFontSizes.medium, // Tăng lên cho dễ đọc
         fontFamily: "TikTokSans-Regular",
     },
     musicIcon: {
@@ -108,7 +153,7 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         borderWidth: 2,
         borderColor: "#fff",
-        marginRight: 5,
+        marginRight: 0,
     },
 
     // Top video
@@ -125,7 +170,8 @@ const styles = StyleSheet.create({
     },
     titleTop: {
         color: "#aaa",
-        fontSize: 8,
+        fontSize: 12,
+        // fontSize: AutoFontSizes.titleTop,
         fontFamily: "TikTokSans-Regular",
         paddingHorizontal: 0,
         paddingVertical: 6,
@@ -137,6 +183,70 @@ const styles = StyleSheet.create({
         height: 3,
         backgroundColor: "#fff",
         borderRadius: 2,
+    },
+
+    // TikTok-style Progress Bar và Controls
+    progressContainer: {
+        position: "absolute",
+        bottom: 90, // Cao hơn để tránh bottom navigation
+        left: 10,
+        right: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(0,0,0,0.5)",
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        zIndex: 15,
+    },
+    timeText: {
+        color: "#fff",
+        fontSize: AutoFontSizes.iconText,
+        fontFamily: "TikTokSans-Regular",
+        minWidth: 35,
+        textAlign: "center",
+    },
+    progressBarContainer: {
+        flex: 1,
+        height: 20,
+        marginHorizontal: 10,
+        justifyContent: "center",
+        position: "relative",
+    },
+    progressBarBackground: {
+        height: 3,
+        backgroundColor: "rgba(255,255,255,0.3)",
+        borderRadius: 2,
+    },
+    progressBarFill: {
+        position: "absolute",
+        height: 3,
+        backgroundColor: "#fff",
+        borderRadius: 2,
+    },
+    progressThumb: {
+        position: "absolute",
+        width: 12,
+        height: 12,
+        backgroundColor: "#fff",
+        borderRadius: 6,
+        top: -4.5,
+        marginLeft: -6,
+    },
+    speedIndicator: {
+        position: "absolute",
+        top: 50,
+        right: 20,
+        backgroundColor: "rgba(0,0,0,0.6)",
+        borderRadius: 15,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        zIndex: 20,
+    },
+    speedText: {
+        color: "#fff",
+        fontSize: AutoFontSizes.small,
+        fontFamily: "TikTokSans-Bold",
     },
 
 

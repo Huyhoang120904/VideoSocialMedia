@@ -2,10 +2,8 @@ import React, { useState } from "react";
 import { View, Image, Text, Pressable } from "react-native";
 import { useDispatch } from "react-redux";
 import { updateVideo } from "../../store/videoSlice";
-import AntDesign from "react-native-vector-icons/AntDesign";
-import FontAwesome6 from "react-native-vector-icons/FontAwesome6";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { AntDesign, FontAwesome6, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import VideoCommentModal from "../Comment/VideoCommentModal";
 import img from "../../../assets/avatar.png";
 import styles from "./styles";
 
@@ -45,11 +43,63 @@ export default function RightVideo({
 }: RightVideoProps) {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(false);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+
+  // Sample comments data - replace with real data from API
+  const [commentsList, setCommentsList] = useState([
+    {
+      id: "1",
+      username: "user123",
+      avatar: "https://picsum.photos/100/100?random=1",
+      comment: "Video rất hay! 👏",
+      timeAgo: "2 phút trước",
+      likes: 12,
+    },
+    {
+      id: "2",
+      username: "tiktokfan",
+      avatar: "https://picsum.photos/100/100?random=2",
+      comment: "Làm thêm video về chủ đề này đi bạn ơi",
+      timeAgo: "5 phút trước",
+      likes: 8,
+    },
+    {
+      id: "3",
+      username: "viewer456",
+      avatar: "https://picsum.photos/100/100?random=3",
+      comment: "Quá tuyệt vời! 🔥🔥🔥",
+      timeAgo: "10 phút trước",
+      likes: 25,
+    },
+  ]);
 
   const handleLike = () => {
     setLiked(!liked);
     dispatch(
       updateVideo({ id, updates: { likes: liked ? likes - 1 : likes + 1 } })
+    );
+  };
+
+  const handleOpenComments = () => {
+    setCommentModalVisible(true);
+  };
+
+  const handleCloseComments = () => {
+    setCommentModalVisible(false);
+  };
+
+  const handleAddComment = (newComment: string) => {
+    const newCommentObj = {
+      id: Date.now().toString(),
+      username: "current_user", // Replace with current user's username
+      avatar: "https://picsum.photos/100/100?random=0",
+      comment: newComment,
+      timeAgo: "Vừa xong",
+      likes: 0,
+    };
+    setCommentsList([newCommentObj, ...commentsList]);
+    dispatch(
+      updateVideo({ id, updates: { comments: comments + 1 } })
     );
   };
 
@@ -85,6 +135,7 @@ export default function RightVideo({
           <Ionicons name="chatbubble-ellipses" size={ICON_SIZE} color="#fff" />
         }
         count={comments}
+        onPress={handleOpenComments}
       />
 
       {/* Outstanding (bookmark Ionicons) */}
@@ -110,6 +161,15 @@ export default function RightVideo({
           />
         }
         count={shares}
+      />
+
+      {/* Comment Modal */}
+      <VideoCommentModal
+        visible={commentModalVisible}
+        onClose={handleCloseComments}
+        videoId={id}
+        comments={commentsList}
+        onAddComment={handleAddComment}
       />
     </View>
   );
