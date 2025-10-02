@@ -7,6 +7,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   View,
+  PanResponder,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { setVideos } from "../../store/videoSlice";
@@ -15,7 +16,6 @@ import type { RootState } from "../../store/index";
 import type { Video } from "../../store/videoSlice";
 import videoData from "./apiVideo";
 import TopVideo from "../../Components/Post/TopVideo";
-import TopVideoTabs from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
 
 const { height } = Dimensions.get("screen");
@@ -126,32 +126,20 @@ export default function Home() {
     }, 100);
   }, []);
 
-
+  // Top tabs logic
   const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
+  type TabType = typeof tabs[number];
+  const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
 
-  type TabType = typeof tabs[number]; // "Khám phá" | "Bạn bè" | "Đã follow" | "Đề xuất"
-
-  const [activeTab, setActiveTab] = useState<TabType>("Khám phá");
   const renderContent = () => {
     switch (activeTab) {
       case "Khám phá":
-        return <ExploreScreen />; // hình ảnh
+        return <ExploreScreen />;
       case "Bạn bè":
       case "Đã follow":
+        return <ExploreScreen />;
       case "Đề xuất":
-        return <ExploreScreen />; // feed video
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <>
-      <View style={{ flex: 1 }}>
-        <TopVideoTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-        {activeTab === "Khám phá" ? (
-          <ExploreScreen /> // lưới hình ảnh
-        ) : (
+        return (
           <FlatList<Video>
             ref={flatListRef}
             data={videos}
@@ -174,9 +162,16 @@ export default function Home() {
             getItemLayout={getItemLayout}
             onScrollToIndexFailed={handleScrollToIndexFailed}
           />
-        )}
-      </View>
+        );
+      default:
+        return null;
+    }
+  };
 
-    </>
+  return (
+    <View style={{ flex: 1 }}>
+      <TopVideo activeTab={activeTab} setActiveTab={setActiveTab} />
+      {renderContent()}
+    </View>
   );
 }

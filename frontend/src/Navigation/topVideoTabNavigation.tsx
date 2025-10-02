@@ -1,6 +1,7 @@
 import React from "react";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { Text, View } from "react-native";
+import HomeScreen from "../Srceens/Home";
 
 function ExploreScreen() {
   return (
@@ -15,32 +16,43 @@ export default function TopVideo() {
 
   return (
     <TopTab.Navigator
+      initialRouteName="Suggest"
       screenOptions={{
-        tabBarShowLabel: false, // tắt label mặc định
+        tabBarShowLabel: true, // bật label để hiển thị
         tabBarStyle: { backgroundColor: "#000" },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+          color: "#fff",
+          textTransform: "none", // không viết hoa
+        },
+        tabBarIndicatorStyle: {
+          backgroundColor: "#fff",
+          height: 2,
+        },
         swipeEnabled: true, // cho phép swipe ngang
       }}
     >
       <TopTab.Screen
-        name="Explore"
-        component={ExploreScreen}
-        options={{ title: "Khám phá" }}
-      ></TopTab.Screen>
+        name="Suggest"
+        component={HomeScreen}
+        options={{ title: "Đề xuất" }}
+      />
       <TopTab.Screen
         name="Friends"
         component={ExploreScreen}
         options={{ title: "Bạn bè" }}
-      ></TopTab.Screen>
+      />
       <TopTab.Screen
         name="Follower"
         component={ExploreScreen}
         options={{ title: "Đã follow" }}
-      ></TopTab.Screen>
+      />
       <TopTab.Screen
-        name="Suggest"
+        name="Explore"
         component={ExploreScreen}
-        options={{ title: "Đề xuất" }}
-      ></TopTab.Screen>
+        options={{ title: "Khám phá" }}
+      />
     </TopTab.Navigator>
   );
 }
