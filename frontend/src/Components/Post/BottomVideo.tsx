@@ -11,7 +11,7 @@ export default function BottomVideo({ title }: BottomVideoProps) {
     const [mainTitle, description] = title.split(" - ");
 
     return (
-        <View style={[styles.bottomVideoContainer, { bottom: useBottomTabBarHeight() + 10 }]}>
+        <View style={[styles.bottomVideoContainer, { bottom: useBottomTabBarHeight() - 90 }]}>
             <View style={styles.contentLeft}>
                 <Text style={styles.title}>{mainTitle || "Default title"}</Text>
                 <Text style={styles.description}>{description || "Default description"}</Text>
