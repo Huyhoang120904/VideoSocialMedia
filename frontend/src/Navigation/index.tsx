@@ -39,7 +39,7 @@ export default function RootNavigation() {
   };
 
   return (
-    <SafeAreaProvider >
+    <SafeAreaProvider>
       <AuthProvider>
         <ConversationProvider>
           <NavigationContainer>

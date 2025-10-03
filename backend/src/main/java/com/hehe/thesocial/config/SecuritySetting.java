@@ -32,7 +32,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_POST_ENDPOINTS = {
-           "/users/**"
+           "/users/**", "/files/**"
     };
 
     static String[] PUBLIC_PUT_ENDPOINTS = {

@@ -7,7 +7,7 @@ spring:
       auto-index-creation: true
   servlet:
     multipart:
-      max-file-size: 2  0MB
+      max-file-size: 20MB
       max-request-size: 50MB
       enabled: true
   kafka:
@@ -31,15 +31,11 @@ jwt:
   expiration: ${JWT_DURATION}
   refreshable: ${JWT_REFRESH_DURATION}
 
-cloudinary:
-  api-key: ${CLOUDINARY_API_KEY}
-  api-secret: ${CLOUDINARY_API_SECRET}
-  cloud-name: ${CLOUD_NAME}
-
+# Local file storage configuration
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:uploads}
 
 logging:
   level:
     org.apache.kafka.clients.NetworkClient: ERROR
     org.apache.kafka.clients.admin.AdminClient: ERROR
-
-

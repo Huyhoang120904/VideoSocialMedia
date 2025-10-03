@@ -18,8 +18,8 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
-  login: async () => { },
-  logout: async () => { },
+  login: async () => {},
+  logout: async () => {},
 });
 
 const TOKEN_KEY = "APP_TOKEN";
@@ -83,8 +83,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   const value = useMemo(
     () => ({
       isLoading,
-      // isAuthenticated: hasSession && !!getAuthToken() && isAuthenticated,
-      isAuthenticated: true,
+      isAuthenticated: hasSession && !!getAuthToken() && isAuthenticated,
+      // isAuthenticated: true,
       login,
       logout,
     }),

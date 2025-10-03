@@ -1,8 +1,13 @@
 import React, { useState } from "react";
 import { View, Image, Text, Pressable } from "react-native";
 import { useDispatch } from "react-redux";
-import { updateVideo } from "../../store/videoSlice";
-import { AntDesign, FontAwesome6, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { updateVideo } from "../../Store/videoSlice";
+import {
+  AntDesign,
+  FontAwesome6,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import VideoCommentModal from "../Comment/VideoCommentModal";
 import img from "../../../assets/avatar.png";
 import styles from "./styles";
@@ -98,9 +103,7 @@ export default function RightVideo({
       likes: 0,
     };
     setCommentsList([newCommentObj, ...commentsList]);
-    dispatch(
-      updateVideo({ id, updates: { comments: comments + 1 } })
-    );
+    dispatch(updateVideo({ id, updates: { comments: comments + 1 } }));
   };
 
   return (
