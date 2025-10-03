@@ -10,7 +10,7 @@ import {
   PanResponder,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { setVideos, Video } from "../../store/videoSlice";
+import { setVideos, Video } from "../../Store/videoSlice";
 import Post from "../../Components/Post";
 import type { RootState } from "../../Store/index";
 

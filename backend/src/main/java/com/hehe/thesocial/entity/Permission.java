@@ -3,9 +3,10 @@ package com.hehe.thesocial.entity;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-@Document("permissions")
+@Document(collection = "permissions")
 @Getter
 @Setter
 @Builder
@@ -15,10 +16,12 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 public class Permission extends BaseDocument{
 
     @MongoId
+    @Field("_id")
     String id;
 
+    @Field("permission")
     String permission;
 
+    @Field("description")
     String description;
-
 }

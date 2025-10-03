@@ -4,6 +4,7 @@ import com.hehe.thesocial.dto.request.chat.ChatMessageCreationRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import com.hehe.thesocial.entity.Conversation;
+import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
@@ -41,7 +42,10 @@ public class ChatMessageServiceImpl {
     public Page<ChatMessageResponse> getAllChatMessageByConversationId(String conversationId, Pageable pageable) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        UserDetail userDetail = userDetailRepository.findByUser_Id(userId).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        UserDetail userDetail = userDetailRepository.findByUser(User.builder()
+                        .id(userId)
+                        .build())
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("time").descending());
 
@@ -60,7 +64,10 @@ public class ChatMessageServiceImpl {
     public ChatMessageResponse createChatMessage(ChatMessageCreationRequest request) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        UserDetail userDetail = userDetailRepository.findByUser_Id(userId).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        UserDetail userDetail = userDetailRepository.findByUser(User.builder()
+                        .id(userId)
+                        .build())
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         Conversation conversation = conversationRepository.findById(request.getConversationId()).orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
 
@@ -92,7 +99,10 @@ public class ChatMessageServiceImpl {
     public void deleteChatMessage(String chatMessageId) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        UserDetail userDetail = userDetailRepository.findByUser_Id(userId).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        UserDetail userDetail = userDetailRepository.findByUser(User.builder()
+                        .id(userId)
+                        .build())
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         if (chatMessageRepository.existsById(chatMessageId)) {
             ChatMessage chatMessage = chatMessageRepository.findById(chatMessageId).orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));

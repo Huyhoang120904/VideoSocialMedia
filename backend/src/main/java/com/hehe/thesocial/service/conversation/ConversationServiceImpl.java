@@ -68,7 +68,9 @@ public class ConversationServiceImpl implements ConversationService {
     public ConversationResponse getConversationById(String conversationId) {
         String userId  = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        UserDetail myUserDetail = userDetailRepository.findByUser_Id(userId)
+        UserDetail myUserDetail = userDetailRepository.findByUser(User.builder()
+                        .id(userId)
+                        .build())
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         Conversation conversation = conversationRepository.findById(conversationId)
@@ -149,7 +151,9 @@ public class ConversationServiceImpl implements ConversationService {
     public Page<ConversationListResponse> getMyConversations(Pageable pageable) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        UserDetail userDetail = userDetailRepository.findByUser_Id(userId)
+        UserDetail userDetail = userDetailRepository.findByUser(User.builder()
+                                                                .id(userId)
+                                                                .build())
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         Page<Conversation> conversations = conversationRepository.findByUserDetailsContaining(new HashSet<>(List.of(userDetail)),pageable);
