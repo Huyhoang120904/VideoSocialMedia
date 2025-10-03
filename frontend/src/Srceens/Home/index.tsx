@@ -10,10 +10,10 @@ import {
   PanResponder,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { setVideos } from "../../store/videoSlice";
+import { setVideos, Video } from "../../store/videoSlice";
 import Post from "../../Components/Post";
-import type { RootState } from "../../store/index";
-import type { Video } from "../../store/videoSlice";
+import type { RootState } from "../../Store/index";
+
 import videoData from "./apiVideo";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
@@ -135,7 +135,7 @@ export default function Home() {
 
   // Top tabs logic
   const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
-  type TabType = typeof tabs[number];
+  type TabType = (typeof tabs)[number];
   const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
   const renderContent = () => {
     switch (activeTab) {
