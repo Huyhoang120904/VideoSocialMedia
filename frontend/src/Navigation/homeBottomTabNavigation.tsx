@@ -3,17 +3,18 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import HomeScreen from "../Srceens/Home";
-import SearchScreen from "../Srceens/Search";
+import SearchScreen from "../Srceens/Search/index";
 import UploadScreen from "../Srceens/Upload";
 import InboxScreen from "../Srceens/Inbox";
 import ProfileScreen from "../Srceens/Profile";
-import { View } from "react-native";
+import { Text, View } from "react-native";
+
+
 
 const CreateButton = () => {
     return (
         <View
             style={{
-                marginTop: 10,
                 width: 48,
                 height: 35,
                 backgroundColor: "#fff",
