@@ -177,10 +177,6 @@ const SearchScreen = () => {
                     )}
                 </View>
 
-                <TouchableOpacity style={styles.voiceButton}>
-                    <Ionicons name="mic" size={24} color="#000" />
-                </TouchableOpacity>
-
                 <TouchableOpacity style={styles.searchButton} >
                     <Text style={styles.searchButtonText}>Tìm kiếm</Text>
                 </TouchableOpacity>
