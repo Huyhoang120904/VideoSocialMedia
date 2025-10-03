@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     searchContainer: {
-        flex: 1,
+        flex: 3,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#f5f5f5',
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     },
     searchButtonText: {
         color: '#FE2C55',
-        fontSize: 16,
+        fontSize: 12,
         fontWeight: '600',
     },
     content: {
