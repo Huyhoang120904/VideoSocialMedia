@@ -18,7 +18,7 @@ import videoData from "./apiVideo";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
 
-const { height } = Dimensions.get("screen");
+const { height } = Dimensions.get("window");
 const SCROLL_THRESHOLD = 50; // Ngưỡng để chuyển video
 
 interface GetItemLayoutData {
