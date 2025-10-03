@@ -44,7 +44,9 @@ export default function Inbox() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "right", "left"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      {/* Dòng này gây ra lỗi giao diện */}
+      {/* <StatusBar barStyle="dark-content" translucent={true}
+        backgroundColor="transparent" /> */}
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -79,7 +79,7 @@ const AutoFontSizes = {
     rightVideoContainer: {
         position: "absolute",
         right: 10,
-        top: 350,
+        top: 380,
         alignItems: "center",
         zIndex: 40, // Higher than video player controls
     },

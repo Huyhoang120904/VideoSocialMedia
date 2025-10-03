@@ -42,7 +42,8 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
   const [progressBarWidth, setProgressBarWidth] = useState(screenWidth);
 
   const bottomTabHeight = useBottomTabBarHeight();
-  const videoHeight = itemHeight - bottomTabHeight;
+  // Use full screen height for video since we're hiding system UI
+  const videoHeight = itemHeight;
 
   const player = useVideoPlayer(video.uri, (p) => {
     p.loop = true;
