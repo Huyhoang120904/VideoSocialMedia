@@ -11,18 +11,25 @@ import {
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MessageBox from "../../Components/Inbox/MessageBox";
 import ConversationService from "../../Services/ConversationService";
-import { ConversationResponse } from "../../Types/ConversationResponse";
+import { ConversationResponse } from "../../Types/response/ConversationResponse";
 import { useConversations } from "../../Context/ConversationProvider";
+import { InboxStackParamList } from "../../Types/response/navigation.types";
+
+type InboxNavigationProp = StackNavigationProp<
+  InboxStackParamList,
+  "InboxHome"
+>;
 
 export default function Inbox() {
   const [activeTab, setActiveTab] = useState("Messages");
-  const navigation = useNavigation();
+  const navigation = useNavigation<InboxNavigationProp>();
   const { conversations, isLoading } = useConversations();
   const handleMessagePress = (item: ConversationResponse) => {
-    (navigation as any).navigate("Conversation", {
+    navigation.navigate("Conversation", {
       conversationId: item.conversationId,
       conversationName: item.conversationName,
       avatar: item.avatar,
@@ -30,8 +37,7 @@ export default function Inbox() {
   };
 
   const navigateToSearch = () => {
-    // Replace with actual navigation when Search screen is available
-    Alert.alert("Navigation", "Navigating to Search screen");
+    navigation.navigate("UserSearch");
   };
 
   const handleCreateGroup = () => {

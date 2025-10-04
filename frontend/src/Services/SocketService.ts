@@ -1,132 +1,171 @@
-import { Client, StompSubscription } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { getAuthToken } from "./HttpClient";
 
 export class SocketService {
-  private client: Client | null = null;
-  private subscriptions: Map<string, StompSubscription> = new Map();
-
-  private getWebSocketUrl(): string {
-    const API_URL = process.env.EXPO_PUBLIC_WS_URL;
-
-    if (!API_URL) {
-      throw new Error("EXPO_PUBLIC_WS_URL environment variable is not set");
-    }
-
-    // Convert HTTP(S) URLs to WebSocket URLs
-    if (API_URL.startsWith("http://")) {
-      return API_URL.replace("http://", "ws://");
-    } else if (API_URL.startsWith("https://")) {
-      return API_URL.replace("https://", "wss://");
-    }
-
-    return API_URL;
-  }
+  private socket: WebSocket | null = null;
+  private subscriptions: Map<string, (message: any) => void> = new Map();
+  private messageQueue: Array<{ destination: string; body: any }> = [];
+  private isConnecting: boolean = false;
 
   async connect(): Promise<void> {
-    if (this.client?.connected) {
-      return;
-    }
+    // Skip if already connected
+    if (this.socket?.readyState === WebSocket.OPEN) return;
 
+    // Skip if already connecting
+    if (this.isConnecting) return;
+
+    // Check for authentication token
     const token = getAuthToken();
-    if (!token) {
-      throw new Error("No auth token available for socket connection");
-    }
+    if (!token) throw new Error("No auth token available");
 
-    const url = this.getWebSocketUrl();
-    console.log(`SocketService: Connecting to ${url}`);
+    // Get WebSocket URL
+    const url = process.env.EXPO_PUBLIC_WS_URL;
+    if (!url) throw new Error("WebSocket URL not configured");
 
-    this.client = new Client({
-      brokerURL: url,
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,
-      },
-      reconnectDelay: 5000,
-      heartbeatIncoming: 10000,
-      heartbeatOutgoing: 10000,
-      debug: process.env.NODE_ENV !== "production" ? console.log : undefined,
-    });
+    this.isConnecting = true;
 
+    // Simple promise-based connection using SockJS
     return new Promise((resolve, reject) => {
-      if (!this.client) {
-        reject(new Error("Client not initialized"));
-        return;
-      }
-
       const timeout = setTimeout(() => {
+        this.isConnecting = false;
         reject(new Error("Connection timeout"));
       }, 10000);
 
-      this.client.onConnect = () => {
-        console.log("SocketService: Connected");
-        clearTimeout(timeout);
-        resolve();
-      };
+      try {
+        // Create SockJS connection
+        this.socket = new SockJS(url) as WebSocket;
 
-      this.client.onStompError = (frame) => {
-        console.error("SocketService: STOMP error:", frame.headers?.message);
-        clearTimeout(timeout);
-        reject(new Error(frame.headers?.message || "Connection failed"));
-      };
+        this.socket.onopen = () => {
+          clearTimeout(timeout);
+          this.isConnecting = false;
+          console.log("SocketService: Connected via SockJS");
 
-      this.client.activate();
+          // Send authentication after connection
+          this.send("/app/authenticate", { token });
+
+          // Process any queued messages
+          this.processMessageQueue();
+
+          resolve();
+        };
+
+        this.socket.onerror = (error) => {
+          clearTimeout(timeout);
+          this.isConnecting = false;
+          console.error("SocketService: Connection failed:", error);
+          reject(new Error("SockJS connection failed"));
+        };
+
+        this.socket.onmessage = (event) => {
+          this.handleMessage(event);
+        };
+
+        this.socket.onclose = () => {
+          console.log("SocketService: Connection closed");
+          this.isConnecting = false;
+        };
+      } catch (error) {
+        clearTimeout(timeout);
+        this.isConnecting = false;
+        reject(error);
+      }
     });
   }
 
   disconnect(): void {
-    if (this.client) {
-      this.subscriptions.clear();
-      this.client.deactivate();
-      this.client = null;
-      console.log("SocketService: Disconnected");
-    }
+    if (!this.socket) return;
+
+    this.subscriptions.clear();
+    this.messageQueue = [];
+    this.socket.close();
+    this.socket = null;
+    this.isConnecting = false;
+    console.log("SocketService: Disconnected");
   }
 
   isConnected(): boolean {
-    return this.client?.connected ?? false;
+    return this.socket?.readyState === WebSocket.OPEN;
   }
 
-  subscribe(
-    destination: string,
-    callback: (message: any) => void
-  ): StompSubscription | null {
-    if (!this.client?.connected) {
+  subscribe(destination: string, callback: (message: any) => void): void {
+    if (!this.isConnected()) {
       console.error("Cannot subscribe: Socket not connected");
-      return null;
+      return;
     }
 
-    const subscription = this.client.subscribe(destination, (message) => {
-      try {
-        const parsedMessage = message.body ? JSON.parse(message.body) : null;
-        callback(parsedMessage);
-      } catch (error) {
-        console.error(`Error parsing message from ${destination}:`, error);
-        callback(message.body);
-      }
-    });
+    this.subscriptions.set(destination, callback);
 
-    this.subscriptions.set(destination, subscription);
-    console.log(`SocketService: Subscribed to ${destination}`);
-    return subscription;
+    // Send subscription message
+    this.send("/app/subscribe", { destination });
   }
 
   unsubscribe(destination: string): void {
-    const subscription = this.subscriptions.get(destination);
-    if (subscription) {
-      subscription.unsubscribe();
+    if (this.subscriptions.has(destination)) {
       this.subscriptions.delete(destination);
-      console.log(`SocketService: Unsubscribed from ${destination}`);
+
+      // Send unsubscribe message
+      if (this.isConnected()) {
+        this.send("/app/unsubscribe", { destination });
+      }
     }
   }
 
   send(destination: string, body: any): void {
-    if (!this.client?.connected) {
-      console.error("Cannot send message: Socket not connected");
+    const message = {
+      destination,
+      body: JSON.stringify(body),
+      timestamp: Date.now(),
+    };
+
+    if (!this.isConnected()) {
+      console.log("Socket not connected, queuing message");
+      this.messageQueue.push({ destination, body });
       return;
     }
 
-    this.client.publish({
-      destination,
-      body: JSON.stringify(body),
+    try {
+      this.socket?.send(JSON.stringify(message));
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  }
+
+  private handleMessage(event: MessageEvent): void {
+    try {
+      const message = JSON.parse(event.data);
+      const { destination, body } = message;
+
+      // Find matching subscription
+      const callback = this.subscriptions.get(destination);
+      if (callback) {
+        try {
+          const data = typeof body === "string" ? JSON.parse(body) : body;
+          callback(data);
+        } catch (parseError) {
+          console.error(
+            `Error parsing message body from ${destination}:`,
+            parseError
+          );
+          callback(body);
+        }
+      } else {
+        console.log(`No subscription found for destination: ${destination}`);
+      }
+    } catch (error) {
+      console.error("Error handling incoming message:", error);
+    }
+  }
+
+  private processMessageQueue(): void {
+    if (this.messageQueue.length === 0) return;
+
+    console.log(`Processing ${this.messageQueue.length} queued messages`);
+
+    const messages = [...this.messageQueue];
+    this.messageQueue = [];
+
+    messages.forEach(({ destination, body }) => {
+      this.send(destination, body);
     });
   }
 }

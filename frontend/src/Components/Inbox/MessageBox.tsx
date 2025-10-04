@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
-import { ConversationResponse } from "../../Types/ConversationResponse";
+import { ConversationResponse } from "../../Types/response/ConversationResponse";
 
 interface MessageBoxProps {
   item: ConversationResponse;

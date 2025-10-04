@@ -48,7 +48,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**", "/ws/**", "/ws-native/**"
+            "/auth/**","/ws-native/**"
     };
 
 
@@ -62,7 +62,8 @@ public class SecuritySetting {
                         .requestMatchers(HttpMethod.PUT, PUBLIC_PUT_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.DELETE, PUBLIC_DELETE_ENDPOINTS).permitAll()
                         .requestMatchers(ADMIN_ENDPOINTS).hasRole(PredefinedRoles.ADMIN_ROLE)
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()
+                )
                 .oauth2ResourceServer(oauth2Security ->
                                 oauth2Security.jwt(jwtConfigurer -> jwtConfigurer.decoder(customJwtDecoder)
                                         .jwtAuthenticationConverter(jwtAuthenticationConverter()))

@@ -18,10 +18,6 @@ export default function RootNavigation() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={HomeBottomTabNavigation} />
       <Stack.Screen name="TopVideo" component={TopVideoScreen} />
-      <Stack.Screen
-        name="Conversation"
-        component={require("../Srceens/Conversation").default}
-      />
     </Stack.Navigator>
   );
 

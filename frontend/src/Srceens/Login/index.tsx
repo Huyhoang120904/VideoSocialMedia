@@ -12,17 +12,21 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 import { useAuth } from "../../Context/AuthProvider";
 import { useConversations } from "../../Context/ConversationProvider";
+import { UnauthedStackParamList } from "../../Types/response/navigation.types";
+
+type LoginNavigationProp = StackNavigationProp<UnauthedStackParamList, "Login">;
 
 const LoginScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<LoginNavigationProp>();
   const { login, isLoading } = useAuth();
   const handleSignUpNav = () => {
-    (navigation as any).navigate("Register");
+    navigation.navigate("Register");
   };
 
   const handleLogin = async () => {

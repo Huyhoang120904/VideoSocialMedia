@@ -74,10 +74,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
     }
   };
   const logout = async () => {
+    console.log("AuthProvider: Logging out user...");
     clearAuthToken();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setHasSession(false);
     setIsAuthenticated(false);
+    console.log("AuthProvider: User logged out successfully");
   };
 
   const value = useMemo(
