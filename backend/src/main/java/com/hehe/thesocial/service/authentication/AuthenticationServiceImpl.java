@@ -65,7 +65,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         boolean isAuthenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
-//        boolean isAuthenticated = true;
         if (!isAuthenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
         String token = generateToken(user);

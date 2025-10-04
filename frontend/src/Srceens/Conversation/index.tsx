@@ -12,13 +12,20 @@ import {
   Keyboard,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useConversations } from "../../Context/ConversationProvider";
-import { ChatMessageResponse } from "../../Types/ChatMessageResponse";
+import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
+import { InboxStackParamList } from "../../Types/response/navigation.types";
+
+type ConversationNavigationProp = StackNavigationProp<
+  InboxStackParamList,
+  "Conversation"
+>;
 
 const ConversationScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<ConversationNavigationProp>();
   const route = useRoute();
   const [message, setMessage] = useState("");
   // Get params from navigation - safely handle them in case they're missing
@@ -83,7 +90,7 @@ const ConversationScreen = () => {
 
   return (
     <View className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      {/* <StatusBar barStyle="dark-content" backgroundColor="#ffffff" /> */}
 
       {/* Header */}
       <SafeAreaView edges={["top", "right", "left"]}>
@@ -106,9 +113,18 @@ const ConversationScreen = () => {
             </View>
           </View>
 
-          <TouchableOpacity className="pl-3">
-            <Feather name="more-vertical" size={20} color="#333" />
-          </TouchableOpacity>
+          <View className="flex-row items-center">
+            <TouchableOpacity
+              className="px-2"
+              onPress={() => navigation.navigate("UserSearch")}
+            >
+              <Ionicons name="search" size={22} color="#333" />
+            </TouchableOpacity>
+
+            <TouchableOpacity className="pl-1">
+              <Feather name="more-vertical" size={20} color="#333" />
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
 

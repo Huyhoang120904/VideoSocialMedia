@@ -1,8 +1,8 @@
 import { api } from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
-import Page from "../Types/Page";
-import { ConversationResponse } from "../Types/ConversationResponse";
-import { ChatMessageResponse } from "../Types/ChatMessageResponse";
+import Page from "../Types/response/Page";
+import { ConversationResponse } from "../Types/response/ConversationResponse";
+import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
 import { ConversationRequest } from "../Types/request/ConversationRequest";
 
 interface PaginationParams {

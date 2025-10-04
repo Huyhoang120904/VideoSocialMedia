@@ -1,6 +1,6 @@
 import { api } from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
-import { UserDetailResponse } from "../Types/UserDetailResponse";
+import { UserDetailResponse } from "../Types/response/UserDetailResponse";
 
 const UserDetailService = {
   getMyDetails: async (): Promise<ApiResponse<UserDetailResponse>> => {

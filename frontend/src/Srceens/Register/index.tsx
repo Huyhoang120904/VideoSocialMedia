@@ -12,6 +12,13 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { UnauthedStackParamList } from "../../Types/response/navigation.types";
+
+type RegisterNavigationProp = StackNavigationProp<
+  UnauthedStackParamList,
+  "Register"
+>;
 
 const RegisterScreen = () => {
   const [username, setUsername] = useState("");
@@ -19,7 +26,7 @@ const RegisterScreen = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const navigation = useNavigation();
+  const navigation = useNavigation<RegisterNavigationProp>();
 
   const handleSignInNav = () => {
     navigation.navigate("Login");

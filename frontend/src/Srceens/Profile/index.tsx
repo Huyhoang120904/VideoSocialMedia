@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../../Context/AuthProvider";
 import UserDetailService from "../../Services/UserDetailService";
-import { UserDetailResponse } from "../../Types/UserDetailResponse";
+import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { useConversations } from "../../Context/ConversationProvider";
 
 const { width } = Dimensions.get("window");

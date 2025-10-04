@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { ApiResponse } from "../Types/ApiResponse";
-import Page from "../Types/Page";
-import { ConversationResponse } from "../Types/ConversationResponse";
+import Page from "../Types/response/Page";
+import { ConversationResponse } from "../Types/response/ConversationResponse";
 import ConversationService from "../Services/ConversationService";
-import { ChatMessageResponse } from "../Types/ChatMessageResponse";
+import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
 import { useAuth } from "./AuthProvider";
 
 type ConversationsContextType = {
@@ -45,7 +45,9 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
   }
 
   async function clearConversations() {
+    console.log("ConversationProvider: Clearing conversations and messages");
     setConversations([]);
+    setMessages([]);
   }
 
   async function getChatMessagesByConversationId(conversationId: string) {
@@ -58,7 +60,13 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
   }
 
   useEffect(() => {
-    if (conversations.length <= 0) getMyConversations();
+    if (isAuthenticated && conversations.length <= 0) {
+      getMyConversations();
+    } else if (!isAuthenticated) {
+      // Clear conversations and messages when user logs out
+      console.log("ConversationProvider: User logged out, clearing data");
+      clearConversations();
+    }
   }, [isAuthenticated]);
 
   const value = useMemo(

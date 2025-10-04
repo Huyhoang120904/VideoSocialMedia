@@ -1,6 +1,6 @@
 import api from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
-import { LoginResponse } from "../Types/LoginResponse";
+import { LoginResponse } from "../Types/response/LoginResponse";
 
 export type LoginPayload = { username: string; password: string };
 

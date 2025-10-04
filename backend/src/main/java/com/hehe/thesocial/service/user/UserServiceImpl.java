@@ -29,7 +29,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class UserServiceImpl implements UserService {
-
     UserMapper userMapper;
     UserRepository userRepository;
     UserDetailRepository userDetailRepository;
@@ -68,6 +67,7 @@ public class UserServiceImpl implements UserService {
                 .user(user)
                 .shownName("@"+user.getUsername())
                 .build();
+
         userDetail = userDetailRepository.save(userDetail);
         userDetailRepository.findById(userDetail.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED));
