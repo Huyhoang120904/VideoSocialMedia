@@ -1,7 +1,6 @@
 package com.hehe.thesocial.service.conversation;
 
 import com.hehe.thesocial.dto.request.conversation.ConversationRequest;
-import com.hehe.thesocial.dto.response.conversation.ConversationListResponse;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +23,7 @@ public interface ConversationService {
     @Transactional
     ConversationResponse removeMember(String conversationId, String participantId);
 
-    Page<ConversationListResponse> getMyConversations(Pageable pageable);
+    Page<ConversationResponse> getMyConversations(Pageable pageable);
 
     void deleteConversation(String conversationId);
 }

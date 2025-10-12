@@ -3,8 +3,8 @@ package com.hehe.thesocial.entity;
 import com.hehe.thesocial.entity.enums.ConversationType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
@@ -17,7 +17,9 @@ import java.util.Set;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Conversation extends BaseDocument {
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String conversationId;
@@ -25,11 +27,11 @@ public class Conversation extends BaseDocument {
     @Field("participant_hash")
     String participantHash;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("user_details_ref")
     Set<UserDetail> userDetails;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("avatar_ref")
     FileDocument avatar;
 

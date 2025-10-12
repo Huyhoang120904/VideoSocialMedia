@@ -1,14 +1,16 @@
 package com.hehe.thesocial.mapper.chatMessage;
 
-import com.hehe.thesocial.dto.request.chat.ChatMessageCreationRequest;
+import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import org.mapstruct.Mapper;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface ChatMessageMapper {
-    ChatMessage toChatMessage(ChatMessageCreationRequest request);
 
+    ChatMessage toChatMessage(DirectChatMessageRequest request);
+
+    @Mapping(source = "senderId", target = "sender")
     ChatMessageResponse toChatMessageResponse(ChatMessage chatMessage);
 }

@@ -1,8 +1,8 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import InboxScreen from "../Srceens/Inbox";
-import ConversationScreen from "../Srceens/Conversation";
 import UserSearchScreen from "../Srceens/UserSearch";
+import CreateGroupScreen from "../Srceens/CreateGroup";
 import { InboxStackParamList } from "../Types/response/navigation.types";
 
 const Stack = createStackNavigator<InboxStackParamList>();
@@ -24,17 +24,17 @@ export default function InboxStackNavigation() {
         }}
       />
       <Stack.Screen
-        name="Conversation"
-        component={ConversationScreen}
-        options={{
-          title: "Cuộc trò chuyện",
-        }}
-      />
-      <Stack.Screen
         name="UserSearch"
         component={UserSearchScreen}
         options={{
           title: "Tìm kiếm người dùng",
+        }}
+      />
+      <Stack.Screen
+        name="CreateGroup"
+        component={CreateGroupScreen}
+        options={{
+          title: "Tạo nhóm",
         }}
       />
     </Stack.Navigator>

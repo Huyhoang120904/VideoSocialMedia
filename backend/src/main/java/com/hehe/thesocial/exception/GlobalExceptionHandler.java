@@ -13,6 +13,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = RuntimeException.class)
     ResponseEntity<ApiResponse> runtimeExceptionHandler(RuntimeException ex) {
+        ex.printStackTrace();
         log.error("Runtime Error: ", ex);
         ApiResponse<Void> apiResponse = ApiResponse.<Void>builder().build();
         apiResponse.setCode(ErrorCode.UNCATEGORIZED.getCode());

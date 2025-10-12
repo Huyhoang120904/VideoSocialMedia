@@ -4,176 +4,546 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
-  Image,
-  StatusBar,
-  Keyboard,
+  Alert,
+  Animated,
+  Dimensions,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { Ionicons, Feather } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useConversations } from "../../Context/ConversationProvider";
+import { useChatMessages } from "../../Context/ChatMessageProvider";
+import { useAuth } from "../../Context/AuthProvider";
+import { useSocket } from "../../Context/SocketProvider";
 import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
-import { InboxStackParamList } from "../../Types/response/navigation.types";
+import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
+import { AuthedStackParamList } from "../../Types/response/navigation.types";
+import ChatMessageService from "../../Services/ChatMessageService";
+import UserDetailService from "../../Services/UserDetailService";
+import { ChatMessageUpdateRequest } from "../../Types/request";
+import ConversationHeader from "../../Components/Conversation/ConversationHeader";
+import MessagesList from "../../Components/Conversation/MessagesList";
+import MessageInput from "../../Components/Conversation/MessageInput";
 
 type ConversationNavigationProp = StackNavigationProp<
-  InboxStackParamList,
+  AuthedStackParamList,
   "Conversation"
 >;
+
+const { width, height } = Dimensions.get("window");
 
 const ConversationScreen = () => {
   const navigation = useNavigation<ConversationNavigationProp>();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingMessage, setEditingMessage] =
+    useState<ChatMessageResponse | null>(null);
+  const [editText, setEditText] = useState("");
+  const [currentUserDetail, setCurrentUserDetail] =
+    useState<UserDetailResponse | null>(null);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(30));
+
+  // Add WebSocket hooks
+  const { isConnected, subscribe, unsubscribe } = useSocket();
+
   // Get params from navigation - safely handle them in case they're missing
   const params =
     (route.params as {
       conversationId: string;
       conversationName?: string;
       avatar?: any;
+      receiverId?: string;
     }) || {};
 
   const conversationName = params.conversationName || "Placeholder";
   const avatar = params.avatar || require("../../../assets/avatar.png");
 
-  const { messages, getChatMessagesByConversationId } = useConversations();
+  const { conversations } = useConversations();
+  const {
+    messages,
+    isMessagesLoading,
+    getChatMessagesByConversationId,
+    addMessage,
+    updateMessage,
+    removeMessage,
+    clearCurrentConversation,
+  } = useChatMessages();
+  const { isAuthenticated } = useAuth();
 
+  // Get current conversation data
+  const currentConversation = conversations.find(
+    (conv) => conv.conversationId === params.conversationId
+  );
+  const conversationType = currentConversation?.conversationType || "DIRECT";
+
+  // Animation on component mount
   useEffect(() => {
-    getChatMessagesByConversationId(params.conversationId);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
-  console.log(messages);
+  // Add WebSocket subscription for real-time messages
+  useEffect(() => {
+    if (isConnected && params.conversationId) {
+      console.log(
+        "🔔 Setting up WebSocket subscription for conversation:",
+        params.conversationId
+      );
 
-  const handleSend = () => {
-    if (message.trim()) {
-      const newMessage = {
-        id: String(Date.now()),
-        text: message.trim(),
-        sender: "me",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+      // Subscribe to user-specific chat queue
+      subscribe("/user/queue/chat", (receivedMessage: ChatMessageResponse) => {
+        console.log("📨 Received real-time chat message:", receivedMessage);
+
+        // Only add message if it belongs to current conversation
+        if (receivedMessage.conversationId === params.conversationId) {
+          console.log(
+            "✅ Message belongs to current conversation, adding to messages"
+          );
+          addMessage(receivedMessage);
+        } else {
+          console.log("ℹ️ Message belongs to different conversation, ignoring");
+        }
+      });
+
+      // Cleanup subscription when component unmounts or conversation changes
+      return () => {
+        console.log(
+          "🔕 Unsubscribing from WebSocket for conversation:",
+          params.conversationId
+        );
+        unsubscribe("/user/queue/chat");
       };
+    } else {
+      console.log("⚠️ WebSocket not connected or no conversation ID");
+    }
+  }, [isConnected, params.conversationId, subscribe, unsubscribe, addMessage]);
 
-      // Add new message to the messages state
-      // setMessages([newMessage, ...messages]);
-      console.log("Message sent:", message);
-      setMessage("");
+  useEffect(() => {
+    console.log("Conversation screen params:", params);
+    console.log("ConversationId from params:", params.conversationId);
+    console.log(
+      "Available conversations:",
+      conversations.map((c) => c.conversationId)
+    );
+
+    if (params.conversationId) {
+      // Check if the conversation exists in the user's conversation list
+      const conversationExists = conversations.some(
+        (conv) => conv.conversationId === params.conversationId
+      );
+
+      if (conversationExists) {
+        getChatMessagesByConversationId(params.conversationId);
+      } else {
+        console.error(
+          "Conversation not found in user's conversation list:",
+          params.conversationId
+        );
+        Alert.alert(
+          "Error",
+          "Conversation not found or you don't have access to it."
+        );
+        navigation.goBack();
+      }
+    } else {
+      console.error("No conversationId provided to Conversation screen");
+      Alert.alert("Error", "No conversation selected.");
+      navigation.goBack();
+    }
+
+    // Load current user details
+    const loadCurrentUser = async () => {
+      try {
+        const response = await UserDetailService.getMyDetails();
+        if (response.result) {
+          setCurrentUserDetail(response.result);
+        }
+      } catch (error) {
+        console.error("Error loading current user:", error);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadCurrentUser();
+    }
+  }, [params.conversationId, isAuthenticated]);
+
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log("ConversationScreen: Cleaning up conversation");
+      clearCurrentConversation();
+    };
+  }, []);
+
+  // Send message using ChatMessageService
+  const handleSend = async () => {
+    if (!message.trim()) return;
+
+    setIsLoading(true);
+    try {
+      let response;
+
+      if (params.conversationId) {
+        console.log("ConversationId:", params.conversationId);
+        conversations.forEach((conv) => {
+          console.log(
+            "Conversation:",
+            conv.conversationId,
+            conv.conversationType,
+            conv.participantIds
+          );
+        });
+
+        const conversation = conversations.find(
+          (conv) => conv.conversationId === params.conversationId
+        );
+        if (
+          !conversation ||
+          !conversation.participantIds ||
+          !currentUserDetail?.id
+        ) {
+          Alert.alert("Error", "Conversation data not available");
+          return;
+        }
+
+        // Use appropriate method based on conversation type
+        if (conversation.conversationType === "DIRECT") {
+          response = await ChatMessageService.sendMessageToDirectConversation(
+            params.conversationId,
+            message.trim(),
+            currentUserDetail.id,
+            conversation.participantIds
+          );
+        } else if (conversation.conversationType === "GROUP") {
+          response = await ChatMessageService.sendMessageToGroupConversation(
+            params.conversationId, // Use conversationId as groupId for group messages
+            message.trim()
+          );
+        } else {
+          Alert.alert("Error", "Unknown conversation type");
+          return;
+        }
+      } else if (params.receiverId) {
+        // Send direct message
+        response = await ChatMessageService.sendDirectMessage(
+          params.receiverId,
+          message.trim()
+        );
+      } else {
+        Alert.alert("Error", "No conversation or receiver specified");
+        return;
+      }
+
+      if (response.result) {
+        // Add message to local state immediately for instant UI update
+        addMessage(response.result);
+        setMessage("");
+        console.log("📤 Message sent:", response.result.message);
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Message bubble component
-  const renderMessageItem = ({ item }: { item: ChatMessageResponse }) => (
-    <View
-      className={`px-4 py-3 mb-2 max-w-[80%] rounded-2xl ${
-        item.sender === "me"
-          ? "bg-pink-600 self-end rounded-br-none"
-          : "bg-gray-100 self-start rounded-bl-none"
-      }`}
-    >
-      <Text
-        className={`${item.sender === "me" ? "text-white" : "text-gray-800"}`}
-      >
-        {item.message}
-      </Text>
-      <Text
-        className={`text-xs mt-1 ${item.sender === "me" ? "text-pink-100" : "text-gray-500"}`}
-      >
-        {item.time}
-      </Text>
-    </View>
-  );
+  // Edit message using ChatMessageService
+  const handleEditMessage = async (messageId: string, newText: string) => {
+    if (!newText.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const updateRequest: ChatMessageUpdateRequest = {
+        message: newText.trim(),
+      };
+
+      const response = await ChatMessageService.updateChatMessage(
+        messageId,
+        updateRequest
+      );
+
+      if (response.result) {
+        // Update local state using ConversationProvider
+        updateMessage(messageId, response.result);
+        console.log("✏️ Message updated");
+        setEditingMessage(null);
+        setEditText("");
+      }
+    } catch (error) {
+      console.error("Error updating message:", error);
+      Alert.alert("Error", "Failed to update message. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete message using ChatMessageService
+  const handleDeleteMessage = async (messageId: string) => {
+    Alert.alert(
+      "Delete Message",
+      "Are you sure you want to delete this message?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await ChatMessageService.deleteChatMessage(messageId);
+              // Remove from local state using ConversationProvider
+              removeMessage(messageId);
+              console.log("🗑️ Message deleted");
+            } catch (error) {
+              console.error("Error deleting message:", error);
+              Alert.alert(
+                "Error",
+                "Failed to delete message. Please try again."
+              );
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Start editing a message
+  const startEditing = (message: ChatMessageResponse) => {
+    setEditingMessage(message);
+    setEditText(message.message);
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingMessage(null);
+    setEditText("");
+  };
+
+  // Save edit
+  const saveEdit = () => {
+    if (editingMessage && editText.trim()) {
+      handleEditMessage(editingMessage.id, editText);
+    }
+  };
+
+  // Navigation handlers
+  const handleSearchPress = () => {
+    navigation.navigate("MainTabs", {
+      screen: "Inbox",
+      params: {
+        screen: "UserSearch",
+        params: {},
+      },
+    } as any);
+  };
+
+  const handleOptionsPress = () => {
+    navigation.navigate("ConversationOptions", {
+      conversationId: params.conversationId,
+      conversationName: conversationName,
+      avatar: avatar,
+      conversationType: conversationType,
+    });
+  };
+
+  const handleBackPress = () => {
+    navigation.goBack();
+  };
+
+  // Message bubble component with edit/delete functionality
+  const renderMessageItem = ({ item }: { item: ChatMessageResponse }) => {
+    const isEditing = editingMessage?.id === item.id;
+    // Handle both API responses ("me") and WebSocket messages (user ID)
+    const isMyMessage =
+      item.sender === "me" || currentUserDetail?.id === item.sender;
+
+    return (
+      <View className={`mb-2 ${isMyMessage ? "items-end" : "items-start"}`}>
+        {isEditing ? (
+          // Edit mode
+          <View className="px-3 py-2 bg-gray-100 rounded-xl">
+            <TextInput
+              value={editText}
+              onChangeText={setEditText}
+              className="bg-white rounded-lg px-2 py-1.5 mb-2 text-sm"
+              multiline
+              autoFocus
+              maxLength={500}
+            />
+            <View className="flex-row justify-end space-x-1">
+              <TouchableOpacity
+                onPress={cancelEditing}
+                className="px-2 py-1 bg-gray-300 rounded-md"
+              >
+                <Text className="text-gray-700 text-xs">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={saveEdit}
+                className="px-2 py-1 bg-pink-600 rounded-md"
+                disabled={!editText.trim()}
+              >
+                <Text className="text-white text-xs">Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          // TikTok-style message display
+          <View
+            className={`px-4 py-3 max-w-[85%] ${
+              isMyMessage
+                ? "bg-black rounded-2xl rounded-br-sm"
+                : "bg-gray-100 rounded-2xl rounded-bl-sm"
+            }`}
+            style={
+              isMyMessage
+                ? {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    elevation: 6,
+                  }
+                : {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }
+            }
+          >
+            <Text
+              className={`text-sm leading-5 ${isMyMessage ? "text-white font-medium" : "text-gray-900 font-medium"}`}
+            >
+              {item.message}
+            </Text>
+            <View className="flex-row justify-between items-center mt-2">
+              <Text
+                className={`text-xs ${isMyMessage ? "text-gray-300" : "text-gray-500"}`}
+              >
+                {new Date(item.time as string).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+
+              {/* TikTok-style Edit/Delete buttons for my messages */}
+              {isMyMessage && (
+                <View className="flex-row space-x-1">
+                  <TouchableOpacity
+                    onPress={() => startEditing(item)}
+                    className="p-1.5 bg-white/20 rounded-full"
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="create-outline" size={14} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteMessage(item.id)}
+                    className="p-1.5 bg-white/20 rounded-full"
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <View className="flex-1 bg-white">
-      {/* <StatusBar barStyle="dark-content" backgroundColor="#ffffff" /> */}
+      {/* Clean Background with subtle gradient */}
+      <LinearGradient
+        colors={["#fafafa", "#ffffff", "#f8fafc"]}
+        className="absolute inset-0"
+      />
+
+      {/* Minimal decorative elements */}
+      <View className="absolute top-20 right-8 w-16 h-16 bg-pink-100 rounded-full opacity-20" />
+      <View className="absolute bottom-32 left-6 w-12 h-12 bg-blue-100 rounded-full opacity-15" />
 
       {/* Header */}
-      <SafeAreaView edges={["top", "right", "left"]}>
-        <View className="px-4 py-3 border-b border-gray-200 flex-row items-center">
-          <TouchableOpacity
-            className="pr-3"
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#333" />
-          </TouchableOpacity>
-
-          <View className="flex-row items-center flex-1">
-            <Image
-              source={{ uri: avatar.url }}
-              className="w-8 h-8 rounded-full mr-3"
-            />
-            <View>
-              <Text className="font-bold text-base">{conversationName}</Text>
-              <Text className="text-gray-500 text-xs">Active now</Text>
-            </View>
-          </View>
-
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              className="px-2"
-              onPress={() => navigation.navigate("UserSearch")}
-            >
-              <Ionicons name="search" size={22} color="#333" />
-            </TouchableOpacity>
-
-            <TouchableOpacity className="pl-1">
-              <Feather name="more-vertical" size={20} color="#333" />
-            </TouchableOpacity>
-          </View>
-        </View>
+      <SafeAreaView edges={["top"]}>
+        <ConversationHeader
+          conversationName={conversationName}
+          avatar={avatar}
+          fadeAnim={fadeAnim}
+          slideAnim={slideAnim}
+          onBackPress={handleBackPress}
+          onSearchPress={handleSearchPress}
+          onOptionsPress={handleOptionsPress}
+        />
       </SafeAreaView>
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
-        {/* Messages */}
-        <FlatList
-          className="flex-1 px-4 pt-4"
-          data={messages}
-          renderItem={renderMessageItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 10 }}
-          inverted={true}
+      {/* Messages List */}
+      <View className="flex-1">
+        <MessagesList
+          messages={messages}
+          isMessagesLoading={isMessagesLoading}
+          editingMessage={editingMessage}
+          editText={editText}
+          currentUserDetail={currentUserDetail}
+          fadeAnim={fadeAnim}
+          slideAnim={slideAnim}
+          onEditTextChange={setEditText}
+          onStartEditing={startEditing}
+          onCancelEditing={cancelEditing}
+          onSaveEdit={saveEdit}
+          onDeleteMessage={handleDeleteMessage}
+          isLoading={isLoading}
+          conversationName={conversationName}
         />
+      </View>
 
-        {/* Message Input */}
-        <SafeAreaView edges={["bottom"]}>
-          <View className="px-4 py-2 border-t border-gray-200 flex-row items-center">
-            <TouchableOpacity className="mr-2">
-              <Feather name="plus-circle" size={24} color="#666" />
-            </TouchableOpacity>
-
-            <TextInput
-              className="flex-1 bg-gray-100 rounded-full px-4 py-2 mr-2"
-              placeholder="Type a message..."
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              maxLength={500}
-              onSubmitEditing={() => {
-                handleSend();
-                Keyboard.dismiss();
-              }}
-            />
-
-            <TouchableOpacity
-              className={`rounded-full p-2 ${message.trim() ? "bg-pink-600" : "bg-gray-300"}`}
-              onPress={handleSend}
-              disabled={!message.trim()}
-            >
-              <Ionicons name="send" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+      {/* Message Input */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}
+      >
+        <MessageInput
+          message={message}
+          onMessageChange={setMessage}
+          onSend={handleSend}
+          editingMessage={editingMessage}
+          editText={editText}
+          onEditTextChange={setEditText}
+          onCancelEditing={cancelEditing}
+          onSaveEdit={saveEdit}
+          isLoading={isLoading}
+          fadeAnim={fadeAnim}
+          slideAnim={slideAnim}
+        />
       </KeyboardAvoidingView>
+
+      {/* Bottom Safe Area */}
+      <SafeAreaView edges={["bottom"]} />
     </View>
   );
 };

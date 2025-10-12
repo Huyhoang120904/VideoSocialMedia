@@ -3,16 +3,15 @@ package com.hehe.thesocial.entity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
-
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Document(collection = "chat_messages")
+@Document(value = "chat_message")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -20,29 +19,20 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ChatMessage extends BaseDocument {
-    @MongoId
-    @Field("_id")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class ChatMessage {
+    @EqualsAndHashCode.Include
+    @Id
     String id;
 
-    @Field("message")
-    String message;
-
-    @Field("sender")
-    String sender;
-
-    @DocumentReference(lazy = true)
-    @Field("file_document_ref")
-    FileDocument fileDocument;
-
-    @Field("conversation_id")
     String conversationId;
-
-    @Field("time")
+    String senderId;
+    String message;
     LocalDateTime time;
+    Boolean edited;
 
-    @Field("edited")
-    boolean edited;
+    @DBRef
+    FileDocument fileDocument;
 
     @Field("read_participants_id")
     List<String> readParticipantsId;

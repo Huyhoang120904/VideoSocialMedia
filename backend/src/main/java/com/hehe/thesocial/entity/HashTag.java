@@ -13,7 +13,9 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class HashTag extends BaseDocument {
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String id;

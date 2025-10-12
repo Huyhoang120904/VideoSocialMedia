@@ -2,8 +2,8 @@ package com.hehe.thesocial.entity;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
@@ -17,8 +17,10 @@ import java.util.Set;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Role extends BaseDocument{
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class Role extends BaseDocument {
 
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String id;
@@ -29,7 +31,7 @@ public class Role extends BaseDocument{
     @Field("description")
     String description;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("permissions_ref")
     Set<Permission> permissions = new HashSet<>();
 }

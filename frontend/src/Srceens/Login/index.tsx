@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -16,15 +18,37 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { useAuth } from "../../Context/AuthProvider";
 import { useConversations } from "../../Context/ConversationProvider";
 import { UnauthedStackParamList } from "../../Types/response/navigation.types";
+import { Ionicons } from "@expo/vector-icons";
 
 type LoginNavigationProp = StackNavigationProp<UnauthedStackParamList, "Login">;
+
+const { width, height } = Dimensions.get('window');
 
 const LoginScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
 
   const navigation = useNavigation<LoginNavigationProp>();
   const { login, isLoading } = useAuth();
+
+  // Animation on component mount
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
   const handleSignUpNav = () => {
     navigation.navigate("Register");
   };
@@ -58,143 +82,164 @@ const LoginScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
+    <View className="flex-1 bg-white">
+      {/* Clean Background with subtle gradient */}
+      <LinearGradient
+        colors={['#fafafa', '#ffffff', '#f8fafc']}
+        className="absolute inset-0"
+      />
+      
+      {/* Minimal decorative elements */}
+      <View className="absolute top-20 right-8 w-16 h-16 bg-pink-100 rounded-full opacity-30" />
+      <View className="absolute bottom-32 left-6 w-12 h-12 bg-blue-100 rounded-full opacity-20" />
+      
+      <KeyboardAvoidingView
         className="flex-1"
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View className="flex-1 justify-center px-6 py-8">
-          <View className="w-full max-w-sm mx-auto space-y-8">
-            {/* Header */}
-            <View className="items-center space-y-6">
-              <View className="w-fit h-16 bg-pink-600  items-center justify-center px-3">
-                <Text className="text-white text-2xl font-black">
-                  The Social
-                </Text>
-              </View>
-              <View className="space-y-2">
-                <Text className="text-gray-600 text-center text-xl">
-                  Sign in to your account to continue
-                </Text>
-              </View>
-            </View>
-
-            {/* Login Form */}
-            <View className="space-y-6">
-              {/* Username Input */}
-              <View className="space-y-2">
-                <Text className="text-gray-600 font-medium text-sm">
-                  Username
-                </Text>
-                <TextInput
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-4 text-gray-600 text-base"
-                  placeholder="Enter your username"
-                  placeholderTextColor="#9ca3af"
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="username"
-                />
-              </View>
-
-              {/* Password Input */}
-              <View className="space-y-2">
-                <Text className="text-gray-600 font-medium text-sm">
-                  Password
-                </Text>
-                <TextInput
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-4 text-gray-600 text-base"
-                  placeholder="Enter your password"
-                  placeholderTextColor="#9ca3af"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="password"
-                />
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View 
+            className="flex-1 justify-center px-6 py-8"
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }}
+          >
+            <View className="w-full max-w-sm mx-auto space-y-10">
+              {/* Clean Header */}
+              <View className="items-center space-y-8">
+                {/* TheSocial Logo */}
+                <View className="items-center space-y-2">
+                  <Text className="text-gray-900 text-3xl font-bold tracking-tight">
+                    TheSocial
+                  </Text>
+                  <View className="w-12 h-0.5 bg-gray-300" />
+                </View>
+                
+                <View className="space-y-2">
+                  <Text className="text-gray-900 text-2xl font-light text-center">
+                    Welcome back
+                  </Text>
+                  <Text className="text-gray-500 text-center text-sm">
+                    Sign in to your account
+                  </Text>
+                </View>
               </View>
 
-              {/* Forgot Password */}
-              <View className="items-end">
-                <TouchableOpacity>
-                  <Text className="text-pink-600 text-sm font-medium">
-                    Forgot Password?
+              {/* Clean Form */}
+              <View>
+                {/* Username Input */}
+                <View className="mb-6">
+                  <TextInput
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 text-gray-900 text-base"
+                    placeholder="Username"
+                    placeholderTextColor="#9ca3af"
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="username"
+                  />
+                </View>
+
+                {/* Password Input */}
+                <View className="mb-6">
+                  <View className="relative">
+                    <TextInput
+                      className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 text-gray-900 text-base pr-12"
+                      placeholder="Password"
+                      placeholderTextColor="#9ca3af"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="password"
+                    />
+                    <TouchableOpacity
+                      className="absolute right-4 top-1/2 -translate-y-1/2"
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons 
+                        name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#9ca3af" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Forgot Password */}
+                <View className="items-end">
+                  <TouchableOpacity className="py-1">
+                    <Text className="text-gray-500 text-sm">
+                      Forgot password?
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Clean Login Button */}
+                <TouchableOpacity
+                  className={`w-full bg-black rounded-2xl py-4 items-center justify-center ${
+                    isLoading ? "opacity-70" : ""
+                  }`}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text className="text-white font-medium text-base">
+                      Sign in
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Minimal Divider */}
+                <View className="flex-row items-center gap-4 my-4">
+                  <View className="flex-1 h-px bg-gray-200" />
+                  <Text className="text-gray-400 text-xs">or</Text>
+                  <View className="flex-1 h-px bg-gray-200" />
+                </View>
+
+                {/* Clean Google Button */}
+                <TouchableOpacity
+                  className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex-row items-center justify-center gap-3"
+                  onPress={handleGoogleLogin}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="logo-google" size={20} color="#4285f4" />
+                  <Text className="text-gray-700 font-medium text-base">
+                    Continue with Google
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Login Button */}
-              <TouchableOpacity
-                className={`w-full bg-pink-600 rounded-lg py-4 items-center justify-center ${
-                  isLoading ? "opacity-70" : ""
-                }`}
-                onPress={handleLogin}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <Text className="text-white font-semibold text-base">
-                    Sign In
+              {/* Clean Sign Up Link */}
+              <View className="items-center space-y-6">
+                <TouchableOpacity onPress={handleSignUpNav}>
+                  <Text className="text-gray-500 text-sm">
+                    Don't have an account?{" "}
+                    <Text className="text-black font-medium">Sign up</Text>
                   </Text>
-                )}
-              </TouchableOpacity>
+                </TouchableOpacity>
 
-              {/* Divider */}
-              <View className="flex-row items-center gap-4">
-                <View className="flex-1 h-px bg-gray-200" />
-                <Text className="text-gray-500 text-sm">or</Text>
-                <View className="flex-1 h-px bg-gray-200" />
-              </View>
-
-              {/* Google Login Button */}
-              <TouchableOpacity
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg py-4 flex-row items-center justify-center gap-3"
-                onPress={handleGoogleLogin}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={["#ef4444", "#f59e42", "#3b82f6"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{ width: 20, height: 20, borderRadius: 10 }}
-                />
-                <Text className="text-gray-600 font-medium text-base">
-                  Continue with{" "}
-                  <Text className="text-pink-600 font-medium text-base">
-                    Google
-                  </Text>
+                {/* Debug Info - Remove in production */}
+                <Text className="text-gray-400 text-xs text-center leading-4 max-w-xs">
+                  Make sure your backend server is running for proper connection.
                 </Text>
-              </TouchableOpacity>
+              </View>
             </View>
-
-            {/* Sign Up Link */}
-            <View className="items-center">
-              <Text
-                className="text-gray-500 text-sm"
-                onPress={() => handleSignUpNav()}
-              >
-                Don't have an account?{" "}
-                <Text className="text-pink-600 font-medium">Sign Up</Text>
-              </Text>
-
-              {/* Debug Info - Remove in production */}
-              <Text className="text-gray-400 text-xs mt-8">
-                If you're having connection issues, make sure your backend
-                server is running and accessible from your device's network.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 

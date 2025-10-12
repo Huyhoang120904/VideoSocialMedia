@@ -1,7 +1,6 @@
 package com.hehe.thesocial.service.conversation;
 
 import com.hehe.thesocial.dto.request.conversation.ConversationRequest;
-import com.hehe.thesocial.dto.response.conversation.ConversationListResponse;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.entity.Conversation;
 import com.hehe.thesocial.entity.User;
@@ -28,78 +27,222 @@ import org.springframework.util.StringUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 public class ConversationServiceImpl implements ConversationService {
+    static int MIN_CONVERSATION_PARTICIPANTS = 2;
+
     ConversationRepository conversationRepository;
     ConversationMapper conversationMapper;
     UserDetailRepository userDetailRepository;
     FileRepository fileRepository;
+    UserRepository userRepository;
+
 
     @Transactional
     @Override
     public ConversationResponse createConversation(ConversationRequest request) {
+        String userId = getCurrentUserId();
 
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+
+        UserDetail userDetail = userDetailRepository.findByUser(user)
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+
+        String currentUserId = userDetail.getId();
+
+        List<String> participantIds = request.getParticipantIds();
+
+        Set<UserDetail> participants = new HashSet<>(getParticipants(participantIds));
+
+        validateParticipantCount(participants);
+
+        // Check for existing conversation with same participants for direct
+        // conversations
+        validateNoDuplicateConversation(participants);
 
         Conversation conversation = conversationMapper.toConversation(request);
-        Set<UserDetail> userDetails = new HashSet<>();
 
-        for (String participantId : request.getParticipantIds()) {
-            UserDetail userDetail = userDetailRepository.findById(participantId)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        setCreatorId(conversation, participants, currentUserId);
+        conversation.setUserDetails(participants);
+        conversation.setConversationType(determineConversationType(participants.size()));
 
-            if (userDetail.getUser().getId().equals(userId)) conversation.setCreatorId(userDetail.getId());
-
-            userDetails.add(userDetail);
+        // Set participant hash for direct conversations
+        if (participants.size() == 2) {
+            participantIds = participants.stream()
+                    .map(UserDetail::getId)
+                    .sorted()
+                    .collect(Collectors.toList());
+            conversation.setParticipantHash(participantHash(participantIds.get(0), participantIds.get(1)));
         }
 
-        conversation.setUserDetails(userDetails);
-
         conversation = conversationRepository.save(conversation);
+        log.info("Created conversation with ID: {} and {} participants", conversation.getConversationId(),
+                participants.size());
+
         return conversationMapper.toConversationResponse(conversation);
     }
 
     @Override
     public ConversationResponse getConversationById(String conversationId) {
-        String userId  = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserDetail currentUserDetail = getCurrentUserDetail();
+        Conversation conversation = findConversationById(conversationId);
 
-        UserDetail myUserDetail = userDetailRepository.findByUser(User.builder()
-                        .id(userId)
-                        .build())
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+        customizeConversationResponse(response, conversation, currentUserDetail);
 
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
-
-        ConversationResponse conversationResponse = conversationMapper.toConversationResponse(conversation);
-
-        if (conversation.getConversationType() == ConversationType.DIRECT) {
-            conversation.getUserDetails().forEach(userDetail -> {
-                if (!userDetail.getId().equals(myUserDetail.getId())) {
-                    conversationResponse.setAvatar(userDetail.getAvatar());
-                    conversationResponse.setConversationName(userDetail.getDisplayName());
-                }
-            });
-        }
-
-        if (conversation.getConversationType() == ConversationType.GROUP) {
-            // group chat
-        }
-
-        return conversationResponse;
+        return response;
     }
-
 
     @Transactional
     @Override
     public ConversationResponse updateConversation(String conversationId, ConversationRequest request) {
+        Conversation conversation = findConversationById(conversationId);
+
+        updateConversationFields(conversation, request);
+
+        conversation = conversationRepository.save(conversation);
+        log.info("Updated conversation with ID: {}", conversationId);
+
+        return conversationMapper.toConversationResponse(conversation);
+    }
+
+    @Transactional
+    @Override
+    public ConversationResponse addMember(String conversationId, String newParticipantId) {
+        Conversation conversation = findConversationById(conversationId);
+        UserDetail newParticipant = findUserDetailById(newParticipantId);
+
+        validateMemberNotInConversation(conversation, newParticipant);
+
+        conversation.getUserDetails().add(newParticipant);
+
+        // Update conversation type if needed
+        if (conversation.getUserDetails().size() > 2 && conversation.getConversationType() == ConversationType.DIRECT) {
+            conversation.setConversationType(ConversationType.GROUP);
+        }
+
+        conversation = conversationRepository.save(conversation);
+        log.info("Added member {} to conversation {}", newParticipantId, conversationId);
+
+        return conversationMapper.toConversationResponse(conversation);
+    }
+
+    @Transactional
+    @Override
+    public ConversationResponse removeMember(String conversationId, String participantId) {
+        Conversation conversation = findConversationById(conversationId);
+        UserDetail participant = findUserDetailById(participantId);
+
+        validateMemberInConversation(conversation, participant);
+        validateMinimumParticipants(conversation);
+
+        conversation.getUserDetails().remove(participant);
+
+        // Update conversation type if needed
+        if (conversation.getUserDetails().size() == 2 && conversation.getConversationType() == ConversationType.GROUP) {
+            conversation.setConversationType(ConversationType.DIRECT);
+        }
+
+        conversation = conversationRepository.save(conversation);
+        log.info("Removed member {} from conversation {}", participantId, conversationId);
+
+        return conversationMapper.toConversationResponse(conversation);
+    }
+
+    @Override
+    public Page<ConversationResponse> getMyConversations(Pageable pageable) {
+        UserDetail currentUserDetail = getCurrentUserDetail();
+
+        Page<Conversation> conversations = conversationRepository
+                .findByUserDetailsContaining(Set.of(currentUserDetail), pageable);
+
+        return conversations.map(conversation -> {
+            ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+            customizeConversationResponse(response, conversation, currentUserDetail);
+            return response;
+        });
+    }
+
+    @Transactional
+    @Override
+    public void deleteConversation(String conversationId) {
+        if (!conversationRepository.existsById(conversationId)) {
+            throw new AppException(ErrorCode.CONVERSATION_NOT_FOUND);
+        }
+
+        conversationRepository.deleteById(conversationId);
+        log.info("Deleted conversation with ID: {}", conversationId);
+    }
+
+    // Helper methods
+
+    private String getCurrentUserId() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    private UserDetail getCurrentUserDetail() {
+        String userId = getCurrentUserId();
+        return userDetailRepository.findByUser(User.builder().id(userId).build())
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+    }
+
+    private Conversation findConversationById(String conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+        if (conversation == null) {
+            throw new AppException(ErrorCode.CONVERSATION_NOT_FOUND);
+        }
+        return conversation;
+    }
+
+    private UserDetail findUserDetailById(String userDetailId) {
+        return userDetailRepository.findById(userDetailId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private void validateParticipantCount(Set<UserDetail> participants) {
+        if (participants == null || participants.size() < MIN_CONVERSATION_PARTICIPANTS) {
+            throw new AppException(ErrorCode.INVALID_CONVERSATION_PARTICIPANTS);
+        }
+    }
+
+    private List<UserDetail> getParticipants(List<String> participantIds) {
+        List<UserDetail> userDetails = userDetailRepository.findAllById(participantIds);
+        return userDetails;
+    }
+
+    private void setCreatorId(Conversation conversation, Set<UserDetail> participants, String currentUserId) {
+        participants.stream()
+                .filter(participant -> participant.getId().equals(currentUserId))
+                .findFirst()
+                .ifPresent(creator -> conversation.setCreatorId(creator.getId()));
+    }
+
+    private ConversationType determineConversationType(int participantCount) {
+        return participantCount == 2 ? ConversationType.DIRECT : ConversationType.GROUP;
+    }
+
+    private void customizeConversationResponse(ConversationResponse response, Conversation conversation,
+                                               UserDetail currentUserDetail) {
+        if (conversation.getConversationType() == ConversationType.DIRECT) {
+            conversation.getUserDetails().stream()
+                    .filter(userDetail -> !userDetail.getId().equals(currentUserDetail.getId()))
+                    .findFirst()
+                    .ifPresent(otherUser -> {
+                        response.setAvatar(otherUser.getAvatar());
+                        response.setConversationName(otherUser.getDisplayName());
+                    });
+        }
+        // Group chat customization can be added here if needed
+    }
+
+    private void updateConversationFields(Conversation conversation, ConversationRequest request) {
         if (StringUtils.hasText(request.getAvatarId())) {
             conversation.setAvatar(fileRepository.findById(request.getAvatarId())
                     .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND)));
@@ -112,79 +255,46 @@ public class ConversationServiceImpl implements ConversationService {
         if (StringUtils.hasText(request.getCreatorId())) {
             conversation.setCreatorId(request.getCreatorId());
         }
-
-        return conversationMapper.toConversationResponse(conversation);
-
     }
 
-    @Transactional
-    @Override
-    public ConversationResponse addMember(String conversationId, String newParticipantId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
-
-        UserDetail newParticipant = userDetailRepository.findById(newParticipantId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        conversation.getUserDetails().add(newParticipant);
-
-        conversation = conversationRepository.save(conversation);
-        return conversationMapper.toConversationResponse(conversation);
+    private void validateMemberNotInConversation(Conversation conversation, UserDetail userDetail) {
+        if (conversation.getUserDetails().contains(userDetail)) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
     }
 
-    @Transactional
-    @Override
-    public ConversationResponse removeMember(String conversationId, String participantId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
-
-        UserDetail participant = userDetailRepository.findById(participantId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        conversation.getUserDetails().remove(participant);
-
-        conversation = conversationRepository.save(conversation);
-        return conversationMapper.toConversationResponse(conversation);
+    private void validateMemberInConversation(Conversation conversation, UserDetail userDetail) {
+        if (!conversation.getUserDetails().contains(userDetail)) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
     }
 
-    @Override
-    public Page<ConversationListResponse> getMyConversations(Pageable pageable) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+    private void validateMinimumParticipants(Conversation conversation) {
+        if (conversation.getUserDetails().size() <= MIN_CONVERSATION_PARTICIPANTS) {
+            throw new AppException(ErrorCode.INVALID_CONVERSATION_PARTICIPANTS);
+        }
+    }
 
-        UserDetail userDetail = userDetailRepository.findByUser(User.builder()
-                                                                .id(userId)
-                                                                .build())
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-        Page<Conversation> conversations = conversationRepository.findByUserDetailsContaining(new HashSet<>(List.of(userDetail)),pageable);
+    private void validateNoDuplicateConversation(Set<UserDetail> participants) {
+        // Only check for direct conversations (2 participants)
+        if (participants.size() == 2) {
+            List<String> participantIds = participants.stream()
+                    .map(UserDetail::getId)
+                    .sorted()
+                    .collect(Collectors.toList());
 
-        Page<ConversationListResponse> responseList = conversations.map(conversationMapper::toConversationListResponse);
+            String hash = participantHash(participantIds.get(0), participantIds.get(1));
 
-        conversations.forEach(conversation -> {
-            //set avt according to user if type = direct
-            if (conversation.getConversationType() == ConversationType.DIRECT) {
-
-                for (UserDetail userDetail1 : conversation.getUserDetails()) {
-
-                    if (!userDetail.getId().equals(userDetail1.getId())) {
-
-                        ConversationListResponse conversationListResponse = responseList.getContent()
-                                .get(conversations.getContent().indexOf(conversation));
-
-                        conversationListResponse.setAvatar(userDetail1.getAvatar());
-                        conversationListResponse.setConversationName(userDetail1.getDisplayName());
-                    }
-                }
+            if (conversationRepository.findByParticipantHash(hash).isPresent()) {
+                throw new AppException(ErrorCode.CONVERSATION_ALREADY_EXISTS);
             }
-        });
-
-        return responseList;
+        }
     }
 
-    @Override
-    public void deleteConversation(String conversationId) {
-        conversationRepository.deleteById(conversationId);
+    private String participantHash(String participant1, String participant2) {
+        String[] participants = {participant1, participant2};
+        java.util.Arrays.sort(participants);
+        return participants[0] + "_" + participants[1];
     }
-
-
 }

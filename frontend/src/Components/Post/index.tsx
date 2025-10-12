@@ -5,9 +5,11 @@ import { FontAwesome6 } from "@expo/vector-icons";
 import RightVideo from "./RightVideo";
 import BottomVideo from "./BottomVideo";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import styles from "./styles";
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
+const { height: windowHeight } = Dimensions.get("window");
 
 // Format seconds to MM:SS
 const formatTime = (seconds: number): string => {
@@ -42,8 +44,9 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
   const [progressBarWidth, setProgressBarWidth] = useState(screenWidth);
 
   const bottomTabHeight = useBottomTabBarHeight();
-  // Use full screen height for video since we're hiding system UI
-  const videoHeight = itemHeight;
+  const insets = useSafeAreaInsets();
+  // Use full screen height for video, accounting for status bar and navigation
+  const videoHeight = itemHeight || windowHeight;
 
   const player = useVideoPlayer(video.uri, (p) => {
     p.loop = true;
@@ -170,6 +173,7 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
           nativeControls={false}
           fullscreenOptions={{ enable: false }}
           allowsPictureInPicture={false}
+          allowsExternalPlayback={false}
         />
 
         {/* Center tap area for play/pause */}
@@ -309,7 +313,7 @@ const localStyles = StyleSheet.create({
     left: 0,
     right: 80, // Leave space for right side buttons (80px from right)
     top: 0,
-    bottom: 50,
+    bottom: 60, // Increased to avoid progress bar
     zIndex: 20, // Higher than pause icon
   },
 
