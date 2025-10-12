@@ -15,10 +15,18 @@ const MessageBox: React.FC<MessageBoxProps> = ({ item, onPress }) => {
       onPress={onPress}
     >
       <View className="relative">
-        <Image
-          source={{ uri: item.avatar.url }}
-          className="w-12 h-12 rounded-full mr-3"
-        />
+        {item.avatar ? (
+          <Image
+            source={{ uri: item.avatar.url }}
+            className="w-12 h-12 rounded-full mr-3"
+          />
+        ) : (
+          <View className="w-12 h-12 bg-gray-300 rounded-full mr-3 items-center justify-center">
+            <Text className="text-gray-600 font-semibold">
+              {item.conversationName?.charAt(0).toUpperCase() || "?"}
+            </Text>
+          </View>
+        )}
         {/* {unread > 0 && (
           <View className="absolute top-0 right-2 bg-pink-600 rounded-full min-w-5 h-5 items-center justify-center">
             <Text className="text-white text-xs font-bold">{unread}</Text>

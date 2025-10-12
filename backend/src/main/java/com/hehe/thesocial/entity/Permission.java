@@ -13,8 +13,10 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Permission extends BaseDocument{
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class Permission extends BaseDocument {
 
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String id;

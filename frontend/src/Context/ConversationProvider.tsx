@@ -1,27 +1,33 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import { ApiResponse } from "../Types/ApiResponse";
 import Page from "../Types/response/Page";
 import { ConversationResponse } from "../Types/response/ConversationResponse";
 import ConversationService from "../Services/ConversationService";
-import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
 import { useAuth } from "./AuthProvider";
 
 type ConversationsContextType = {
   isLoading: boolean;
   conversations: ConversationResponse[];
-  messages: ChatMessageResponse[];
   getMyConversations: () => void;
-  getChatMessagesByConversationId: (conversationId: string) => void;
   clearConversations: () => void;
+  addConversation: (conversation: ConversationResponse) => void;
+  refreshConversations: () => Promise<void>;
 };
 
 const ConversationContext = createContext<ConversationsContextType>({
   isLoading: false,
   conversations: [],
-  messages: [],
   getMyConversations: () => {},
-  getChatMessagesByConversationId: () => {},
   clearConversations: () => {},
+  addConversation: () => {},
+  refreshConversations: async () => {},
 });
 
 export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
@@ -31,9 +37,9 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
     []
   );
 
-  const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { isAuthenticated } = useAuth();
+  const hasLoadedConversations = useRef(false);
 
   async function getMyConversations() {
     if (!isAuthenticated) return;
@@ -45,27 +51,38 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
   }
 
   async function clearConversations() {
-    console.log("ConversationProvider: Clearing conversations and messages");
+    console.log("ConversationProvider: Clearing conversations");
     setConversations([]);
-    setMessages([]);
   }
 
-  async function getChatMessagesByConversationId(conversationId: string) {
+  function addConversation(conversation: ConversationResponse) {
+    console.log("ConversationProvider: Adding new conversation:", conversation);
+    setConversations((prev) => [conversation, ...prev]);
+  }
+
+  async function refreshConversations() {
+    if (!isAuthenticated) return;
     setIsLoading(true);
-    const response =
-      await ConversationService.getMessagesByConversationId(conversationId);
-    setMessages(response.result.content);
-    console.log(response.result.content);
-    setIsLoading(false);
+    try {
+      const response = await ConversationService.getMyConversation();
+      setConversations(response.result.content);
+      console.log("ConversationProvider: Refreshed conversations");
+    } catch (error) {
+      console.error("Error refreshing conversations:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(() => {
-    if (isAuthenticated && conversations.length <= 0) {
+    if (isAuthenticated && !hasLoadedConversations.current) {
       getMyConversations();
+      hasLoadedConversations.current = true;
     } else if (!isAuthenticated) {
-      // Clear conversations and messages when user logs out
+      // Clear conversations when user logs out
       console.log("ConversationProvider: User logged out, clearing data");
       clearConversations();
+      hasLoadedConversations.current = false;
     }
   }, [isAuthenticated]);
 
@@ -74,17 +91,17 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
       isLoading,
       conversations,
       getMyConversations,
-      messages,
-      getChatMessagesByConversationId,
       clearConversations,
+      addConversation,
+      refreshConversations,
     }),
     [
       isLoading,
       conversations,
       getMyConversations,
-      messages,
-      getChatMessagesByConversationId,
       clearConversations,
+      addConversation,
+      refreshConversations,
     ]
   );
 

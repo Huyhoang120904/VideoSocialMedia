@@ -1,6 +1,5 @@
 package com.hehe.thesocial.service.userDetail;
 
-import com.hehe.thesocial.dto.request.userDetail.UserDetailCreateRequest;
 import com.hehe.thesocial.dto.request.userDetail.UserDetailUpdateRequest;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
@@ -39,65 +38,30 @@ public class UserDetailServiceImpl implements UserDetailService {
     FileRepository fileRepository;
     UserRepository userRepository;
 
-    @Transactional
-    @Override
-    public UserDetailResponse createUserDetail(UserDetailCreateRequest request) {
-        // Verify user exists
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        // Check if user detail already exists
-        if (userDetailRepository.findByUser(user).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED); // Reusing existing error code
-        }
-
-        FileDocument avatar = null;
-        if (request.getAvatar() != null) {
-            FileResponse fileResponse = fileService.storeFile(request.getAvatar());
-            avatar = fileRepository.findById(fileResponse.getId())
-                    .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
-        }
-
-        UserDetail userDetail = UserDetail.builder()
-                .user(user)
-                .avatar(avatar)
-                .displayName(request.getDisplayName())
-                .bio(request.getBio())
-                .shownName(request.getShownName())
-                .following(new HashSet<>())
-                .followingCount(0)
-                .follower(new HashSet<>())
-                .followerCount(0)
-                .build();
-
-        userDetail = userDetailRepository.save(userDetail);
-        return userDetailMapper.toUserDetailResponse(userDetail);
-    }
-
     @Override
     public UserDetailResponse getMyDetail() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("User ID: {}", userId);
 
-        User user = userRepository.findById(userId)
+
+        // Use the updated repository method that works with DocumentReference
+        UserDetail userDetail = userDetailRepository.findByUser(User.builder().id(userId).build())
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-        UserDetail userDetail = userDetailRepository.findByUser(user)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
         return userDetailMapper.toUserDetailResponse(userDetail);
     }
 
     @Override
     public UserDetailResponse getUserDetailById(String userDetailId) {
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
         return userDetailMapper.toUserDetailResponse(userDetail);
     }
 
     @Override
     public UserDetailResponse getUserDetailByUserId(String userId) {
         UserDetail userDetail = userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
         return userDetailMapper.toUserDetailResponse(userDetail);
     }
 
@@ -135,9 +99,7 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Override
     public UserDetailResponse updateUserDetail(String userDetailId, UserDetailUpdateRequest request) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserDetail userDetail = userDetailRepository.findByUser(User.builder()
-                        .id(userId)
-                        .build())
+        UserDetail userDetail = userDetailRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
         if (!userDetail.getId().equals(userDetailId)) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
@@ -161,7 +123,7 @@ public class UserDetailServiceImpl implements UserDetailService {
     public void deleteUserDetail(String userDetailId) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         // Check if the current user owns this user detail or is admin
         if (!userDetail.getUser().getId().equals(userId)) {
@@ -199,7 +161,7 @@ public class UserDetailServiceImpl implements UserDetailService {
 
         // Get target user's detail
         UserDetail targetUserDetail = userDetailRepository.findById(targetUserDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         // Can't follow yourself
         if (currentUserDetail.getId().equals(targetUserDetailId)) {
@@ -244,11 +206,11 @@ public class UserDetailServiceImpl implements UserDetailService {
 
         // Get target user's detail
         UserDetail targetUserDetail = userDetailRepository.findById(targetUserDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         // Check if actually following
         if (currentUserDetail.getFollowing() == null || !currentUserDetail.getFollowing().contains(targetUserDetail)) {
-            throw new AppException(ErrorCode.USER_NOT_EXISTED); // Not following
+            throw new AppException(ErrorCode.USER_NOT_FOUND); // Not following
         }
 
         // Remove follow relationship
@@ -268,7 +230,7 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Override
     public List<UserDetailResponse> getFollowers(String userDetailId) {
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         if (userDetail.getFollower() == null) {
             return List.of();
@@ -282,7 +244,7 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Override
     public List<UserDetailResponse> getFollowing(String userDetailId) {
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         if (userDetail.getFollowing() == null) {
             return List.of();
@@ -296,12 +258,12 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Override
     public boolean isFollowing(String userDetailId, String targetUserDetailId) {
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         UserDetail targetUserDetail = userDetailRepository.findById(targetUserDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         return userDetail.getFollowing() != null &&
-               userDetail.getFollowing().contains(targetUserDetail);
+                userDetail.getFollowing().contains(targetUserDetail);
     }
 }

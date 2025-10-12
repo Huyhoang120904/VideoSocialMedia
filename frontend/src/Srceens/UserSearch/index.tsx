@@ -5,21 +5,24 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  Image,
-  StatusBar,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { UserResponse } from "../../Types/response/UserResponse";
+import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { InboxStackParamList } from "../../Types/response/navigation.types";
+import UserDetailService from "../../Services/UserDetailService";
+import ConversationService from "../../Services/ConversationService";
+import { ConversationRequest } from "../../Types/request/ConversationRequest";
+import { useConversations } from "../../Context/ConversationProvider";
+import UserItem, { UserItemData } from "../../Components/UserItem";
 
-interface UserSearchResult extends UserResponse {
-  isOnline?: boolean;
-  avatar?: { url: string };
-}
+// Using UserItemData from the UserItem component
+type UserSearchResult = UserItemData;
 
 type UserSearchNavigationProp = StackNavigationProp<
   InboxStackParamList,
@@ -28,128 +31,217 @@ type UserSearchNavigationProp = StackNavigationProp<
 
 const UserSearchScreen = () => {
   const navigation = useNavigation<UserSearchNavigationProp>();
+  const route = useRoute();
+  const { getMyConversations, addConversation, refreshConversations } =
+    useConversations();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recentUsers, setRecentUsers] = useState<UserSearchResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [currentUserDetail, setCurrentUserDetail] =
+    useState<UserDetailResponse | null>(null);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [isAddingMember, setIsAddingMember] = useState(false);
 
-  // Mock data for demonstration - replace with actual API calls
-  const mockUsers: UserSearchResult[] = [
-    {
-      id: "1",
-      username: "john_doe",
-      mail: "john@example.com",
-      roles: [],
-      avatar: { url: "https://picsum.photos/60/60?random=1" },
-      isOnline: true,
-    },
-    {
-      id: "2",
-      username: "jane_smith",
-      mail: "jane@example.com",
-      roles: [],
-      avatar: { url: "https://picsum.photos/60/60?random=2" },
-      isOnline: false,
-    },
-    {
-      id: "3",
-      username: "mike_wilson",
-      mail: "mike@example.com",
-      roles: [],
-      avatar: { url: "https://picsum.photos/60/60?random=3" },
-      isOnline: true,
-    },
-    {
-      id: "4",
-      username: "sarah_johnson",
-      mail: "sarah@example.com",
-      roles: [],
-      avatar: { url: "https://picsum.photos/60/60?random=4" },
-      isOnline: false,
-    },
-  ];
+  // Get route parameters
+  const params =
+    (route.params as { mode?: string; conversationId?: string }) || {};
+  const isAddMemberMode = params.mode === "addMember";
+  const conversationId = params.conversationId;
+
+  // Helper function to map UserDetailResponse to UserSearchResult
+  const mapUserDetailToSearchResult = (
+    userDetail: UserDetailResponse
+  ): UserSearchResult => {
+    return {
+      id: userDetail.id,
+      displayName:
+        userDetail.displayName || userDetail.shownName || "Unknown User",
+      username: userDetail.shownName || userDetail.displayName,
+      bio: userDetail.bio,
+      avatar: userDetail.avatar ? { url: userDetail.avatar.url } : undefined,
+      isOnline: Math.random() > 0.5, // Placeholder for online status - replace with real data if available
+    };
+  };
 
   useEffect(() => {
-    // Load recent users on component mount
-    setRecentUsers(mockUsers.slice(0, 2));
+    // Load current user and recent users on component mount
+    loadCurrentUser();
+    loadRecentUsers();
   }, []);
+
+  const loadCurrentUser = async () => {
+    try {
+      const response = await UserDetailService.getMyDetails();
+      if (response.result) {
+        setCurrentUserDetail(response.result);
+      }
+    } catch (error) {
+      console.error("Error loading current user:", error);
+    }
+  };
 
   useEffect(() => {
     if (searchQuery.trim()) {
       searchUsers(searchQuery);
     } else {
       setSearchResults([]);
+      setError(null);
     }
   }, [searchQuery]);
 
-  const searchUsers = async (query: string) => {
-    setIsLoading(true);
-    // Simulate API call delay
-    setTimeout(() => {
-      const filtered = mockUsers.filter(
-        (user) =>
-          user.username.toLowerCase().includes(query.toLowerCase()) ||
-          user.mail.toLowerCase().includes(query.toLowerCase())
+  const loadRecentUsers = async () => {
+    try {
+      setError(null);
+      // Get a small paginated list of users as "recent"
+      const response = await UserDetailService.getUserDetailsPaginated(
+        0,
+        5,
+        "displayName",
+        "asc"
       );
-      setSearchResults(filtered);
-      setIsLoading(false);
-    }, 500);
+      if (response.result && response.result.content) {
+        const mappedUsers = response.result.content.map(
+          mapUserDetailToSearchResult
+        );
+        setRecentUsers(mappedUsers.slice(0, 3)); // Show only first 3 as recent
+      }
+    } catch (err) {
+      console.error("Error loading recent users:", err);
+      setError("Failed to load recent users");
+    }
   };
 
-  const handleUserSelect = (user: UserSearchResult) => {
-    // Navigate to conversation with selected user
-    navigation.navigate("Conversation", {
-      conversationId: `conv_${user.id}`,
-      conversationName: user.username,
-      avatar: user.avatar,
-    });
+  const searchUsers = async (query: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Search only by display name
+      const displayNameResults =
+        await UserDetailService.searchByDisplayName(query);
+
+      const mappedResults = (displayNameResults.result || []).map(
+        mapUserDetailToSearchResult
+      );
+      setSearchResults(mappedResults);
+    } catch (err) {
+      console.error("Error searching users:", err);
+      setError("Failed to search users. Please try again.");
+      setSearchResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUserSelect = async (user: UserSearchResult) => {
+    if (!currentUserDetail) {
+      setError("Unable to get current user information. Please try again.");
+      return;
+    }
+
+    if (isCreatingConversation || isAddingMember) return; // Prevent multiple calls
+
+    if (isAddMemberMode && conversationId) {
+      // Add member to existing conversation
+      setIsAddingMember(true);
+      try {
+        await ConversationService.addMemberToConversation(
+          conversationId,
+          user.id
+        );
+        await refreshConversations();
+        Alert.alert(
+          "Success",
+          `${user.displayName} has been added to the group`
+        );
+        navigation.goBack();
+      } catch (error) {
+        console.error("Error adding member:", error);
+        setError("Failed to add member. Please try again.");
+      } finally {
+        setIsAddingMember(false);
+      }
+    } else {
+      // Create a direct conversation with the selected user
+      setIsCreatingConversation(true);
+      try {
+        const conversationRequest: ConversationRequest = {
+          participantIds: [currentUserDetail.id, user.id],
+          conversationType: "DIRECT",
+        };
+
+        const response =
+          await ConversationService.createConversation(conversationRequest);
+
+        if (response.result) {
+          // Add the new conversation to the context
+          addConversation(response.result);
+
+          // Navigate to the newly created conversation using parent navigator
+          const parentNavigation = navigation.getParent();
+          if (parentNavigation) {
+            parentNavigation.navigate("Conversation", {
+              conversationId: response.result.conversationId,
+              conversationName:
+                response.result.conversationName || user.displayName,
+              avatar: user.avatar,
+            });
+          }
+        } else {
+          setError("Failed to create conversation. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error creating conversation:", error);
+        setError(
+          "Failed to create conversation. Please check your connection and try again."
+        );
+      } finally {
+        setIsCreatingConversation(false);
+      }
+    }
   };
 
   const renderUserItem = ({ item }: { item: UserSearchResult }) => (
-    <TouchableOpacity
-      className="flex-row items-center px-4 py-3 border-b border-gray-100"
-      onPress={() => handleUserSelect(item)}
-    >
-      <View className="relative">
-        <Image
-          source={{ uri: item.avatar?.url }}
-          className="w-12 h-12 rounded-full"
-        />
-        {item.isOnline && (
-          <View className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-        )}
-      </View>
-
-      <View className="flex-1 ml-3">
-        <Text className="font-semibold text-base text-gray-800">
-          {item.username}
-        </Text>
-        <Text className="text-sm text-gray-500">{item.mail}</Text>
-      </View>
-
-      <View className="flex-row items-center">
-        {item.isOnline && (
-          <View className="flex-row items-center mr-2">
-            <View className="w-2 h-2 bg-green-500 rounded-full mr-1" />
-            <Text className="text-xs text-green-500">Online</Text>
-          </View>
-        )}
-        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-      </View>
-    </TouchableOpacity>
+    <UserItem user={item} onPress={handleUserSelect} />
   );
 
   const renderEmptyState = () => (
     <View className="flex-1 justify-center items-center py-20">
       <Ionicons name="search-outline" size={64} color="#9CA3AF" />
       <Text className="text-gray-500 text-lg mt-4">
-        {searchQuery ? "No users found" : "Search for users to chat with"}
+        {searchQuery
+          ? "No users found"
+          : isAddMemberMode
+            ? "Search for users to add to the group"
+            : "Search for users to chat with"}
       </Text>
       <Text className="text-gray-400 text-sm mt-2">
         {searchQuery
-          ? "Try searching with a different name or email"
-          : "Enter a username or email to get started"}
+          ? "Try searching with a different name"
+          : isAddMemberMode
+            ? "Enter a display name or username to find members"
+            : "Enter a display name or username to get started"}
       </Text>
+    </View>
+  );
+
+  const renderErrorState = () => (
+    <View className="flex-1 justify-center items-center py-20">
+      <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+      <Text className="text-red-500 text-lg mt-4">Error</Text>
+      <Text className="text-gray-400 text-sm mt-2 text-center px-8">
+        {error}
+      </Text>
+      <TouchableOpacity
+        className="mt-4 bg-pink-500 px-6 py-2 rounded-full"
+        onPress={() =>
+          searchQuery ? searchUsers(searchQuery) : loadRecentUsers()
+        }
+      >
+        <Text className="text-white font-semibold">Try Again</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -163,8 +255,6 @@ const UserSearchScreen = () => {
 
   return (
     <View className="flex-1 bg-white">
-      {/* <StatusBar barStyle="dark-content" backgroundColor="#ffffff" /> */}
-
       {/* Header */}
       <SafeAreaView edges={["top", "right", "left"]}>
         <View className="px-4 py-3 border-b border-gray-200 flex-row items-center">
@@ -175,7 +265,9 @@ const UserSearchScreen = () => {
             <Ionicons name="chevron-back" size={24} color="#333" />
           </TouchableOpacity>
 
-          <Text className="flex-1 font-bold text-lg">Search Users</Text>
+          <Text className="flex-1 font-bold text-lg">
+            {isAddMemberMode ? "Add Member" : "Search Users"}
+          </Text>
         </View>
 
         {/* Search Input */}
@@ -199,8 +291,22 @@ const UserSearchScreen = () => {
         </View>
       </SafeAreaView>
 
+      {/* Loading Overlay */}
+      {(isCreatingConversation || isAddingMember) && (
+        <View className="absolute inset-0 bg-black bg-opacity-50 flex-1 justify-center items-center z-50">
+          <View className="bg-white p-6 rounded-lg items-center">
+            <ActivityIndicator size="large" color="#EC4899" />
+            <Text className="text-gray-600 mt-3">
+              {isAddingMember ? "Adding member..." : "Creating conversation..."}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Content */}
-      {isLoading ? (
+      {error ? (
+        renderErrorState()
+      ) : isLoading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#EC4899" />
           <Text className="text-gray-500 mt-2">Searching users...</Text>

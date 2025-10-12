@@ -2,10 +2,7 @@ package com.hehe.thesocial.entity;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
-import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
+import org.springframework.data.mongodb.core.mapping.*;
 
 import java.util.Set;
 
@@ -16,7 +13,9 @@ import java.util.Set;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Comment extends BaseDocument{
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class Comment extends BaseDocument {
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String id;
@@ -33,14 +32,14 @@ public class Comment extends BaseDocument{
     @Field("reply_count")
     int replyCount;
 
-    //Normalize user detail
+    // Normalize user detail
     @Field("user_detail_id")
     String userDetailId;
 
     @Field("avatar_url")
     String avatarUrl;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("replies_ref")
     Set<Comment> replies;
 }

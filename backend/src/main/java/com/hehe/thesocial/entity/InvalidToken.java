@@ -15,7 +15,9 @@ import java.util.Date;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class InvalidToken extends BaseDocument {
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String id;

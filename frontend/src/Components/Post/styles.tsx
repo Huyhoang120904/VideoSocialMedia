@@ -1,22 +1,27 @@
 import { Dimensions, StyleSheet, PixelRatio } from "react-native";
 
 const { height, width } = Dimensions.get("screen");
+const { height: windowHeight, width: windowWidth } = Dimensions.get("window");
 
 // Function để tính responsive font size với nhiều phương pháp
 const getResponsiveFontSize = (baseFontSize: number) => {
-    // Phương pháp 1: Dựa trên width
-    const widthScale = width / 375; // iPhone X standard
+    // Phương pháp 1: Dựa trên window width (more accurate for mobile)
+    const widthScale = windowWidth / 375; // iPhone X standard
 
     // Phương pháp 2: Dựa trên PixelRatio và density
     const pixelRatio = PixelRatio.get();
-    const densityScale = pixelRatio > 2 ? 1.2 : pixelRatio > 1.5 ? 1.1 : 1.0;
+    const densityScale = pixelRatio > 2 ? 1.1 : pixelRatio > 1.5 ? 1.05 : 1.0;
 
-    // Kết hợp cả hai phương pháp
-    let finalScale = widthScale * densityScale;
+    // Phương pháp 3: Dựa trên aspect ratio
+    const aspectRatio = windowHeight / windowWidth;
+    const aspectScale = aspectRatio > 2 ? 0.9 : aspectRatio > 1.8 ? 1.0 : 1.1;
+
+    // Kết hợp cả ba phương pháp
+    let finalScale = widthScale * densityScale * aspectScale;
 
     // Giới hạn scale 
-    const minScale = 0.7;
-    const maxScale = 1.8;
+    const minScale = 0.8;
+    const maxScale = 1.5;
     finalScale = Math.max(minScale, Math.min(maxScale, finalScale));
 
     const finalSize = Math.round(baseFontSize * finalScale);
@@ -40,17 +45,19 @@ const AutoFontSizes = {
     container: {
         width: '100%',
         backgroundColor: '#000',
-
+        flex: 1,
     },
     video: {
         backgroundColor: '#000',
+        flex: 1,
     },
     videoContainer: {
         width: '100%',
         backgroundColor: '#000',
         justifyContent: 'center',
         alignItems: 'center',
-        position: "relative"
+        position: "relative",
+        flex: 1,
     },
     touchArea: {
         ...StyleSheet.absoluteFillObject,
@@ -79,7 +86,8 @@ const AutoFontSizes = {
     rightVideoContainer: {
         position: "absolute",
         right: 10,
-        top: 380,
+        top: '50%',
+        transform: [{ translateY: -120 }], // Center vertically with offset
         alignItems: "center",
         zIndex: 40, // Higher than video player controls
     },
@@ -116,11 +124,12 @@ const AutoFontSizes = {
     bottomVideoContainer: {
         position: "absolute",
         left: 10,
-        right: 10, // Tăng right để tránh chồng right video
+        right: 80, // Leave space for right side buttons
         flexDirection: "row",
         alignItems: "flex-end",
         zIndex: 10,
         bottom: 0,
+       
     },
     contentLeft: {
         flex: 1,

@@ -2,9 +2,7 @@ package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.request.conversation.ConversationRequest;
-import com.hehe.thesocial.dto.response.conversation.ConversationListResponse;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
-import com.hehe.thesocial.dto.response.role.RoleResponse;
 import com.hehe.thesocial.service.conversation.ConversationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +22,17 @@ public class ConversationController {
     ConversationService conversationService;
 
     @GetMapping("/me")
-    public ApiResponse<PagedModel<EntityModel<ConversationListResponse>>> getMyConversations(
-            @PageableDefault(size = 20) Pageable pageable, PagedResourcesAssembler<ConversationListResponse> assembler){
-        return ApiResponse.<PagedModel<EntityModel<ConversationListResponse>>>builder()
+    public ApiResponse<PagedModel<EntityModel<ConversationResponse>>> getMyConversations(
+            @PageableDefault(size = 20) Pageable pageable, PagedResourcesAssembler<ConversationResponse> assembler){
+        return ApiResponse.<PagedModel<EntityModel<ConversationResponse>>>builder()
                 .result(assembler.toModel(conversationService.getMyConversations(pageable)))
+                .build();
+    }
+
+    @GetMapping("/{conversationId}")
+    public ApiResponse<ConversationResponse> getConversationById(@PathVariable String conversationId) {
+        return ApiResponse.<ConversationResponse>builder()
+                .result(conversationService.getConversationById(conversationId))
                 .build();
     }
 

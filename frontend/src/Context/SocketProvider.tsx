@@ -37,11 +37,12 @@ export const SocketProvider: React.FC<React.PropsWithChildren> = ({
       setConnectionError(null);
 
       await socketService.connect();
-      setIsConnected(socketService.isConnected());
+      const connected = socketService.isConnected();
+      setIsConnected(connected);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Connection failed";
-      console.error("SocketProvider: Connection failed:", errorMessage);
+      console.error("❌ WebSocket connection failed:", errorMessage);
       setConnectionError(errorMessage);
     } finally {
       setIsConnecting(false);
@@ -78,6 +79,15 @@ export const SocketProvider: React.FC<React.PropsWithChildren> = ({
       disconnect();
     }
   }, [isAuthenticated, isConnected, isConnecting, connect, disconnect]);
+
+  // Handle token changes and reconnection
+  useEffect(() => {
+    if (isAuthenticated && isConnected && socketService.needsReconnection()) {
+      console.log("🔄 Token changed, reconnecting...");
+      disconnect();
+      connect();
+    }
+  }, [isAuthenticated, isConnected, connect, disconnect]);
 
   const value: SocketContextType = {
     isConnected,

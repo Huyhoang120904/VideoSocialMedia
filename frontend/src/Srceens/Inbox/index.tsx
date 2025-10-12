@@ -1,33 +1,27 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-  Alert,
-} from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import React, { useState } from "react";
+import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MessageBox from "../../Components/Inbox/MessageBox";
-import ConversationService from "../../Services/ConversationService";
 import { ConversationResponse } from "../../Types/response/ConversationResponse";
 import { useConversations } from "../../Context/ConversationProvider";
-import { InboxStackParamList } from "../../Types/response/navigation.types";
+import { AuthedStackParamList } from "../../Types/response/navigation.types";
+import InboxHeader from "../../Components/Inbox/InboxHeader";
+import TabNavigation from "../../Components/Inbox/TabNavigation";
+import MessagesList from "../../Components/Inbox/MessagesList";
+import NotificationsList from "../../Components/Inbox/NotificationsList";
+import RequestsList from "../../Components/Inbox/RequestsList";
 
-type InboxNavigationProp = StackNavigationProp<
-  InboxStackParamList,
-  "InboxHome"
->;
+type InboxNavigationProp = StackNavigationProp<AuthedStackParamList>;
 
 export default function Inbox() {
   const [activeTab, setActiveTab] = useState("Messages");
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<InboxNavigationProp>();
-  const { conversations, isLoading } = useConversations();
+  const { conversations, isLoading, getMyConversations } = useConversations();
+
+  const tabs = ["Messages", "Notifications", "Requests"];
+
   const handleMessagePress = (item: ConversationResponse) => {
     navigation.navigate("Conversation", {
       conversationId: item.conversationId,
@@ -37,110 +31,69 @@ export default function Inbox() {
   };
 
   const navigateToSearch = () => {
-    navigation.navigate("UserSearch");
+    navigation.navigate("MainTabs", {
+      screen: "Inbox",
+      params: {
+        screen: "UserSearch",
+        params: {},
+      },
+    } as any);
   };
 
   const handleCreateGroup = () => {
-    Alert.alert("Create Group", "Create group chat functionality");
+    navigation.navigate("MainTabs", {
+      screen: "Inbox",
+      params: {
+        screen: "CreateGroup",
+      },
+    } as any);
   };
 
-  const renderMessageItem = ({ item }: { item: ConversationResponse }) => (
-    <MessageBox onPress={() => handleMessagePress(item)} item={item} />
-  );
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await getMyConversations();
+    } catch (error) {
+      console.error("Error refreshing conversations:", error);
+      Alert.alert(
+        "Error",
+        "Failed to refresh conversations. Please try again."
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "right", "left"]}>
-      {/* Dòng này gây ra lỗi giao diện */}
-      {/* <StatusBar barStyle="dark-content" translucent={true}
-        backgroundColor="transparent" /> */}
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        {/* Header */}
-        <View className="px-4 pt-4 pb-3 border-b border-gray-100">
-          <View className="flex-row items-center justify-between">
-            {/* Left: Search Icon */}
-            <TouchableOpacity onPress={navigateToSearch} className="w-10">
-              <Ionicons name="search" size={24} color="#333" />
-            </TouchableOpacity>
+      <InboxHeader
+        onSearchPress={navigateToSearch}
+        onCreateGroupPress={handleCreateGroup}
+      />
 
-            {/* Middle: Title */}
-            <View className="flex-1 items-center">
-              <Text className="text-xl font-bold">Inbox</Text>
-            </View>
+      <TabNavigation
+        activeTab={activeTab}
+        onTabPress={setActiveTab}
+        tabs={tabs}
+      />
 
-            {/* Right: Group Icon */}
-            <TouchableOpacity
-              onPress={handleCreateGroup}
-              className="w-10 items-end"
-            >
-              <Feather name="users" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-        </View>
+      {activeTab === "Messages" && (
+        <MessagesList
+          conversations={conversations}
+          isLoading={isLoading}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          onMessagePress={handleMessagePress}
+        />
+      )}
 
-        {/* Tabs */}
-        <View className="flex-row border-b border-gray-200">
-          {["Messages", "Notifications", "Requests"].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              className={`flex-1 py-3 items-center ${activeTab === tab ? "border-b-2 border-pink-600" : ""}`}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                className={`font-medium ${activeTab === tab ? "text-pink-600" : "text-gray-600"}`}
-              >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {activeTab === "Notifications" && (
+        <NotificationsList refreshing={refreshing} onRefresh={handleRefresh} />
+      )}
 
-        {/* Message List */}
-        {activeTab === "Messages" &&
-          (!isLoading ? (
-            <FlatList
-              data={conversations}
-              renderItem={renderMessageItem}
-              keyExtractor={(item) => item.conversationId}
-              className="flex-1"
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View className="flex-1 items-center justify-center py-20">
-                  <Feather name="message-circle" size={60} color="#ccc" />
-                  <Text className="text-gray-400 mt-4 text-lg">
-                    No messages yet
-                  </Text>
-                </View>
-              }
-            />
-          ) : (
-            <View>
-              <Text> Loading...</Text>
-            </View>
-          ))}
-
-        {/* Notifications Tab */}
-        {activeTab === "Notifications" && (
-          <View className="flex-1 items-center justify-center">
-            <Feather name="bell" size={60} color="#ccc" />
-            <Text className="text-gray-400 mt-4 text-lg">
-              No notifications yet
-            </Text>
-          </View>
-        )}
-
-        {/* Requests Tab */}
-        {activeTab === "Requests" && (
-          <View className="flex-1 items-center justify-center">
-            <Feather name="user-plus" size={60} color="#ccc" />
-            <Text className="text-gray-400 mt-4 text-lg">
-              No message requests
-            </Text>
-          </View>
-        )}
-      </KeyboardAvoidingView>
+      {activeTab === "Requests" && (
+        <RequestsList refreshing={refreshing} onRefresh={handleRefresh} />
+      )}
     </SafeAreaView>
   );
 }

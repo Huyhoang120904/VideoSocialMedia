@@ -3,8 +3,8 @@ package com.hehe.thesocial.entity;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
@@ -17,20 +17,22 @@ import java.util.Set;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class FeedItem extends BaseDocument {
+    @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
     String id;
 
-    //content
+    // content
     @Field("feed_item_type")
     FeedItemType feedItemType;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("video_ref")
     Video video;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("image_slide_ref")
     ImageSlide imageSlide;
 
@@ -40,11 +42,11 @@ public class FeedItem extends BaseDocument {
     @Field("description")
     String description;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("hashtags_ref")
     Set<HashTag> hashTags;
 
-    @DocumentReference(lazy = true)
+    @DBRef
     @Field("comments_ref")
     Set<Comment> comments;
 
@@ -58,7 +60,7 @@ public class FeedItem extends BaseDocument {
     @Field("share_count")
     long shareCount;
 
-    //author
+    // author
     @Field("avatar")
     String avatar;
 }

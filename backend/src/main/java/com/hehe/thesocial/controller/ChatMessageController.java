@@ -1,54 +1,83 @@
 package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
-import com.hehe.thesocial.dto.request.chat.ChatMessageCreationRequest;
+import com.hehe.thesocial.dto.request.chat.ChatMessageUpdateRequest;
+import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
+import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.data.web.PagedResourcesAssembler;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.PagedModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/chat-messages")
 @RequiredArgsConstructor
-@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatMessageController {
     ChatMessageServiceImpl chatMessageService;
 
     @GetMapping("/conversation/{conversationId}")
-    public ApiResponse<PagedModel<EntityModel<ChatMessageResponse>>> getAllChatMessagesByConversationId(
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getAllChatMessagesByConversation(
             @PathVariable String conversationId,
-            @PageableDefault(size = 20, page = 0) Pageable pageable,
-            PagedResourcesAssembler<ChatMessageResponse> assembler) {
-        return ApiResponse.<PagedModel<EntityModel<ChatMessageResponse>>>builder()
-                .result(assembler.toModel(chatMessageService.getAllChatMessageByConversationId(conversationId, pageable)))
-                .build();
+            @PageableDefault(size = 20) Pageable pageable) {
+
+        Page<ChatMessageResponse> messages = chatMessageService.getAllChatMessageByConversationId(conversationId, pageable);
+
+        return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
+                .result(messages)
+                .build());
     }
 
-    @PostMapping
-    public ApiResponse<ChatMessageResponse> createChatMessage(@RequestBody ChatMessageCreationRequest request) {
-        return ApiResponse.<ChatMessageResponse>builder()
-                .result(chatMessageService.createChatMessage(request))
-                .build();
+    @PostMapping()
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> createDirectMessage(
+            @RequestBody @Valid DirectChatMessageRequest request) {
+
+        ChatMessageResponse message = chatMessageService.createDirectChatMessage(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<ChatMessageResponse>builder()
+                        .result(message)
+                        .build());
     }
 
-    @PutMapping
-    public ApiResponse<ChatMessageResponse> updateChatMessage(@RequestBody ChatMessageCreationRequest request) {
-        return ApiResponse.<ChatMessageResponse>builder()
-                .result(chatMessageService.updateChatMessage(request))
-                .build();
+    @PostMapping("/group")
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> createGroupChatMessage(
+            @RequestBody @Valid GroupChatMessageRequest request) {
+
+        ChatMessageResponse message = chatMessageService.createGroupChatMessage(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<ChatMessageResponse>builder()
+                        .result(message)
+                        .build());
     }
 
-    @DeleteMapping("/{chatMessageId}")
-    public ApiResponse<Void> deleteChatMessage(@PathVariable String chatMessageId) {
-        chatMessageService.deleteChatMessage(chatMessageId);
-        return ApiResponse.<Void>builder()
-                .build();
+    @PutMapping("/{messageId}")
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> updateMessage(
+            @PathVariable String messageId,
+            @RequestBody @Valid ChatMessageUpdateRequest request) {
+
+        ChatMessageResponse updatedMessage = chatMessageService.updateChatMessage(messageId, request);
+
+        return ResponseEntity.ok(ApiResponse.<ChatMessageResponse>builder()
+                .result(updatedMessage)
+                .build());
+    }
+
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<ApiResponse<Void>> deleteMessage(@PathVariable String messageId) {
+        chatMessageService.deleteChatMessage(messageId);
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Message deleted successfully")
+                .build());
     }
 }

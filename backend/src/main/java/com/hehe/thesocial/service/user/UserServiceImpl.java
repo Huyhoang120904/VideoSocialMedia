@@ -65,6 +65,7 @@ public class UserServiceImpl implements UserService {
         //Create user detail when registering
         UserDetail userDetail = UserDetail.builder()
                 .user(user)
+                .displayName(user.getUsername())
                 .shownName("@"+user.getUsername())
                 .build();
 

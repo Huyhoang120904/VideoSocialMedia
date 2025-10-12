@@ -4,6 +4,7 @@ import Page from "../Types/response/Page";
 import { ConversationResponse } from "../Types/response/ConversationResponse";
 import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
 import { ConversationRequest } from "../Types/request/ConversationRequest";
+import ChatMessageService from "./ChatMessageService";
 
 interface PaginationParams {
   page?: number;
@@ -37,7 +38,12 @@ const ConversationService = {
   createConversation: async (
     request: ConversationRequest
   ): Promise<ApiResponse<ConversationResponse>> => {
+    console.log(
+      "Creating conversation with request:",
+      JSON.stringify(request, null, 2)
+    );
     const response = await api.post("/conversations", request);
+    console.log("Conversation creation response:", response.data);
     return response.data;
   },
 
@@ -80,17 +86,12 @@ const ConversationService = {
     return response.data;
   },
 
-  // Get messages by conversation ID (existing method)
+  // Get messages by conversation ID (delegates to ChatMessageService)
   getMessagesByConversationId: async (
-    conversationId: string
+    conversationId: string,
+    params?: PaginationParams
   ): Promise<ApiResponse<Page<ChatMessageResponse>>> => {
-    const response = await api.get(
-      `/chat-messages/conversation/${conversationId}`
-    );
-
-    console.log(`/chat-messages/conversation/${conversationId}`);
-
-    return response.data;
+    return ChatMessageService.getMessagesByConversationId(conversationId, params);
   },
 };
 
