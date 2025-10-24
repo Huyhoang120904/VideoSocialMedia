@@ -105,7 +105,7 @@ export default function MessageBubble({
               isMyMessage ? "text-gray-300" : "text-gray-500"
             }`}
           >
-            {new Date(message.time as string).toLocaleTimeString([], {
+            {new Date(message.createdAt as string).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}

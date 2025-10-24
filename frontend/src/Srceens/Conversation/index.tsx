@@ -31,6 +31,7 @@ import { ChatMessageUpdateRequest } from "../../Types/request";
 import ConversationHeader from "../../Components/Conversation/ConversationHeader";
 import MessagesList from "../../Components/Conversation/MessagesList";
 import MessageInput from "../../Components/Conversation/MessageInput";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 type ConversationNavigationProp = StackNavigationProp<
   AuthedStackParamList,
@@ -66,7 +67,6 @@ const ConversationScreen = () => {
     }) || {};
 
   const conversationName = params.conversationName || "Placeholder";
-  const avatar = params.avatar || require("../../../assets/avatar.png");
 
   const { conversations } = useConversations();
   const {
@@ -86,6 +86,54 @@ const ConversationScreen = () => {
   );
   const conversationType = currentConversation?.conversationType || "DIRECT";
 
+  // Compute avatar from conversation data
+  const getConversationAvatar = () => {
+    // If params has avatar as { uri: ... }, use it
+    if (
+      params.avatar &&
+      typeof params.avatar === "object" &&
+      "uri" in params.avatar
+    ) {
+      return params.avatar.uri;
+    }
+
+    // Otherwise, try to get from conversation data
+    if (currentConversation) {
+      // For direct conversations, get the other user's avatar
+      if (
+        conversationType === "DIRECT" &&
+        currentConversation.userDetails &&
+        currentUserDetail
+      ) {
+        const otherUser = currentConversation.userDetails.find(
+          (user) => user.id !== currentUserDetail.id
+        );
+        if (otherUser?.avatar?.fileName && otherUser.id) {
+          return getAvatarUrl(otherUser.id, otherUser.avatar.fileName);
+        }
+      }
+      // For group conversations, use conversation avatar if available
+      else if (
+        currentConversation.avatar?.fileName &&
+        currentConversation.conversationId
+      ) {
+        return getAvatarUrl(
+          currentConversation.conversationId,
+          currentConversation.avatar.fileName
+        );
+      }
+    }
+
+    return null;
+  };
+
+  const avatarUrl = getConversationAvatar();
+
+  // Check if this is an AI conversation
+  const isAiConversation =
+    conversationName === "AI Assistant" ||
+    params.conversationId === "ai-assistant";
+
   // Animation on component mount
   useEffect(() => {
     Animated.parallel([
@@ -102,7 +150,6 @@ const ConversationScreen = () => {
     ]).start();
   }, []);
 
-  // Add WebSocket subscription for real-time messages
   useEffect(() => {
     if (isConnected && params.conversationId) {
       console.log(
@@ -113,6 +160,15 @@ const ConversationScreen = () => {
       // Subscribe to user-specific chat queue
       subscribe("/user/queue/chat", (receivedMessage: ChatMessageResponse) => {
         console.log("📨 Received real-time chat message:", receivedMessage);
+
+        // Skip WebSocket messages for AI conversations to prevent duplication
+        // AI conversations are handled entirely by API responses
+        if (isAiConversation) {
+          console.log(
+            "🤖 AI conversation detected, skipping WebSocket message to prevent duplication"
+          );
+          return;
+        }
 
         // Only add message if it belongs to current conversation
         if (receivedMessage.conversationId === params.conversationId) {
@@ -147,23 +203,30 @@ const ConversationScreen = () => {
     );
 
     if (params.conversationId) {
-      // Check if the conversation exists in the user's conversation list
-      const conversationExists = conversations.some(
-        (conv) => conv.conversationId === params.conversationId
-      );
-
-      if (conversationExists) {
+      // Skip conversation check for AI conversations
+      if (isAiConversation) {
+        // AI conversations don't need to be in the conversation list
+        console.log("AI conversation detected, fetching AI messages");
         getChatMessagesByConversationId(params.conversationId);
       } else {
-        console.error(
-          "Conversation not found in user's conversation list:",
-          params.conversationId
+        // Check if the conversation exists in the user's conversation list
+        const conversationExists = conversations.some(
+          (conv) => conv.conversationId === params.conversationId
         );
-        Alert.alert(
-          "Error",
-          "Conversation not found or you don't have access to it."
-        );
-        navigation.goBack();
+
+        if (conversationExists) {
+          getChatMessagesByConversationId(params.conversationId);
+        } else {
+          console.error(
+            "Conversation not found in user's conversation list:",
+            params.conversationId
+          );
+          Alert.alert(
+            "Error",
+            "Conversation not found or you don't have access to it."
+          );
+          navigation.goBack();
+        }
       }
     } else {
       console.error("No conversationId provided to Conversation screen");
@@ -204,7 +267,14 @@ const ConversationScreen = () => {
     try {
       let response;
 
-      if (params.conversationId) {
+      // Check if this is an AI conversation
+      if (isAiConversation) {
+        // Send message to AI
+        response = await ChatMessageService.createAiChatMessage(
+          message.trim(),
+          "AI"
+        );
+      } else if (params.conversationId) {
         console.log("ConversationId:", params.conversationId);
         conversations.forEach((conv) => {
           console.log(
@@ -365,7 +435,7 @@ const ConversationScreen = () => {
     navigation.navigate("ConversationOptions", {
       conversationId: params.conversationId,
       conversationName: conversationName,
-      avatar: avatar,
+      avatar: avatarUrl ? { uri: avatarUrl } : undefined,
       conversationType: conversationType,
     });
   };
@@ -445,7 +515,7 @@ const ConversationScreen = () => {
               <Text
                 className={`text-xs ${isMyMessage ? "text-gray-300" : "text-gray-500"}`}
               >
-                {new Date(item.time as string).toLocaleTimeString([], {
+                {new Date(item.createdAt as string).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
@@ -493,57 +563,59 @@ const ConversationScreen = () => {
       <SafeAreaView edges={["top"]}>
         <ConversationHeader
           conversationName={conversationName}
-          avatar={avatar}
+          avatarUrl={avatarUrl}
           fadeAnim={fadeAnim}
           slideAnim={slideAnim}
           onBackPress={handleBackPress}
           onSearchPress={handleSearchPress}
           onOptionsPress={handleOptionsPress}
+          isAiConversation={isAiConversation}
         />
       </SafeAreaView>
 
-      {/* Messages List */}
-      <View className="flex-1">
-        <MessagesList
-          messages={messages}
-          isMessagesLoading={isMessagesLoading}
-          editingMessage={editingMessage}
-          editText={editText}
-          currentUserDetail={currentUserDetail}
-          fadeAnim={fadeAnim}
-          slideAnim={slideAnim}
-          onEditTextChange={setEditText}
-          onStartEditing={startEditing}
-          onCancelEditing={cancelEditing}
-          onSaveEdit={saveEdit}
-          onDeleteMessage={handleDeleteMessage}
-          isLoading={isLoading}
-          conversationName={conversationName}
-        />
-      </View>
-
-      {/* Message Input */}
+      {/* KeyboardAvoidingView wrapping both messages and input */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <MessageInput
-          message={message}
-          onMessageChange={setMessage}
-          onSend={handleSend}
-          editingMessage={editingMessage}
-          editText={editText}
-          onEditTextChange={setEditText}
-          onCancelEditing={cancelEditing}
-          onSaveEdit={saveEdit}
-          isLoading={isLoading}
-          fadeAnim={fadeAnim}
-          slideAnim={slideAnim}
-        />
-      </KeyboardAvoidingView>
+        {/* Messages List */}
+        <View className="flex-1">
+          <MessagesList
+            messages={messages}
+            isMessagesLoading={isMessagesLoading}
+            editingMessage={editingMessage}
+            editText={editText}
+            currentUserDetail={currentUserDetail}
+            fadeAnim={fadeAnim}
+            slideAnim={slideAnim}
+            onEditTextChange={setEditText}
+            onStartEditing={startEditing}
+            onCancelEditing={cancelEditing}
+            onSaveEdit={saveEdit}
+            onDeleteMessage={handleDeleteMessage}
+            isLoading={isLoading}
+            conversationName={conversationName}
+          />
+        </View>
 
-      {/* Bottom Safe Area */}
-      <SafeAreaView edges={["bottom"]} />
+        {/* Message Input */}
+        <SafeAreaView edges={["bottom"]}>
+          <MessageInput
+            message={message}
+            onMessageChange={setMessage}
+            onSend={handleSend}
+            editingMessage={editingMessage}
+            editText={editText}
+            onEditTextChange={setEditText}
+            onCancelEditing={cancelEditing}
+            onSaveEdit={saveEdit}
+            isLoading={isLoading}
+            fadeAnim={fadeAnim}
+            slideAnim={slideAnim}
+          />
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 };

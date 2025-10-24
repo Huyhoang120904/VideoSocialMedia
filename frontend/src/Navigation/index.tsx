@@ -10,6 +10,8 @@ import ConversationScreen from "../Srceens/Conversation";
 import ConversationOptionsScreen from "../Srceens/ConversationOptions";
 import ConversationMembersScreen from "../Srceens/ConversationMembers";
 import UserProfileScreen from "../Srceens/UserProfile";
+import FollowersListScreen from "../Srceens/FollowersList";
+import EditProfileScreen from "../Srceens/EditProfile";
 import CallScreen from "../Srceens/Call";
 import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -34,6 +36,8 @@ export default function RootNavigation() {
         component={ConversationMembersScreen}
       />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="FollowersList" component={FollowersListScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Call" component={CallScreen} />
     </Stack.Navigator>
   );

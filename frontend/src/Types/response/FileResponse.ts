@@ -1,17 +1,14 @@
 export default interface FileResponse {
-  createdAt: string;
-  createdBy: string;
-  updatedAt: string;
-  updatedBy: string;
+  createdAt: string | null;
+  createdBy: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
   id: string;
   fileName: string;
   size: number;
-  publicId: string;
+  publicId: string | null;
   url: string;
-  secureUrl: string;
+  secureUrl: string | null;
   format: string;
-  resoureType: string;
   resourceType: string;
-  width: number;
-  height: number;
 }

@@ -1,13 +1,42 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { ConversationResponse } from "../../Types/response/ConversationResponse";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 interface MessageBoxProps {
   item: ConversationResponse;
   onPress: () => void;
+  currentUserId?: string;
 }
 
-const MessageBox: React.FC<MessageBoxProps> = ({ item, onPress }) => {
+const MessageBox: React.FC<MessageBoxProps> = ({
+  item,
+  onPress,
+  currentUserId,
+}) => {
+  // For direct conversations, get the other user's avatar
+  // For group conversations, use conversation avatar or first participant
+  const getConversationAvatar = () => {
+    if (item.conversationType === "DIRECT" && item.userDetails?.length > 0) {
+      // Find the other user (not current user)
+      const otherUser = item.userDetails.find(
+        (user) => user.id !== currentUserId
+      );
+      if (otherUser?.avatar?.fileName && otherUser.id) {
+        return getAvatarUrl(otherUser.id, otherUser.avatar.fileName);
+      }
+    } else if (item.userDetails?.length > 0) {
+      // For groups, try to use the first user's avatar
+      const firstUser = item.userDetails[0];
+      if (firstUser?.avatar?.fileName && firstUser.id) {
+        return getAvatarUrl(firstUser.id, firstUser.avatar.fileName);
+      }
+    }
+    return null;
+  };
+
+  const avatarUrl = getConversationAvatar();
+
   return (
     <TouchableOpacity
       className="flex-row items-center px-4 py-3 border-b border-gray-100"
@@ -15,9 +44,9 @@ const MessageBox: React.FC<MessageBoxProps> = ({ item, onPress }) => {
       onPress={onPress}
     >
       <View className="relative">
-        {item.avatar ? (
+        {avatarUrl ? (
           <Image
-            source={{ uri: item.avatar.url }}
+            source={{ uri: avatarUrl }}
             className="w-12 h-12 rounded-full mr-3"
           />
         ) : (

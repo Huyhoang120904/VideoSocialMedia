@@ -1,5 +1,6 @@
 package com.hehe.thesocial.repository;
 
+import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.entity.Conversation;
 import com.hehe.thesocial.entity.UserDetail;
 import org.springframework.data.domain.Page;
@@ -17,7 +18,7 @@ public interface ConversationRepository extends MongoRepository<Conversation, St
 
     Page<Conversation> findByUserDetailsContaining(Set<UserDetail> userDetails, Pageable pageable);
 
-    Optional<Conversation> findByParticipantHash(String conversationId);
+    Optional<Conversation> findByParticipantHash(String participantHash);
 
     @Query(value = "{ '_id' : ?0 }")
     @Aggregation(pipeline = {
@@ -25,4 +26,5 @@ public interface ConversationRepository extends MongoRepository<Conversation, St
             "{ '$lookup': { 'from': 'user_details', 'localField': 'user_details_ref', 'foreignField': '_id', 'as': 'userDetails' } }"
     })
     Optional<Conversation> findByIdWithUserDetails(String conversationId);
+
 }

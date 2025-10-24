@@ -1,0 +1,156 @@
+package com.hehe.thesocial.service.aiChat;
+
+import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
+import com.hehe.thesocial.entity.ChatMessage;
+import com.hehe.thesocial.entity.Conversation;
+import com.hehe.thesocial.entity.User;
+import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.exception.AppException;
+import com.hehe.thesocial.exception.ErrorCode;
+import com.hehe.thesocial.repository.ChatMessageRepository;
+import com.hehe.thesocial.repository.ConversationRepository;
+import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.repository.UserRepository;
+import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
+import lombok.experimental.FieldDefaults;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Component
+@FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
+public class MongoChatMemory implements ChatMemory {
+    ChatMessageRepository chatMessageRepository;
+    ConversationRepository conversationRepository;
+    int maxMessages;
+    UserDetailRepository userDetailRepository;
+    UserRepository userRepository;
+    ChatMessageServiceImpl chatMessageServiceImpl;
+
+    public MongoChatMemory(ChatMessageRepository chatMessageRepository,
+                           ConversationRepository conversationRepository,
+                           UserDetailRepository userDetailRepository,
+                           UserRepository userRepository,
+                           ChatMessageServiceImpl chatMessageServiceImpl) {
+        this.chatMessageRepository = chatMessageRepository;
+        this.conversationRepository = conversationRepository;
+        this.maxMessages = 10;
+        this.userDetailRepository = userDetailRepository;
+        this.userRepository = userRepository;
+        this.chatMessageServiceImpl = chatMessageServiceImpl;
+    }
+
+    @Override
+    public void add(String conversationId, List<Message> messages) {
+        // Validate conversation exists
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        UserDetail aiUserDetail = getOrCreateAiUser();
+
+        // Save each message
+        for (Message message : messages) {
+            DirectChatMessageRequest request = DirectChatMessageRequest.builder()
+                    .message(message.getText())
+                    .receiverId(aiUserDetail.getId())
+                    .build();
+
+            chatMessageServiceImpl.createDirectChatMessage(request);
+        }
+    }
+
+    @Override
+    public List<Message> get(String conversationId) {
+
+        // Validate conversation exists
+        conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        // Retrieve messages from the conversation (limited by maxMessages)
+        List<ChatMessage> chatMessages = chatMessageRepository
+                .findByConversationIdOrderByCreatedAtDesc(conversationId);
+
+        // Limit to maxMessages
+        int limit = Math.min(maxMessages, chatMessages.size());
+        List<ChatMessage> limitedMessages = chatMessages.subList(0, limit);
+
+        // Convert to Spring AI Message format (reverse to maintain chronological order)
+        List<Message> messages = new ArrayList<>();
+        for (int i = limitedMessages.size() - 1; i >= 0; i--) {
+            ChatMessage chatMessage = limitedMessages.get(i);
+            messages.add(toSpringAiMessage(chatMessage));
+        }
+
+        return messages;
+    }
+
+    @Override
+    public void clear(String conversationId) {
+        // Validate conversation exists
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+
+        // Delete all messages in the conversation
+        chatMessageRepository.deleteByConversationId(conversationId);
+    }
+
+    /**
+     * Convert ChatMessage entity to Spring AI Message
+     */
+    private Message toSpringAiMessage(ChatMessage chatMessage) {
+        UserDetail aiUserDetail = getOrCreateAiUser();
+
+        // Determine if message is from AI or user
+        boolean isFromAi = chatMessage.getSenderId() != null &&
+                chatMessage.getSenderId().equals(aiUserDetail.getId());
+
+        if (isFromAi) {
+            return new AssistantMessage(chatMessage.getMessage());
+        } else {
+            return new UserMessage(chatMessage.getMessage());
+        }
+    }
+
+    /**
+     * Get or create the AI system user
+     */
+    private UserDetail getOrCreateAiUser() {
+        // Try to find existing AI user
+        return userDetailRepository.findByUserId("ai-system")
+                .orElseGet(() -> {
+                    // Create AI system user if not exists
+                    User aiUser = User.builder()
+                            .id("ai-system")
+                            .username("AI Assistant")
+                            .mail("ai@system.local")
+                            .enable(true)
+                            .build();
+
+                    User savedAiUser = userRepository.save(aiUser);
+
+                    UserDetail aiUserDetail = UserDetail.builder()
+                            .user(savedAiUser)
+                            .displayName("AI Assistant")
+                            .bio("Your AI Chat Assistant")
+                            .shownName("AI Assistant")
+                            .build();
+
+                    return userDetailRepository.save(aiUserDetail);
+                });
+    }
+
+    /**
+     * Get the current authenticated user
+     */
+    private UserDetail getCurrentUser() {
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userDetailRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+}

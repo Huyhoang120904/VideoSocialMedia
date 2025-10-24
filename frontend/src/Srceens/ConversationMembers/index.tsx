@@ -19,6 +19,7 @@ import { AuthedStackParamList } from "../../Types/response/navigation.types";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import ConversationService from "../../Services/ConversationService";
 import UserDetailService from "../../Services/UserDetailService";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 type ConversationMembersNavigationProp = StackNavigationProp<
   AuthedStackParamList,
@@ -121,7 +122,7 @@ const ConversationMembersScreen = () => {
     }
 
     navigation.navigate("UserProfile", {
-      userId: member.id,
+      userDetailId: member.id,
       userDisplayName: member.displayName,
     });
   };
@@ -134,15 +135,23 @@ const ConversationMembersScreen = () => {
         key={member.id}
         className="flex-row items-center py-4 px-4 bg-white rounded-2xl mb-3 shadow-sm border border-gray-100"
       >
-        <Image
-          source={
-            member.avatar
-              ? { uri: member.avatar.url }
-              : require("../../../assets/avatar.png")
-          }
-          className="w-12 h-12 rounded-full mr-4"
-          resizeMode="cover"
-        />
+        {(() => {
+          const avatarUrl =
+            member.avatar?.fileName && member.id
+              ? getAvatarUrl(member.id, member.avatar.fileName)
+              : null;
+          return (
+            <Image
+              source={
+                avatarUrl
+                  ? { uri: avatarUrl }
+                  : require("../../../assets/avatar.png")
+              }
+              className="w-12 h-12 rounded-full mr-4"
+              resizeMode="cover"
+            />
+          );
+        })()}
 
         <View className="flex-1">
           <Text className="text-base font-semibold text-gray-900">
