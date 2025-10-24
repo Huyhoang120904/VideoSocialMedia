@@ -5,8 +5,10 @@ import com.hehe.thesocial.dto.request.role.RoleRequest;
 import com.hehe.thesocial.dto.request.user.RegisterRequest;
 import com.hehe.thesocial.entity.Role;
 import com.hehe.thesocial.entity.User;
+import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.repository.RoleRepository;
 import com.hehe.thesocial.repository.UserRepository;
+import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.service.role.RoleService;
 import com.hehe.thesocial.service.user.UserService;
 import jakarta.annotation.PostConstruct;
@@ -29,6 +31,7 @@ public class InitDataConfig {
     private final RoleRepository roleRepository;
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
+    private final UserDetailRepository userDetailRepository;
 
     @PostConstruct
     public void initData() {
@@ -68,23 +71,25 @@ public class InitDataConfig {
         if (userRepository.count() == 0) {
             log.info("No users found, creating initial users...");
 
-
-            userService.register(RegisterRequest.builder()
+            // Create admin user directly with admin role
+            User adminUser = User.builder()
                     .username("admin")
-                    .password("admin123")
-                    .build());
+                    .password(passwordEncoder.encode("admin123"))
+                    .enable(true)
+                    .roles(new HashSet<>(Set.of(adminRole)))
+                    .build();
 
-            // Create admin user
-            Optional<User> adminUser = userRepository.findByUsername("admin");
-
-            if (adminUser.isPresent()) {
-                Set<Role> adminRoles = new HashSet<>();
-                adminRoles.add(adminRole);
-                adminUser.get().setRoles(adminRoles);
-
-                userRepository.save(adminUser.get());
-                log.info("Admin user created successfully");
-            }
+            adminUser = userRepository.save(adminUser);
+            
+            // Create UserDetail for admin user
+            UserDetail adminUserDetail = UserDetail.builder()
+                    .user(adminUser)
+                    .displayName(adminUser.getUsername())
+                    .shownName("@" + adminUser.getUsername())
+                    .build();
+            
+            userDetailRepository.save(adminUserDetail);
+            log.info("Admin user created successfully");
 
 
 

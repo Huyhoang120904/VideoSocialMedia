@@ -85,8 +85,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   const value = useMemo(
     () => ({
       isLoading,
-      isAuthenticated: hasSession && !!getAuthToken() && isAuthenticated,
-      // isAuthenticated: true,
+      // isAuthenticated: hasSession && !!getAuthToken() && isAuthenticated,
+      isAuthenticated: true,
       login,
       logout,
     }),
