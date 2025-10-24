@@ -10,6 +10,7 @@ interface MessagesListProps {
   refreshing: boolean;
   onRefresh: () => void;
   onMessagePress: (item: ConversationResponse) => void;
+  currentUserId?: string;
 }
 
 export default function MessagesList({
@@ -18,9 +19,14 @@ export default function MessagesList({
   refreshing,
   onRefresh,
   onMessagePress,
+  currentUserId,
 }: MessagesListProps) {
   const renderMessageItem = ({ item }: { item: ConversationResponse }) => (
-    <MessageBox onPress={() => onMessagePress(item)} item={item} />
+    <MessageBox
+      onPress={() => onMessagePress(item)}
+      item={item}
+      currentUserId={currentUserId}
+    />
   );
 
   if (isLoading) {

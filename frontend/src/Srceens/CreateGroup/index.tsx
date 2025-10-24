@@ -20,6 +20,7 @@ import ConversationService from "../../Services/ConversationService";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { ConversationRequest } from "../../Types/request/ConversationRequest";
 import { useConversations } from "../../Context/ConversationProvider";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 type CreateGroupNavigationProp = StackNavigationProp<
   InboxStackParamList,
@@ -233,10 +234,20 @@ export default function CreateGroup() {
           {
             text: "OK",
             onPress: () => {
+              // Construct avatar URL properly for group
+              const avatarUrl =
+                response.result.avatar?.fileName &&
+                response.result.conversationId
+                  ? getAvatarUrl(
+                      response.result.conversationId,
+                      response.result.avatar.fileName
+                    )
+                  : null;
+
               navigation.navigate("Conversation", {
                 conversationId: response.result.conversationId,
                 conversationName: response.result.conversationName,
-                avatar: response.result.avatar,
+                avatar: avatarUrl ? { uri: avatarUrl } : undefined,
               });
             },
           },

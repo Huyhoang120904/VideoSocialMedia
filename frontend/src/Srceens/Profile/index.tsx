@@ -10,14 +10,21 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 import { useAuth } from "../../Context/AuthProvider";
 import UserDetailService from "../../Services/UserDetailService";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { useConversations } from "../../Context/ConversationProvider";
+import { AuthedStackParamList } from "../../Types/response/navigation.types";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 const { width } = Dimensions.get("window");
 
+type ProfileNavigationProp = StackNavigationProp<AuthedStackParamList>;
+
 export default function Profile() {
+  const navigation = useNavigation<ProfileNavigationProp>();
   const { logout } = useAuth();
   const [userDetails, setUserDetails] = useState<UserDetailResponse | null>(
     null
@@ -29,9 +36,21 @@ export default function Profile() {
     fetchUserDetails();
   }, []);
 
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchUserDetails();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const handleLogout = async () => {
     clearConversations();
     await logout();
+  };
+
+  const handleEditProfile = () => {
+    navigation.navigate("EditProfile");
   };
 
   const fetchUserDetails = async () => {
@@ -95,19 +114,25 @@ export default function Profile() {
         <View className="items-center px-6 py-6">
           {/* Avatar */}
           <View className="mb-4">
-            {userDetails?.avatar?.url ? (
-              <Image
-                source={{ uri: userDetails.avatar.url }}
-                className="w-24 h-24 rounded-full"
-                style={{ resizeMode: "cover" }}
-              />
-            ) : (
-              <View className="w-24 h-24 rounded-full bg-gray-300 justify-center items-center">
-                <Text className="text-gray-700 text-2xl font-bold">
-                  {userDetails?.displayName?.charAt(0).toUpperCase() || "?"}
-                </Text>
-              </View>
-            )}
+            {(() => {
+              const avatarUrl =
+                userDetails?.avatar?.fileName && userDetails.id
+                  ? getAvatarUrl(userDetails.id, userDetails.avatar.fileName)
+                  : null;
+              return avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  className="w-24 h-24 rounded-full"
+                  style={{ resizeMode: "cover" }}
+                />
+              ) : (
+                <View className="w-24 h-24 rounded-full bg-gray-300 justify-center items-center">
+                  <Text className="text-gray-700 text-2xl font-bold">
+                    {userDetails?.displayName?.charAt(0).toUpperCase() || "?"}
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Display Name */}
@@ -124,19 +149,43 @@ export default function Profile() {
 
           {/* Stats */}
           <View className="flex-row justify-center items-center mb-6 w-full">
-            <View className="items-center flex-1">
+            <TouchableOpacity
+              className="items-center flex-1"
+              onPress={() => {
+                if (userDetails?.id) {
+                  navigation.navigate("FollowersList", {
+                    userDetailId: userDetails.id,
+                    initialTab: "following",
+                    userName: userDetails.displayName || userDetails.shownName,
+                  });
+                }
+              }}
+              activeOpacity={0.7}
+            >
               <Text className="text-gray-900 text-lg font-bold">
                 {formatNumber(userDetails?.followingCount || 0)}
               </Text>
               <Text className="text-gray-600 text-sm">Following</Text>
-            </View>
+            </TouchableOpacity>
 
-            <View className="items-center flex-1">
+            <TouchableOpacity
+              className="items-center flex-1"
+              onPress={() => {
+                if (userDetails?.id) {
+                  navigation.navigate("FollowersList", {
+                    userDetailId: userDetails.id,
+                    initialTab: "followers",
+                    userName: userDetails.displayName || userDetails.shownName,
+                  });
+                }
+              }}
+              activeOpacity={0.7}
+            >
               <Text className="text-gray-900 text-lg font-bold">
                 {formatNumber(userDetails?.followerCount || 0)}
               </Text>
               <Text className="text-gray-600 text-sm">Followers</Text>
-            </View>
+            </TouchableOpacity>
 
             <View className="items-center flex-1">
               <Text className="text-gray-900 text-lg font-bold">0</Text>
@@ -155,7 +204,11 @@ export default function Profile() {
 
           {/* Action Buttons */}
           <View className="flex-row w-full gap-3 mb-6">
-            <TouchableOpacity className="flex-1 bg-gray-900 rounded-lg py-3">
+            <TouchableOpacity
+              className="flex-1 bg-gray-900 rounded-lg py-3"
+              onPress={handleEditProfile}
+              activeOpacity={0.7}
+            >
               <Text className="text-white text-center font-semibold">
                 Edit Profile
               </Text>

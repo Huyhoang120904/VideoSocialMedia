@@ -14,13 +14,21 @@ export interface UserItemData {
 interface UserItemProps {
   user: UserItemData;
   onPress: (user: UserItemData) => void;
+  onViewProfile?: (user: UserItemData) => void;
+  showProfileButton?: boolean;
 }
 
-const UserItem: React.FC<UserItemProps> = ({ user, onPress }) => {
+const UserItem: React.FC<UserItemProps> = ({
+  user,
+  onPress,
+  onViewProfile,
+  showProfileButton = false,
+}) => {
   return (
     <TouchableOpacity
       className="flex-row items-center px-4 py-3 border-b border-gray-100"
       onPress={() => onPress(user)}
+      activeOpacity={0.7}
     >
       <View className="relative">
         {user.avatar?.url ? (
@@ -53,6 +61,22 @@ const UserItem: React.FC<UserItemProps> = ({ user, onPress }) => {
             <View className="w-2 h-2 bg-green-500 rounded-full mr-1" />
             <Text className="text-xs text-green-500">Online</Text>
           </View>
+        )}
+        {showProfileButton && onViewProfile && (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onViewProfile(user);
+            }}
+            className="mr-2 p-2 bg-gray-100 rounded-full"
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
         )}
         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
       </View>

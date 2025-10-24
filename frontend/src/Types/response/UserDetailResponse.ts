@@ -3,14 +3,12 @@ import { UserResponse } from "./UserResponse";
 
 export interface UserDetailResponse {
   id: string;
-  userId: string;
+  user: UserResponse;
 
   avatar?: FileResponse;
   displayName?: string;
   bio?: string;
   shownName?: string;
-
-  user?: UserResponse;
 
   following?: UserDetailResponse[];
   followingCount: number;

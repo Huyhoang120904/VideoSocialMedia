@@ -43,7 +43,6 @@ public class UserDetailServiceImpl implements UserDetailService {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("User ID: {}", userId);
 
-
         // Use the updated repository method that works with DocumentReference
         UserDetail userDetail = userDetailRepository.findByUser(User.builder().id(userId).build())
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
@@ -59,8 +58,9 @@ public class UserDetailServiceImpl implements UserDetailService {
     }
 
     @Override
-    public UserDetailResponse getUserDetailByUserId(String userId) {
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
+    public UserDetailResponse getUserDetailByUserId(String userDetailId) {
+
+        UserDetail userDetail = userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
         return userDetailMapper.toUserDetailResponse(userDetail);
     }

@@ -23,10 +23,6 @@ public class UserDetailResponse {
     String bio;
 
     String shownName;
-
-    Set<UserDetail> following;
     int followingCount;
-
-    Set<UserDetail> follower;
     int followerCount;
 }

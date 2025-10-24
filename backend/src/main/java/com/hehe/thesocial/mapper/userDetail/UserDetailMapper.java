@@ -7,10 +7,11 @@ import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.mapper.user.UserMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring", uses = {
         UserMapper.class
-})
+}, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface UserDetailMapper {
     void updateUserDetail(UserDetailUpdateRequest request, @MappingTarget UserDetail userDetail);
     UserDetailResponse toUserDetailResponse(UserDetail userDetail);

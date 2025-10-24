@@ -57,7 +57,35 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
 
   function addConversation(conversation: ConversationResponse) {
     console.log("ConversationProvider: Adding new conversation:", conversation);
-    setConversations((prev) => [conversation, ...prev]);
+    setConversations((prev) => {
+      // Check if conversation already exists
+      const existingIndex = prev.findIndex(
+        (c) => c.conversationId === conversation.conversationId
+      );
+
+      if (existingIndex !== -1) {
+        // Conversation exists, merge with existing data and move it to the top
+        const existingConversation = prev[existingIndex];
+        const mergedConversation = {
+          ...existingConversation, // Keep existing data
+          ...conversation, // Override with new data
+          // Preserve userDetails if not provided in new conversation
+          userDetails:
+            conversation.userDetails && conversation.userDetails.length > 0
+              ? conversation.userDetails
+              : existingConversation.userDetails,
+          // Preserve avatar if not provided in new conversation
+          avatar: conversation.avatar || existingConversation.avatar,
+        };
+
+        const updated = [...prev];
+        updated.splice(existingIndex, 1);
+        return [mergedConversation, ...updated];
+      }
+
+      // New conversation, add to top
+      return [conversation, ...prev];
+    });
   }
 
   async function refreshConversations() {

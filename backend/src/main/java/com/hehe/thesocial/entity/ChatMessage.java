@@ -26,10 +26,15 @@ public class ChatMessage {
     String id;
 
     String conversationId;
+
     String senderId;
     String message;
-    LocalDateTime time;
+    LocalDateTime createdAt;
     Boolean edited;
+
+    String role;
+    String content;
+
 
     @DBRef
     FileDocument fileDocument;

@@ -114,6 +114,21 @@ public class UserDetailController {
                 .build();
     }
 
+    // UPDATE - Update avatar only
+    @PatchMapping(value = "/{userDetailId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UserDetailResponse> updateAvatar(
+            @PathVariable String userDetailId,
+            @RequestParam(name = "avatar") MultipartFile avatar) {
+
+        UserDetailUpdateRequest request = UserDetailUpdateRequest.builder()
+                .avatar(avatar)
+                .build();
+
+        return ApiResponse.<UserDetailResponse>builder()
+                .result(userDetailService.updateUserDetail(userDetailId, request))
+                .build();
+    }
+
     // DELETE - Delete user detail
     @DeleteMapping("/{userDetailId}")
     public ResponseEntity<ApiResponse<Void>> deleteUserDetail(@PathVariable String userDetailId) {
