@@ -20,19 +20,17 @@ public enum ErrorCode {
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1103, "Conversation not found!"),
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1104, "Message not found!"),
 
-    INVALID_KEY(HttpStatus.UNAUTHORIZED,1105, "Invalid key" ),
+    INVALID_KEY(HttpStatus.UNAUTHORIZED, 1105, "Invalid key"),
     USER_EXISTED(HttpStatus.BAD_REQUEST, 1106, "Already following user!"),
     INVALID_CONVERSATION_PARTICIPANTS(HttpStatus.BAD_REQUEST, 1107, "Conversation info not valid"),
     CONVERSATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, 1108, "Conversation between these participants already exists!"),
     INVALID_CONVERSATION_TYPE(HttpStatus.BAD_REQUEST, 1109, "Invalid conversation type for this operation"),
-    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1110, "Access denied to this conversation")
-
-    ;
+    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1110, "Access denied to this conversation");
 
 
-    private HttpStatus httpStatus;
-    private int code;
-    private String message;
+    private final HttpStatus httpStatus;
+    private final int code;
+    private final String message;
 
     ErrorCode(HttpStatus httpStatus, int code, String message) {
         this.message = message;

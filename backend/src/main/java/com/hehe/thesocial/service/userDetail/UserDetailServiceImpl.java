@@ -1,5 +1,6 @@
 package com.hehe.thesocial.service.userDetail;
 
+import com.hehe.thesocial.dto.request.userDetail.UserDetailCreateRequest;
 import com.hehe.thesocial.dto.request.userDetail.UserDetailUpdateRequest;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
@@ -37,6 +38,40 @@ public class UserDetailServiceImpl implements UserDetailService {
     FileService fileService;
     FileRepository fileRepository;
     UserRepository userRepository;
+
+    @Transactional
+    public UserDetailResponse createUserDetail(UserDetailCreateRequest request) {
+        // Verify user exists
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Check if user detail already exists
+        if (userDetailRepository.findByUser(user).isPresent()) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        FileDocument avatar = null;
+        if (request.getAvatar() != null) {
+            FileResponse fileResponse = fileService.storeFile(request.getAvatar());
+            avatar = fileRepository.findById(fileResponse.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+        }
+
+        UserDetail userDetail = UserDetail.builder()
+                .user(user)
+                .avatar(avatar)
+                .displayName(request.getDisplayName())
+                .bio(request.getBio())
+                .shownName(request.getShownName())
+                .following(new HashSet<>())
+                .followingCount(0)
+                .follower(new HashSet<>())
+                .followerCount(0)
+                .build();
+
+        userDetail = userDetailRepository.save(userDetail);
+        return userDetailMapper.toUserDetailResponse(userDetail);
+    }
 
     @Override
     public UserDetailResponse getMyDetail() {
