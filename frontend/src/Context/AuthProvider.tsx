@@ -56,30 +56,24 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 
       // Check if we have a valid response with token
       if (!res || !res.result || !res.result.token) {
-        console.error("Invalid login response:", JSON.stringify(res, null, 2));
         throw new Error("Invalid response from server");
       }
 
       const token = res.result.token;
-      console.log(`Token received successfully: ` + token);
       setIsAuthenticated(true);
       setAuthToken(token);
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       setHasSession(true);
     } catch (error) {
-      console.error("Login request failed:", error);
-
       // Rethrow the error so it can be caught and displayed in the Login component
       throw error;
     }
   };
   const logout = async () => {
-    console.log("AuthProvider: Logging out user...");
     clearAuthToken();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setHasSession(false);
     setIsAuthenticated(false);
-    console.log("AuthProvider: User logged out successfully");
   };
 
   const value = useMemo(

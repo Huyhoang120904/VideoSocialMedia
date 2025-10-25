@@ -2,13 +2,10 @@ package com.hehe.thesocial.service.file;
 
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FileDocument;
-import com.hehe.thesocial.entity.User;
-import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.repository.FileRepository;
-import com.hehe.thesocial.repository.UserDetailRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,9 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -37,7 +32,6 @@ import java.util.UUID;
 public class FileServiceImpl implements FileService {
     FileMapper fileMapper;
     FileRepository fileRepository;
-    private final UserDetailRepository userDetailRepository;
 
     @NonFinal
     @Value("${file.upload-dir:uploads}")
@@ -53,12 +47,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse storeFile(MultipartFile multipartFile) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserDetail userDetail = userDetailRepository.findByUser(User.builder().id(userId).build())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        String uploader = userDetail.getId();
-
+        String uploader = SecurityContextHolder.getContext().getAuthentication().getName();
         if (multipartFile.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_FILE);
         }
@@ -84,13 +73,22 @@ public class FileServiceImpl implements FileService {
             // Determine resource type based on file extension
             String resourceType = determineResourceType(fileExtension);
 
+            // Create file URL
+            String fileUrl = "http://localhost:" + serverPort + contextPath + "/files/" + uploader + "/" + uniqueFilename;
+
             FileDocument fileDocument = FileDocument.builder()
-                    .fileName(uniqueFilename)
+                    .fileName(originalFilename)
                     .size(multipartFile.getSize())
+                    .url(fileUrl)
                     .format(fileExtension.substring(1)) // Remove the dot
                     .resourceType(resourceType)
                     .build();
 
+            // For images, you might want to get dimensions (optional)
+            if ("image".equals(resourceType)) {
+                // You can add image dimension detection here if needed
+                // For now, we'll leave height and width as null
+            }
 
             fileDocument = fileRepository.save(fileDocument);
             return fileMapper.toFileResponse(fileDocument);

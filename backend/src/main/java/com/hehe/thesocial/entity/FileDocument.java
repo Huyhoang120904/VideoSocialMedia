@@ -40,4 +40,13 @@ public class FileDocument extends BaseDocument {
 
     @Field("resource_type")
     String resourceType;
+
+    @Field("width")
+    int width;
+
+    @Field("height")
+    int height;
+
+    @Field("etag")
+    String etag;
 }

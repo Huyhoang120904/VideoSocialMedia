@@ -7,7 +7,6 @@ import "./global.css";
 import LoginScreen from "../Srceens/Login";
 import RegisterScreen from "../Srceens/Register";
 import ConversationScreen from "../Srceens/Conversation";
-import AIChatScreen from "../Srceens/AIChat";
 import ConversationOptionsScreen from "../Srceens/ConversationOptions";
 import ConversationMembersScreen from "../Srceens/ConversationMembers";
 import UserProfileScreen from "../Srceens/UserProfile";
@@ -18,8 +17,8 @@ import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
 import { ChatMessageProvider } from "../Context/ChatMessageProvider";
-import { SocketProvider } from "../Context/SocketProvider";
-import { NewestMessageProvider } from "../Context/NewestMessageProvider";
+// TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
+// import { SocketProvider } from "../Context/SocketProvider";
 
 export default function RootNavigation() {
   const Stack = createStackNavigator();
@@ -29,7 +28,6 @@ export default function RootNavigation() {
       <Stack.Screen name="MainTabs" component={HomeBottomTabNavigation} />
       <Stack.Screen name="TopVideo" component={TopVideoScreen} />
       <Stack.Screen name="Conversation" component={ConversationScreen} />
-      <Stack.Screen name="AIChat" component={AIChatScreen} />
       <Stack.Screen
         name="ConversationOptions"
         component={ConversationOptionsScreen}
@@ -61,17 +59,16 @@ export default function RootNavigation() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <SocketProvider>
+        {/* TEMPORARILY COMMENTED OUT - SocketProvider causing WebSocket timeout errors */}
+        {/* <SocketProvider> */}
           <ConversationProvider>
             <ChatMessageProvider>
-              <NewestMessageProvider>
-                <NavigationContainer>
-                  <Switcher />
-                </NavigationContainer>
-              </NewestMessageProvider>
+              <NavigationContainer>
+                <Switcher />
+              </NavigationContainer>
             </ChatMessageProvider>
           </ConversationProvider>
-        </SocketProvider>
+        {/* </SocketProvider> */}
       </AuthProvider>
     </SafeAreaProvider>
   );

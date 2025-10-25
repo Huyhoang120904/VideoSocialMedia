@@ -31,8 +31,15 @@ const videoSlice = createSlice({
         video.id === id ? { ...video, ...updates } : video
       );
     },
+    addVideo(state, action) {
+      // Thêm video mới vào đầu danh sách
+      state.videos = [action.payload, ...state.videos];
+    },
+    clearVideos(state) {
+      state.videos = [];
+    },
   },
 });
 
-export const { setVideos, updateVideo } = videoSlice.actions;
+export const { setVideos, updateVideo, addVideo, clearVideos } = videoSlice.actions;
 export default videoSlice.reducer;
