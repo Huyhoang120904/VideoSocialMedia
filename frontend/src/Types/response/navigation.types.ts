@@ -20,6 +20,7 @@ export type AuthedStackParamList = {
     avatar?: any;
     receiverId?: string;
   };
+  AIChat: undefined;
   ConversationOptions: {
     conversationId: string;
     conversationName?: string;

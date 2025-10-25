@@ -2,16 +2,21 @@ package com.hehe.thesocial.service.aiChat;
 
 import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
+import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.exception.AppException;
+import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
 import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
+import com.hehe.thesocial.service.conversation.ConversationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,23 +31,24 @@ public class AiChatService {
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
     MongoChatMemory mongoChatMemory;
+    ConversationService conversationService;
 
 
     @Transactional
     public ChatMessageResponse aiChatRequest(DirectChatMessageRequest request) {
         UserDetail aiUserDetail = getOrCreateAiUser();
-        request.setReceiverId(aiUserDetail.getId());
+        UserDetail currentUser = getCurrentUser();
 
-        // Save user's message and get conversation ID
-        ChatMessageResponse userMessage = chatMessageServiceImpl.createDirectChatMessage(request);
-        String conversationId = userMessage.getConversationId();
+        // Find or create conversation
+        String conversationId = chatMessageServiceImpl.findOrCreateConversation(currentUser, aiUserDetail);
 
+        // Set up chat memory advisor for AI response
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(mongoChatMemory)
                 .conversationId(conversationId)
                 .build();
 
-        // Get AI response with conversation context
-        // IMPORTANT: Use CHAT_MEMORY_CONVERSATION_ID_KEY constant
+        // Get AI response and save it via MessageChatMemoryAdvisor
+        // The MessageChatMemoryAdvisor will automatically save both user message and AI response
         String aiResponse = chatClient
                 .prompt()
                 .user(request.getMessage())
@@ -50,10 +56,25 @@ public class AiChatService {
                 .call()
                 .content();
 
-        // Send AI response back
-        return chatMessageServiceImpl.sendMessageToCurrentUser(
-                aiUserDetail.getUser().getId(),
-                aiResponse);
+        // Get the last saved AI message (already saved by MessageChatMemoryAdvisor) and broadcast it
+        return chatMessageServiceImpl.getAndBroadcastLastMessage(conversationId, aiUserDetail.getId());
+    }
+
+    public ConversationResponse getAiConversation() {
+        UserDetail aiUserDetail = getOrCreateAiUser();
+        UserDetail currentUser = getCurrentUser();
+
+        // Find or create conversation with AI
+        String conversationId = chatMessageServiceImpl.findOrCreateConversation(currentUser, aiUserDetail);
+
+        // Get the conversation details using ConversationService
+        return conversationService.getConversationById(conversationId);
+    }
+
+    private UserDetail getCurrentUser() {
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userDetailRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
     private UserDetail getOrCreateAiUser() {

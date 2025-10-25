@@ -7,6 +7,7 @@ import "./global.css";
 import LoginScreen from "../Srceens/Login";
 import RegisterScreen from "../Srceens/Register";
 import ConversationScreen from "../Srceens/Conversation";
+import AIChatScreen from "../Srceens/AIChat";
 import ConversationOptionsScreen from "../Srceens/ConversationOptions";
 import ConversationMembersScreen from "../Srceens/ConversationMembers";
 import UserProfileScreen from "../Srceens/UserProfile";
@@ -18,6 +19,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
 import { ChatMessageProvider } from "../Context/ChatMessageProvider";
 import { SocketProvider } from "../Context/SocketProvider";
+import { NewestMessageProvider } from "../Context/NewestMessageProvider";
 
 export default function RootNavigation() {
   const Stack = createStackNavigator();
@@ -27,6 +29,7 @@ export default function RootNavigation() {
       <Stack.Screen name="MainTabs" component={HomeBottomTabNavigation} />
       <Stack.Screen name="TopVideo" component={TopVideoScreen} />
       <Stack.Screen name="Conversation" component={ConversationScreen} />
+      <Stack.Screen name="AIChat" component={AIChatScreen} />
       <Stack.Screen
         name="ConversationOptions"
         component={ConversationOptionsScreen}
@@ -61,9 +64,11 @@ export default function RootNavigation() {
         <SocketProvider>
           <ConversationProvider>
             <ChatMessageProvider>
-              <NavigationContainer>
-                <Switcher />
-              </NavigationContainer>
+              <NewestMessageProvider>
+                <NavigationContainer>
+                  <Switcher />
+                </NavigationContainer>
+              </NewestMessageProvider>
             </ChatMessageProvider>
           </ConversationProvider>
         </SocketProvider>

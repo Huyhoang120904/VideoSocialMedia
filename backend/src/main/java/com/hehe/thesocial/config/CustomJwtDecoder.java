@@ -18,7 +18,6 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Arrays;
 import java.util.Objects;
 
 
@@ -47,12 +46,12 @@ public class CustomJwtDecoder implements JwtDecoder {
             }
 
 
-        } catch (JwtException e){
-            log.error(Arrays.toString(e.getStackTrace()));
+        } catch (JwtException e) {
+            throw e;
         }
 
         if (Objects.isNull(decoder)) {
-            SecretKeySpec secretKeySpec = new SecretKeySpec(JWT_SECRET.getBytes(),"HS512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(JWT_SECRET.getBytes(), "HS512");
             decoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
                     .macAlgorithm(MacAlgorithm.HS512)
                     .build();

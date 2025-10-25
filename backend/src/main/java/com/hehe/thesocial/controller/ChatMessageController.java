@@ -5,6 +5,7 @@ import com.hehe.thesocial.dto.request.chat.ChatMessageUpdateRequest;
 import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
+import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.service.aiChat.AiChatService;
 import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +31,7 @@ public class ChatMessageController {
     @GetMapping("/conversation/{conversationId}")
     public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getAllChatMessagesByConversation(
             @PathVariable String conversationId,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<ChatMessageResponse> messages = chatMessageService.getAllChatMessageByConversationId(conversationId, pageable);
 
@@ -76,6 +78,15 @@ public class ChatMessageController {
                         .build());
     }
 
+    @GetMapping("/ai/conversation")
+    public ResponseEntity<ApiResponse<ConversationResponse>> getAiConversation() {
+        ConversationResponse conversation = aiChatService.getAiConversation();
+
+        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
+                .result(conversation)
+                .build());
+    }
+
     @PutMapping("/{messageId}")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> updateMessage(
             @PathVariable String messageId,
@@ -94,6 +105,25 @@ public class ChatMessageController {
 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .message("Message deleted successfully")
+                .build());
+    }
+
+    @PostMapping("/{messageId}/read")
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> markMessageAsRead(@PathVariable String messageId) {
+        ChatMessageResponse message = chatMessageService.markMessageAsRead(messageId);
+
+        return ResponseEntity.ok(ApiResponse.<ChatMessageResponse>builder()
+                .result(message)
+                .message("Message marked as read")
+                .build());
+    }
+
+    @PostMapping("/conversation/{conversationId}/read-all")
+    public ResponseEntity<ApiResponse<Void>> markConversationAsRead(@PathVariable String conversationId) {
+        chatMessageService.markConversationMessagesAsRead(conversationId);
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("All messages marked as read")
                 .build());
     }
 }

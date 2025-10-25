@@ -5,12 +5,14 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ConversationResponse } from "../../Types/response/ConversationResponse";
 import { useConversations } from "../../Context/ConversationProvider";
+import { useNewestMessage } from "../../Context/NewestMessageProvider";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
 import InboxHeader from "../../Components/Inbox/InboxHeader";
 import TabNavigation from "../../Components/Inbox/TabNavigation";
 import MessagesList from "../../Components/Inbox/MessagesList";
 import NotificationsList from "../../Components/Inbox/NotificationsList";
 import RequestsList from "../../Components/Inbox/RequestsList";
+import NewestMessageIndicator from "../../Components/Inbox/NewestMessageIndicator";
 import UserDetailService from "../../Services/UserDetailService";
 import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
@@ -22,6 +24,7 @@ export default function Inbox() {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const navigation = useNavigation<InboxNavigationProp>();
   const { conversations, isLoading, getMyConversations } = useConversations();
+  const { isConnected: newestMessageConnected } = useNewestMessage();
 
   useEffect(() => {
     // Load current user details to get their ID for avatar filtering
@@ -37,6 +40,14 @@ export default function Inbox() {
     };
     loadCurrentUser();
   }, []);
+
+  // Log newest message connection status
+  useEffect(() => {
+    console.log(
+      "📢 Newest message connection status:",
+      newestMessageConnected ? "Connected" : "Disconnected"
+    );
+  }, [newestMessageConnected]);
 
   const tabs = ["Messages", "Notifications", "Requests"];
 
@@ -88,12 +99,8 @@ export default function Inbox() {
   };
 
   const handleAiChat = () => {
-    // Navigate to Conversation screen with AI Assistant
-    navigation.navigate("Conversation", {
-      conversationId: "ai-assistant",
-      conversationName: "AI Assistant",
-      avatar: undefined, // AI will have a special avatar in ConversationHeader
-    });
+    // Navigate to dedicated AI Chat screen
+    navigation.navigate("AIChat");
   };
 
   const handleRefresh = async () => {
@@ -124,6 +131,9 @@ export default function Inbox() {
         onTabPress={setActiveTab}
         tabs={tabs}
       />
+
+      {/* Newest Message Indicator for testing */}
+      <NewestMessageIndicator />
 
       {activeTab === "Messages" && (
         <MessagesList

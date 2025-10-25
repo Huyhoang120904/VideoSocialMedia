@@ -168,6 +168,45 @@ const ChatMessageService = {
     console.log("AI chat message creation response:", response.data);
     return response.data;
   },
+
+  /**
+   * Mark a specific message as read
+   * POST /chat-messages/{messageId}/read
+   */
+  markMessageAsRead: async (
+    messageId: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    console.log("Marking message as read:", messageId);
+    const response = await api.post(`/chat-messages/${messageId}/read`);
+    console.log("Mark message as read response:", response.data);
+    return response.data;
+  },
+
+  /**
+   * Mark all messages in a conversation as read
+   * POST /chat-messages/conversation/{conversationId}/read-all
+   */
+  markConversationAsRead: async (
+    conversationId: string
+  ): Promise<ApiResponse<void>> => {
+    console.log("Marking conversation as read:", conversationId);
+    const response = await api.post(
+      `/chat-messages/conversation/${conversationId}/read-all`
+    );
+    console.log("Mark conversation as read response:", response.data);
+    return response.data;
+  },
+
+  /**
+   * Get AI conversation
+   * GET /chat-messages/ai/conversation
+   */
+  getAiConversation: async (): Promise<ApiResponse<any>> => {
+    console.log("Getting AI conversation");
+    const response = await api.get("/chat-messages/ai/conversation");
+    console.log("AI conversation response:", response.data);
+    return response.data;
+  },
 };
 
 export default ChatMessageService;
