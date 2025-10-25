@@ -8,7 +8,9 @@ import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.enums.ConversationType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
+import com.hehe.thesocial.mapper.chatMessage.ChatMessageMapper;
 import com.hehe.thesocial.mapper.conversation.ConversationMapper;
+import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
@@ -41,6 +43,8 @@ public class ConversationServiceImpl implements ConversationService {
     UserDetailRepository userDetailRepository;
     FileRepository fileRepository;
     UserRepository userRepository;
+    ChatMessageRepository chatMessageRepository;
+    ChatMessageMapper chatMessageMapper;
 
 
     @Transactional
@@ -75,7 +79,9 @@ public class ConversationServiceImpl implements ConversationService {
             return conversationRepository.findByParticipantHash(hash)
                     .map(existingConversation -> {
                         log.info("Found existing conversation with ID: {}", existingConversation.getConversationId());
-                        return conversationMapper.toConversationResponse(existingConversation);
+                        ConversationResponse response = conversationMapper.toConversationResponse(existingConversation);
+                        customizeConversationResponse(response, existingConversation, userDetail);
+                        return response;
                     })
                     .orElseGet(() -> {
                         // Create new conversation if not found
@@ -94,7 +100,9 @@ public class ConversationServiceImpl implements ConversationService {
         log.info("Created conversation with ID: {} and {} participants", conversation.getConversationId(),
                 participants.size());
 
-        return conversationMapper.toConversationResponse(conversation);
+        ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+        customizeConversationResponse(response, conversation, userDetail);
+        return response;
     }
 
     @Override
@@ -250,6 +258,47 @@ public class ConversationServiceImpl implements ConversationService {
                     });
         }
         // Group chat customization can be added here if needed
+
+        // Populate the latest chat message
+        populateLatestChatMessage(response, conversation.getConversationId(), currentUserDetail);
+        
+        // Calculate unread count for this conversation
+        calculateUnreadCount(response, conversation.getConversationId(), currentUserDetail);
+    }
+
+    private void populateLatestChatMessage(ConversationResponse response, String conversationId,
+                                           UserDetail currentUserDetail) {
+        chatMessageRepository.findFirstByConversationIdOrderByCreatedAtDesc(conversationId)
+                .ifPresent(latestMessage -> {
+                    var messageResponse = chatMessageMapper.toChatMessageResponse(latestMessage);
+
+                    // Set sender avatar
+                    userDetailRepository.findById(latestMessage.getSenderId())
+                            .ifPresent(sender -> messageResponse.setAvatar(sender.getAvatar()));
+
+                    // Set sender as "me" or "other"
+                    messageResponse.setSender(
+                            latestMessage.getSenderId().equals(currentUserDetail.getId()) ? "me" : "other"
+                    );
+
+                    // Add read status information
+                    messageResponse.setReadParticipantsId(latestMessage.getReadParticipantsId());
+                    messageResponse.setIsReadByCurrentUser(latestMessage.getReadParticipantsId() != null && 
+                        latestMessage.getReadParticipantsId().contains(currentUserDetail.getId()));
+                    messageResponse.setReadCount(latestMessage.getReadParticipantsId() != null ? 
+                        latestMessage.getReadParticipantsId().size() : 0);
+
+                    response.setNewestChatMessage(messageResponse);
+                });
+    }
+
+    private void calculateUnreadCount(ConversationResponse response, String conversationId, UserDetail currentUserDetail) {
+        // Count unread messages (messages not sent by current user and not read by current user)
+        long unreadCount = chatMessageRepository.countByConversationIdAndSenderIdNotAndReadParticipantsIdNotContaining(
+                conversationId, currentUserDetail.getId(), currentUserDetail.getId());
+        
+        response.setUnreadCount((int) unreadCount);
+        response.setHasUnreadMessages(unreadCount > 0);
     }
 
     private void updateConversationFields(Conversation conversation, ConversationRequest request) {
@@ -315,7 +364,14 @@ public class ConversationServiceImpl implements ConversationService {
         log.info("Created conversation with ID: {} and {} participants", conversation.getConversationId(),
                 participants.size());
 
-        return conversationMapper.toConversationResponse(conversation);
+        UserDetail currentUserDetail = participants.stream()
+                .filter(p -> p.getId().equals(currentUserId))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+        customizeConversationResponse(response, conversation, currentUserDetail);
+        return response;
     }
 
     private String participantHash(String participant1, String participant2) {

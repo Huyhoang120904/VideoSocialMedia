@@ -1,5 +1,6 @@
 import FileResponse from "./FileResponse";
 import { UserDetailResponse } from "./UserDetailResponse";
+import { ChatMessageResponse } from "./ChatMessageResponse";
 
 export interface ConversationResponse {
   conversationId: string;
@@ -10,5 +11,7 @@ export interface ConversationResponse {
   userDetails: UserDetailResponse[];
   participantIds: string[];
   creatorId: string;
-  newestChatMessage?: any;
+  newestChatMessage?: ChatMessageResponse;
+  unreadCount?: number;
+  hasUnreadMessages?: boolean;
 }

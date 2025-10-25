@@ -35,9 +35,11 @@ public class ChatMessage {
     String role;
     String content;
 
-
     @DBRef
     FileDocument fileDocument;
+
+    @DBRef
+    FileDocument avatar;
 
     @Field("read_participants_id")
     List<String> readParticipantsId;

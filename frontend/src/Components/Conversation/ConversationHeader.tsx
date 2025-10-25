@@ -26,10 +26,12 @@ export default function ConversationHeader({
 }: ConversationHeaderProps) {
   return (
     <Animated.View
-      className="px-4 py-3 bg-white/80 backdrop-blur-sm border-b border-gray-100 flex-row items-center"
+      className="px-4 py-3 bg-white/90 backdrop-blur-sm border-b border-gray-100 flex-row items-center"
       style={{
         opacity: fadeAnim,
         transform: [{ translateY: slideAnim }],
+        position: "relative",
+        zIndex: 10,
       }}
     >
       <TouchableOpacity

@@ -29,5 +29,7 @@ public class ConversationResponse {
     ConversationType conversationType;
 
     ChatMessageResponse newestChatMessage;
-
+    
+    Integer unreadCount;
+    Boolean hasUnreadMessages;
 }

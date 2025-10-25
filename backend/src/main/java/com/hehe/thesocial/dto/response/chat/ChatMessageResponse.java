@@ -1,12 +1,8 @@
 package com.hehe.thesocial.dto.response.chat;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.hehe.thesocial.entity.FileDocument;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
@@ -22,7 +18,12 @@ public class ChatMessageResponse {
     String id;
     String conversationId;
     String sender;
+    String senderId;
     String message;
-    LocalDateTime time;
+    LocalDateTime createdAt;
     Boolean edited;
+    FileDocument avatar;
+    java.util.List<String> readParticipantsId;
+    Boolean isReadByCurrentUser;
+    Integer readCount;
 }
