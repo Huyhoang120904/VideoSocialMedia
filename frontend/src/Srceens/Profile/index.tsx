@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -18,7 +19,7 @@ import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { useConversations } from "../../Context/ConversationProvider";
 import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 import { fetchVideosByUserId } from "../../Services/VideoService";
-import { Video } from "expo-av";
+import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
@@ -31,6 +32,7 @@ interface VideoItem {
   comments: number;
   shares: number;
   outstanding: number;
+  thumbnailUrl?: string;
 }
 
 export default function Profile() {
@@ -114,6 +116,7 @@ export default function Profile() {
     return num.toString();
   };
 
+
   if (loading) {
     return (
       <SafeAreaView
@@ -130,7 +133,10 @@ export default function Profile() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View className="flex-row justify-between items-center px-4 py-3">
           <Text className="text-gray-900 text-lg font-semibold">Profile</Text>
@@ -315,15 +321,23 @@ export default function Profile() {
                         navigation.navigate('Home', { videoId: item.id });
                       }}
                     >
-                      <Video
-                        source={{ uri: item.uri }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                        shouldPlay={false}
-                        isLooping={false}
-                        isMuted
-                        useNativeControls={false}
-                      />
+                      {item.thumbnailUrl ? (
+                        <Image
+                          source={{ uri: item.thumbnailUrl }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Video
+                          source={{ uri: item.uri }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode={ResizeMode.COVER}
+                          shouldPlay={false}
+                          isLooping={false}
+                          isMuted
+                          useNativeControls={false}
+                        />
+                      )}
                       
                       {/* Play Icon Overlay */}
                       <View className="absolute inset-0 justify-center items-center">
@@ -361,18 +375,6 @@ export default function Profile() {
             </View>
           </View>
         )}
-
-        {/* Refresh Button */}
-        <View className="px-4 pb-6">
-          <TouchableOpacity
-            className="bg-pink-600 rounded-lg py-3"
-            onPress={fetchUserDetails}
-          >
-            <Text className="text-white text-center font-semibold">
-              Refresh Profile
-            </Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

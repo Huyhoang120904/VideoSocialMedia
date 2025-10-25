@@ -13,7 +13,7 @@ public interface VideoService {
     
     Page<FileResponse> getVideosByUserId(String userId, Pageable pageable);
 
-    ApiResponse<FileResponse> uploadVideo(MultipartFile file, String title, String description);
+    ApiResponse<FileResponse> uploadVideo(MultipartFile file, String title, String description, MultipartFile thumbnail);
 
     ApiResponse<String> uploadToTikTok(MultipartFile file);
 

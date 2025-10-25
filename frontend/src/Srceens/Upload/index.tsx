@@ -18,7 +18,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
 import { uploadVideo } from '../../Services/VideoService';
 import { useDispatch } from 'react-redux';
-import { clearVideos } from '../../store/videoSlice';
+import { clearVideos, addVideo } from '../../store/videoSlice';
+import { getVideoUrl } from '../../Utils/ImageUrlHelper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ interface VideoData {
 
 export default function Upload() {
     const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
+    const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [isUploading, setIsUploading] = useState(false);
@@ -76,8 +78,30 @@ export default function Upload() {
         }
     };
 
+    const pickThumbnail = async () => {
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) return;
+
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [16, 9], // Video aspect ratio
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                setSelectedThumbnail(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.error('Error picking thumbnail:', error);
+            Alert.alert('Error', 'Failed to pick thumbnail. Please try again.');
+        }
+    };
+
     const removeVideo = () => {
         setSelectedVideo(null);
+        setSelectedThumbnail(null);
         setTitle('');
         setDescription('');
     };
@@ -107,16 +131,46 @@ export default function Upload() {
             if (description.trim()) {
                 formData.append('description', description.trim());
             }
+            if (selectedThumbnail) {
+                console.log('📸 Adding thumbnail to FormData:', selectedThumbnail);
+                formData.append('thumbnail', {
+                    uri: selectedThumbnail,
+                    type: 'image/jpeg',
+                    name: `thumbnail_${Date.now()}.jpg`,
+                } as any);
+            } else {
+                console.warn('⚠️ No thumbnail selected!');
+            }
+            
+            console.log('📤 Uploading with FormData:', {
+                hasFile: true,
+                title: title.trim(),
+                hasDescription: !!description.trim(),
+                hasThumbnail: !!selectedThumbnail
+            });
 
             const response = await uploadVideo(formData, (progressEvent: any) => {
-                const progress = Math.round(
-                    (progressEvent.loaded * 100) / (progressEvent.total || 1)
-                );
+                const total = progressEvent.total || progressEvent.loaded || 1;
+                const progress = Math.min(100, Math.round((progressEvent.loaded * 100) / total));
                 setUploadProgress(progress);
             });
 
-            // Clear videos cache để force reload khi quay về Home
-            dispatch(clearVideos());
+            // Add new video to store immediately
+            if (response.code === 1000 && response.result) {
+                const newVideo = {
+                    id: response.result.id,
+                    uri: getVideoUrl(response.result.url || response.result.secureUrl || ''),
+                    title: response.result.title || response.result.fileName || 'Untitled Video',
+                    description: response.result.description || '',
+                    likes: 0,
+                    comments: 0,
+                    shares: 0,
+                    outstanding: 0,
+                    thumbnailUrl: response.result.thumbnailUrl
+                };
+                dispatch(addVideo(newVideo));
+                console.log('New video added to store:', newVideo);
+            }
 
             Alert.alert('Success', 'Video uploaded successfully!', [
                 {
@@ -193,6 +247,32 @@ export default function Upload() {
                         textAlignVertical="top"
                     />
                     <Text style={styles.charCount}>{description.length}/500</Text>
+                </View>
+
+                {/* Thumbnail Selection */}
+                <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Thumbnail (Optional)</Text>
+                    <View style={styles.thumbnailContainer}>
+                        {selectedThumbnail ? (
+                            <View style={styles.thumbnailPreview}>
+                                <Image source={{ uri: selectedThumbnail }} style={styles.thumbnailImage} />
+                                <TouchableOpacity 
+                                    style={styles.removeThumbnailButton}
+                                    onPress={() => setSelectedThumbnail(null)}
+                                >
+                                    <Ionicons name="close-circle" size={24} color="#ff4444" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity 
+                                style={styles.thumbnailButton}
+                                onPress={pickThumbnail}
+                            >
+                                <Ionicons name="image-outline" size={32} color="#666" />
+                                <Text style={styles.thumbnailButtonText}>Select Thumbnail</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 <TouchableOpacity
@@ -450,6 +530,42 @@ const styles = StyleSheet.create({
     uploadingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    thumbnailContainer: {
+        marginTop: 8,
+    },
+    thumbnailButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 12,
+        paddingVertical: 20,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderStyle: 'dashed',
+    },
+    thumbnailButtonText: {
+        color: '#999',
+        fontSize: 14,
+        marginTop: 8,
+        fontFamily: 'TikTokSans-Regular',
+    },
+    thumbnailPreview: {
+        position: 'relative',
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    thumbnailImage: {
+        width: '100%',
+        height: 120,
+        borderRadius: 12,
+    },
+    removeThumbnailButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 12,
     },
     progressBarContainer: {
         marginTop: 16,

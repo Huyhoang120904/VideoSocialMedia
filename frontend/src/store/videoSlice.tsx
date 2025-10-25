@@ -4,10 +4,12 @@ export interface Video {
   id: string;
   uri: string;
   title: string;
+  description?: string;
   likes: number;
   comments: number;
   shares: number;
   outstanding: number;
+  thumbnailUrl?: string;
 }
 
 interface VideoState {

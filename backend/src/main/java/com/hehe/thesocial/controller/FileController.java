@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -64,26 +65,81 @@ public class FileController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{uploader}/{filename:.+}")
-    public ResponseEntity<Resource> serveFile(@PathVariable String uploader, @PathVariable String filename) {
+    @GetMapping("/thumbnailImage/{uploader}/{filename:.+}")
+    public ResponseEntity<Resource> serveThumbnail(@PathVariable String uploader, @PathVariable String filename) {
         try {
-            Path filePath = Paths.get(uploadDir).resolve(uploader).resolve(filename);
+            log.info("Serving thumbnail request - uploader: {}, filename: {}", uploader, filename);
+            
+            Path filePath = Paths.get(uploadDir, "thumbnailImage", uploader, filename);
+            log.info("Attempting to serve thumbnail: {}", filePath.toAbsolutePath());
+            
+            // Check if file exists
+            if (!Files.exists(filePath)) {
+                log.warn("Thumbnail does not exist: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+            
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() && resource.isReadable()) {
+                log.info("Thumbnail found and readable: {}", filePath);
                 // Determine content type
                 String contentType = determineContentType(filename);
+                log.info("Content type determined as: {}", contentType);
 
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
                         .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                         .body(resource);
             } else {
-                log.warn("File not found: {}", filePath);
+                log.warn("Thumbnail not found or not readable: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            log.error("Error serving thumbnail: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Unexpected error serving thumbnail: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/{uploader}/{filename:.+}")
+    public ResponseEntity<Resource> serveFile(@PathVariable String uploader, @PathVariable String filename) {
+        try {
+            log.info("Serving file request - uploader: {}, filename: {}", uploader, filename);
+            log.info("Upload directory: {}", uploadDir);
+            
+            Path filePath = Paths.get(uploadDir).resolve(uploader).resolve(filename);
+            log.info("Attempting to serve file: {}", filePath.toAbsolutePath());
+            
+            // Check if file exists
+            if (!Files.exists(filePath)) {
+                log.warn("File does not exist: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+            
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                log.info("File found and readable: {}", filePath);
+                // Determine content type
+                String contentType = determineContentType(filename);
+                log.info("Content type determined as: {}", contentType);
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                        .body(resource);
+            } else {
+                log.warn("File not found or not readable: {}", filePath);
                 return ResponseEntity.notFound().build();
             }
         } catch (MalformedURLException e) {
             log.error("Error serving file: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Unexpected error serving file: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
