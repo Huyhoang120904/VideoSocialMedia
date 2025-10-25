@@ -5,6 +5,7 @@ import com.hehe.thesocial.dto.request.chat.ChatMessageUpdateRequest;
 import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
+import com.hehe.thesocial.service.aiChat.AiChatService;
 import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatMessageController {
     ChatMessageServiceImpl chatMessageService;
+    AiChatService aiChatService;
 
     @GetMapping("/conversation/{conversationId}")
     public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getAllChatMessagesByConversation(
@@ -35,6 +37,8 @@ public class ChatMessageController {
                 .result(messages)
                 .build());
     }
+
+
 
     @PostMapping()
     public ResponseEntity<ApiResponse<ChatMessageResponse>> createDirectMessage(
@@ -53,6 +57,18 @@ public class ChatMessageController {
             @RequestBody @Valid GroupChatMessageRequest request) {
 
         ChatMessageResponse message = chatMessageService.createGroupChatMessage(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<ChatMessageResponse>builder()
+                        .result(message)
+                        .build());
+    }
+
+    @PostMapping("/ai")
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> createAiChatMessage(
+            @RequestBody @Valid DirectChatMessageRequest request) {
+
+        ChatMessageResponse message = aiChatService.aiChatRequest(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<ChatMessageResponse>builder()

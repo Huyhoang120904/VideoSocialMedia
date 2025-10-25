@@ -9,22 +9,20 @@ import org.mapstruct.Named;
 
 @Mapper(componentModel = "spring")
 public interface FileMapper {
-
-    @Mapping(source = "resourceType", target = "fileType", qualifiedByName = "mapResourceTypeToFileType")
+    @Mapping(target = "fileType", source = "resourceType", qualifiedByName = "stringToFileType")
     FileResponse toFileResponse(FileDocument fileDocument);
 
-    @Named("mapResourceTypeToFileType")
-    default FileType mapResourceTypeToFileType(String resourceType) {
-        if (resourceType == null) {
-            return null;
+    @Named("stringToFileType")
+    default FileType stringToFileType(String resourceType) {
+        if (resourceType == null) return null;
+        
+        switch (resourceType.toLowerCase()) {
+            case "video":
+                return FileType.VIDEO;
+            case "image":
+                return FileType.IMAGE;
+            default:
+                return null;
         }
-
-        return switch (resourceType.toLowerCase()) {
-            case "video" -> FileType.VIDEO;
-            case "image" -> FileType.IMAGE;
-            case "thumbnail" -> FileType.THUMBNAIL;
-            case "profile_image", "pfp" -> FileType.PROFILE_IMAGE;
-            default -> null;
-        };
     }
 }

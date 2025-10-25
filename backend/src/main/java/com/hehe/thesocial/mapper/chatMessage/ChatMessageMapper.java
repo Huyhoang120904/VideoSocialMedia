@@ -5,8 +5,9 @@ import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface ChatMessageMapper {
 
     ChatMessage toChatMessage(DirectChatMessageRequest request);

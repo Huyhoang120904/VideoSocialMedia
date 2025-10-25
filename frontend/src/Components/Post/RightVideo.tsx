@@ -12,7 +12,7 @@ import VideoCommentModal from "../Comment/VideoCommentModal";
 import img from "../../../assets/avatar.png";
 import styles from "./styles";
 
-const ICON_SIZE = 32;
+const ICON_SIZE = 28; // Slightly smaller for better proportion
 
 interface RightVideoProps {
   id: string;
@@ -26,14 +26,16 @@ interface IconWithCountProps {
   icon: React.ReactNode;
   count: number;
   onPress?: () => void;
+  containerStyle?: any; // Add custom style prop
 }
 
 const IconWithCount: React.FC<IconWithCountProps> = ({
   icon,
   count,
   onPress,
+  containerStyle,
 }) => (
-  <Pressable style={styles.iconContainer} onPress={onPress}>
+  <Pressable style={containerStyle || styles.iconContainer} onPress={onPress}>
     {icon}
     <Text style={styles.iconText}>{count}</Text>
   </Pressable>
@@ -68,14 +70,7 @@ export default function RightVideo({
       timeAgo: "5 phút trước",
       likes: 8,
     },
-    {
-      id: "3",
-      username: "viewer456",
-      avatar: "https://picsum.photos/100/100?random=3",
-      comment: "Quá tuyệt vời! 🔥🔥🔥",
-      timeAgo: "10 phút trước",
-      likes: 25,
-    },
+
   ]);
 
   const handleLike = () => {
@@ -130,6 +125,7 @@ export default function RightVideo({
         }
         count={likes}
         onPress={handleLike}
+        containerStyle={styles.likeIconContainer}
       />
 
       {/* Comment */}
@@ -165,6 +161,11 @@ export default function RightVideo({
         }
         count={shares}
       />
+
+      {/* Music Icon - positioned at far right */}
+      <View style={styles.iconContainer}>
+        <Image source={img} style={styles.musicIcon} />
+      </View>
 
       {/* Comment Modal */}
       <VideoCommentModal

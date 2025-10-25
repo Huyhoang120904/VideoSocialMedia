@@ -28,7 +28,8 @@ public class SecuritySetting {
     static String[] PUBLIC_GET_ENDPOINTS = {
             "/v3/api-docs/**",
             "/swagger-ui/**", "/swagger-ui.html",
-            "/swagger-resources/**", "/webjars/**"
+            "/swagger-resources/**", "/webjars/**", "/files/**",
+            "/videos/**"
     };
 
     static String[] PUBLIC_POST_ENDPOINTS = {
@@ -48,7 +49,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**","/ws-native/**"
+            "/auth/**","/ws-native/**",
     };
 
 

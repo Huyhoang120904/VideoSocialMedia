@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, useRef } from "react";
 import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
 import { useAuth } from "./AuthProvider";
-import { useSocket } from "./SocketProvider";
+// TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
+// import { useSocket } from "./SocketProvider";
 import ChatMessageService from "../Services/ChatMessageService";
 import UserDetailService from "../Services/UserDetailService";
 
@@ -34,7 +35,11 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
   const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false);
   const [userDetailId, setUserDetailId] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
-  const { isConnected, subscribe, unsubscribe } = useSocket();
+  // TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
+  // const { isConnected, subscribe, unsubscribe } = useSocket();
+  const isConnected = false; // Mock value
+  const subscribe = () => {}; // Mock function
+  const unsubscribe = () => {}; // Mock function
   const currentConversationId = useRef<string | null>(null);
   const subscribedConversations = useRef<Set<string>>(new Set());
 
@@ -59,59 +64,61 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
     setMessages((prev) => prev.filter(msg => msg.id !== messageId));
   }
 
-  // WebSocket subscription for real-time messages
+  // TEMPORARILY COMMENTED OUT - WebSocket subscription for real-time messages
   function subscribeToConversationMessages(conversationId: string) {
-    if (!isConnected) {
-      console.log("❌ WebSocket not connected, cannot subscribe to messages");
-      return;
-    }
+    console.log("🔌 WebSocket subscription disabled temporarily");
+    // if (!isConnected) {
+    //   console.log("❌ WebSocket not connected, cannot subscribe to messages");
+    //   return;
+    // }
 
-    if (!userDetailId) {
-      console.log("❌ UserDetailId not available, cannot subscribe to messages");
-      return;
-    }
+    // if (!userDetailId) {
+    //   console.log("❌ UserDetailId not available, cannot subscribe to messages");
+    //   return;
+    // }
     
-    // Subscribe to the user-specific chat endpoint (only once)
-    if (!subscribedConversations.current.has('chat') && userDetailId) {
-      const chatDestination = `/user/${userDetailId}/queue/chat`;
-      console.log("🔔 Subscribing to real-time messages:", chatDestination);
+    // // Subscribe to the user-specific chat endpoint (only once)
+    // if (!subscribedConversations.current.has('chat') && userDetailId) {
+    //   const chatDestination = `/user/${userDetailId}/queue/chat`;
+    //   console.log("🔔 Subscribing to real-time messages:", chatDestination);
       
-      subscribe(chatDestination, (message: any) => {
-        // Check if it's a ChatMessageResponse for the current conversation
-        if (message && typeof message === 'object' && message.conversationId) {
-          // Only add message if it's for the current conversation
-          if (currentConversationId.current === message.conversationId) {
-            console.log("📨 New message received:", message.message);
-            addMessage(message);
-          }
-        }
-      });
+    //   subscribe(chatDestination, (message: any) => {
+    //     // Check if it's a ChatMessageResponse for the current conversation
+    //     if (message && typeof message === 'object' && message.conversationId) {
+    //       // Only add message if it's for the current conversation
+    //       if (currentConversationId.current === message.conversationId) {
+    //         console.log("📨 New message received:", message.message);
+    //         addMessage(message);
+    //       }
+    //     }
+    //   });
       
-      subscribedConversations.current.add('chat');
-      console.log("✅ Real-time messaging enabled");
-    }
+    //   subscribedConversations.current.add('chat');
+    //   console.log("✅ Real-time messaging enabled");
+    // }
 
     // Track this conversation as active
     subscribedConversations.current.add(conversationId);
   }
 
-  // Unsubscribe from conversation messages
+  // TEMPORARILY COMMENTED OUT - Unsubscribe from conversation messages
   function unsubscribeFromConversationMessages(conversationId: string) {
-    if (!subscribedConversations.current.has(conversationId)) {
-      return;
-    }
+    console.log("🔌 WebSocket unsubscription disabled temporarily");
+    // if (!subscribedConversations.current.has(conversationId)) {
+    //   return;
+    // }
     
     // Remove this conversation from tracking
     subscribedConversations.current.delete(conversationId);
     
-    // Only unsubscribe from chat endpoint if no conversations are active
-    const activeConversations = Array.from(subscribedConversations.current).filter(id => id !== 'chat');
-    if (activeConversations.length === 0 && userDetailId) {
-      const chatDestination = `/user/${userDetailId}/queue/chat`;
-      unsubscribe(chatDestination);
-      subscribedConversations.current.delete('chat');
-      console.log("🔇 Real-time messaging disabled");
-    }
+    // // Only unsubscribe from chat endpoint if no conversations are active
+    // const activeConversations = Array.from(subscribedConversations.current).filter(id => id !== 'chat');
+    // if (activeConversations.length === 0 && userDetailId) {
+    //   const chatDestination = `/user/${userDetailId}/queue/chat`;
+    //   unsubscribe(chatDestination);
+    //   subscribedConversations.current.delete('chat');
+    //   console.log("🔇 Real-time messaging disabled");
+    // }
   }
 
   async function getChatMessagesByConversationId(conversationId: string) {

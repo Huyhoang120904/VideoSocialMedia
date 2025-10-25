@@ -1,9 +1,7 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.41.84:8081/api/v1";
-
-console.log("Using API URL:", API_URL);
+  process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.1.230:8082/api/v1";
 
 let accessToken: string | null = null;
 let isRefreshing = false;
@@ -33,7 +31,9 @@ export const getAuthToken: () => string | null = () => {
   return accessToken;
 };
 
-export const clearAuthToken: () => void = () => {};
+export const clearAuthToken: () => void = () => {
+  accessToken = null;
+};
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -51,20 +51,6 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<any>) => {
-    // Log any response error in detail
-    console.log("API Error:", {
-      message: error.message,
-      status: error.response?.status,
-      url: error.config?.url,
-      method: error.config?.method,
-    });
-
-    if (error.response) {
-      console.log(
-        "Full response error data:",
-        JSON.stringify(error.response.data, null, 2)
-      );
-    }
 
     const original = error.config as any;
     const status = error.response?.status;

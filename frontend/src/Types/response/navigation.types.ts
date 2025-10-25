@@ -31,9 +31,15 @@ export type AuthedStackParamList = {
     conversationName?: string;
   };
   UserProfile: {
-    userId: string;
+    userDetailId: string;
     userDisplayName?: string;
   };
+  FollowersList: {
+    userDetailId: string;
+    initialTab?: "followers" | "following";
+    userName?: string;
+  };
+  EditProfile: undefined;
   Call: {
     callType: "video" | "voice";
     userId: string;

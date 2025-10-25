@@ -21,6 +21,7 @@ import { ConversationResponse } from "../../Types/response/ConversationResponse"
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import ConversationService from "../../Services/ConversationService";
 import UserDetailService from "../../Services/UserDetailService";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 type ConversationOptionsNavigationProp = StackNavigationProp<
   AuthedStackParamList,
@@ -51,13 +52,55 @@ const ConversationOptionsScreen = () => {
   const params = route.params as ConversationOptionsRouteParams;
   const conversationId = params.conversationId;
   const conversationName = params.conversationName || "Conversation";
-  const avatar = params.avatar || require("../../../assets/avatar.png");
   const conversationType = params.conversationType || "DIRECT";
 
   // Get current conversation data
   const currentConversation = conversations.find(
     (conv) => conv.conversationId === conversationId
   );
+
+  // Compute avatar from conversation data
+  const getConversationAvatar = () => {
+    // If params has avatar as { uri: ... }, use it
+    if (
+      params.avatar &&
+      typeof params.avatar === "object" &&
+      "uri" in params.avatar
+    ) {
+      return params.avatar.uri;
+    }
+
+    // Otherwise, try to get from conversation data
+    if (currentConversation) {
+      // For direct conversations, get the other user's avatar
+      if (
+        conversationType === "DIRECT" &&
+        currentConversation.userDetails &&
+        currentUserDetail
+      ) {
+        const otherUser = Array.from(currentConversation.userDetails).find(
+          (user) => user.id !== currentUserDetail.id
+        );
+        if (otherUser?.avatar?.fileName && otherUser.id) {
+          return getAvatarUrl(otherUser.id, otherUser.avatar.fileName);
+        }
+      }
+      // For group conversations, use conversation avatar if available
+      else if (
+        currentConversation.avatar?.fileName &&
+        currentConversation.conversationId
+      ) {
+        return getAvatarUrl(
+          currentConversation.conversationId,
+          currentConversation.avatar.fileName
+        );
+      }
+    }
+
+    return null;
+  };
+
+  const avatarUrl = getConversationAvatar();
 
   useEffect(() => {
     const loadCurrentUser = async () => {
@@ -87,7 +130,7 @@ const ConversationOptionsScreen = () => {
       );
       if (otherUser) {
         navigation.navigate("UserProfile", {
-          userId: otherUser.id,
+          userDetailId: otherUser.id,
           userDisplayName: otherUser.displayName,
         });
       }
@@ -245,7 +288,14 @@ const ConversationOptionsScreen = () => {
                 "Success",
                 `The ${conversationTypeText} has been deleted`
               );
-              navigation.goBack();
+              // Navigate back 2 steps: ConversationOptions -> Conversation -> Inbox
+              // This ensures we don't go back to a deleted conversation
+              navigation.navigate("MainTabs", {
+                screen: "Inbox",
+                params: {
+                  screen: "InboxHome",
+                },
+              } as any);
             } catch (error) {
               console.error("Error deleting conversation:", error);
               Alert.alert(
@@ -267,11 +317,15 @@ const ConversationOptionsScreen = () => {
         (user) => user.id !== currentUserDetail?.id
       );
       if (otherUser) {
+        const avatarUrl =
+          otherUser.avatar?.fileName && otherUser.id
+            ? getAvatarUrl(otherUser.id, otherUser.avatar.fileName)
+            : undefined;
         navigation.navigate("Call", {
           callType: "video",
           userId: otherUser.id,
           userName: otherUser.displayName || "Unknown User",
-          userAvatar: otherUser.avatar?.url,
+          userAvatar: avatarUrl || undefined,
         });
       }
     } else {
@@ -288,11 +342,15 @@ const ConversationOptionsScreen = () => {
         (user) => user.id !== currentUserDetail?.id
       );
       if (otherUser) {
+        const avatarUrl =
+          otherUser.avatar?.fileName && otherUser.id
+            ? getAvatarUrl(otherUser.id, otherUser.avatar.fileName)
+            : undefined;
         navigation.navigate("Call", {
           callType: "voice",
           userId: otherUser.id,
           userName: otherUser.displayName || "Unknown User",
-          userAvatar: otherUser.avatar?.url,
+          userAvatar: avatarUrl || undefined,
         });
       }
     } else {
@@ -412,11 +470,21 @@ const ConversationOptionsScreen = () => {
         {/* Conversation Info */}
         <View className="px-6 py-6 border-b border-gray-200">
           <View className="flex-row items-center">
-            <Image
-              source={avatar}
-              className="w-16 h-16 rounded-full mr-4"
-              resizeMode="cover"
-            />
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                className="w-16 h-16 rounded-full mr-4"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="w-16 h-16 bg-gray-300 rounded-full mr-4 items-center justify-center">
+                <Text className="text-gray-600 text-xl font-semibold">
+                  {(currentConversation?.conversationName || conversationName)
+                    ?.charAt(0)
+                    .toUpperCase() || "?"}
+                </Text>
+              </View>
+            )}
             <View className="flex-1">
               <Text className="text-xl font-bold text-gray-900">
                 {currentConversation?.conversationName || conversationName}

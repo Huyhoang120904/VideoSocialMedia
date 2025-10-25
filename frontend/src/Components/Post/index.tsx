@@ -46,7 +46,7 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
   const bottomTabHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   // Use full screen height for video, accounting for status bar and navigation
-  const videoHeight = itemHeight || windowHeight;
+  const videoHeight = itemHeight || windowHeight + insets.top; // Add status bar height for TikTok-like appearance
 
   const player = useVideoPlayer(video.uri, (p) => {
     p.loop = true;
@@ -173,7 +173,6 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
           nativeControls={false}
           fullscreenOptions={{ enable: false }}
           allowsPictureInPicture={false}
-          allowsExternalPlayback={false}
         />
 
         {/* Center tap area for play/pause */}
@@ -273,10 +272,10 @@ const localStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 40,
+    height: 30, // Reduced height
     justifyContent: "flex-end",
-    paddingBottom: 1,
-    zIndex: 30, // Highest for progress bar
+    paddingBottom: 2,
+    zIndex: 50, // Higher than all other elements
   },
   progressBarTouchable: {
     height: 30,
@@ -285,14 +284,14 @@ const localStyles = StyleSheet.create({
     paddingHorizontal: 0, // Remove any padding that affects width
   },
   progressBarBackground: {
-    height: 2.5,
-    backgroundColor: "rgba(255,255,255,0.3)",
+    height: 3, // Slightly thicker for better visibility
+    backgroundColor: "rgba(255,255,255,0.4)", // More visible background
     width: "100%",
     position: "relative",
   },
   progressBarFill: {
-    height: 2.5,
-    backgroundColor: "#fff",
+    height: 3, // Match background height
+    backgroundColor: "#fff", // Pure white for better visibility
   },
   timeIndicatorContainer: {
     flexDirection: "row",

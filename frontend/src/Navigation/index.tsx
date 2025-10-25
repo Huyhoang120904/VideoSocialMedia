@@ -10,12 +10,15 @@ import ConversationScreen from "../Srceens/Conversation";
 import ConversationOptionsScreen from "../Srceens/ConversationOptions";
 import ConversationMembersScreen from "../Srceens/ConversationMembers";
 import UserProfileScreen from "../Srceens/UserProfile";
+import FollowersListScreen from "../Srceens/FollowersList";
+import EditProfileScreen from "../Srceens/EditProfile";
 import CallScreen from "../Srceens/Call";
 import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
 import { ChatMessageProvider } from "../Context/ChatMessageProvider";
-import { SocketProvider } from "../Context/SocketProvider";
+// TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
+// import { SocketProvider } from "../Context/SocketProvider";
 
 export default function RootNavigation() {
   const Stack = createStackNavigator();
@@ -34,6 +37,8 @@ export default function RootNavigation() {
         component={ConversationMembersScreen}
       />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="FollowersList" component={FollowersListScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Call" component={CallScreen} />
     </Stack.Navigator>
   );
@@ -54,7 +59,8 @@ export default function RootNavigation() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <SocketProvider>
+        {/* TEMPORARILY COMMENTED OUT - SocketProvider causing WebSocket timeout errors */}
+        {/* <SocketProvider> */}
           <ConversationProvider>
             <ChatMessageProvider>
               <NavigationContainer>
@@ -62,7 +68,7 @@ export default function RootNavigation() {
               </NavigationContainer>
             </ChatMessageProvider>
           </ConversationProvider>
-        </SocketProvider>
+        {/* </SocketProvider> */}
       </AuthProvider>
     </SafeAreaProvider>
   );
