@@ -21,7 +21,8 @@ import {
 import { useConversations } from "../../Context/ConversationProvider";
 import { useChatMessages } from "../../Context/ChatMessageProvider";
 import { useAuth } from "../../Context/AuthProvider";
-import { useSocket } from "../../Context/SocketProvider";
+// TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
+// import { useSocket } from "../../Context/SocketProvider";
 import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
@@ -55,7 +56,11 @@ const ConversationScreen = () => {
   const [slideAnim] = useState(new Animated.Value(30));
 
   // Add WebSocket hooks
-  const { isConnected, subscribe, unsubscribe } = useSocket();
+  // TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
+  // const { isConnected, subscribe, unsubscribe } = useSocket();
+  const isConnected = false; // Mock value
+  const subscribe = () => {}; // Mock function
+  const unsubscribe = () => {}; // Mock function
 
   // Get params from navigation - safely handle them in case they're missing
   const params =
@@ -65,6 +70,8 @@ const ConversationScreen = () => {
       avatar?: any;
       receiverId?: string;
     }) || {};
+
+  const conversationName = params.conversationName || "Placeholder";
 
   const { conversations } = useConversations();
   const {
@@ -83,16 +90,6 @@ const ConversationScreen = () => {
     (conv) => conv.conversationId === params.conversationId
   );
   const conversationType = currentConversation?.conversationType || "DIRECT";
-
-  // Get conversation name from params or conversation data, fallback to newest message preview
-  const conversationName =
-    params.conversationName ||
-    currentConversation?.conversationName ||
-    (currentConversation?.newestChatMessage?.message
-      ? currentConversation.newestChatMessage.message.length > 30
-        ? currentConversation.newestChatMessage.message.substring(0, 30) + "..."
-        : currentConversation.newestChatMessage.message
-      : "Conversation");
 
   // Compute avatar from conversation data
   const getConversationAvatar = () => {
@@ -137,6 +134,11 @@ const ConversationScreen = () => {
 
   const avatarUrl = getConversationAvatar();
 
+  // Check if this is an AI conversation
+  const isAiConversation =
+    conversationName === "AI Assistant" ||
+    params.conversationId === "ai-assistant";
+
   // Animation on component mount
   useEffect(() => {
     Animated.parallel([
@@ -153,39 +155,50 @@ const ConversationScreen = () => {
     ]).start();
   }, []);
 
+  // TEMPORARILY COMMENTED OUT - WebSocket subscription for real-time messages
   useEffect(() => {
-    if (isConnected && params.conversationId) {
-      console.log(
-        "🔔 Setting up WebSocket subscription for conversation:",
-        params.conversationId
-      );
+    console.log("🔌 WebSocket subscription disabled temporarily");
+    // if (isConnected && params.conversationId) {
+    //   console.log(
+    //     "🔔 Setting up WebSocket subscription for conversation:",
+    //     params.conversationId
+    //   );
 
-      // Subscribe to user-specific chat queue
-      subscribe("/user/queue/chat", (receivedMessage: ChatMessageResponse) => {
-        console.log("📨 Received real-time chat message:", receivedMessage);
+    //   // Subscribe to user-specific chat queue
+    //   subscribe("/user/queue/chat", (receivedMessage: ChatMessageResponse) => {
+    //     console.log("📨 Received real-time chat message:", receivedMessage);
 
-        // Only add message if it belongs to current conversation
-        if (receivedMessage.conversationId === params.conversationId) {
-          console.log(
-            "✅ Message belongs to current conversation, adding to messages"
-          );
-          addMessage(receivedMessage);
-        } else {
-          console.log("ℹ️ Message belongs to different conversation, ignoring");
-        }
-      });
+    //     // Skip WebSocket messages for AI conversations to prevent duplication
+    //     // AI conversations are handled entirely by API responses
+    //     if (isAiConversation) {
+    //       console.log(
+    //         "🤖 AI conversation detected, skipping WebSocket message to prevent duplication"
+    //       );
+    //       return;
+    //     }
 
-      // Cleanup subscription when component unmounts or conversation changes
-      return () => {
-        console.log(
-          "🔕 Unsubscribing from WebSocket for conversation:",
-          params.conversationId
-        );
-        unsubscribe("/user/queue/chat");
-      };
-    } else {
-      console.log("⚠️ WebSocket not connected or no conversation ID");
-    }
+    //     // Only add message if it belongs to current conversation
+    //     if (receivedMessage.conversationId === params.conversationId) {
+    //       console.log(
+    //         "✅ Message belongs to current conversation, adding to messages"
+    //       );
+    //       addMessage(receivedMessage);
+    //     } else {
+    //       console.log("ℹ️ Message belongs to different conversation, ignoring");
+    //     }
+    //   });
+
+    //   // Cleanup subscription when component unmounts or conversation changes
+    //   return () => {
+    //     console.log(
+    //       "🔕 Unsubscribing from WebSocket for conversation:",
+    //       params.conversationId
+    //     );
+    //     unsubscribe("/user/queue/chat");
+    //   };
+    // } else {
+    //   console.log("⚠️ WebSocket not connected or no conversation ID");
+    // }
   }, [isConnected, params.conversationId, subscribe, unsubscribe, addMessage]);
 
   useEffect(() => {
@@ -197,36 +210,30 @@ const ConversationScreen = () => {
     );
 
     if (params.conversationId) {
-      // Check if the conversation exists in the user's conversation list
-      const conversationExists = conversations.some(
-        (conv) => conv.conversationId === params.conversationId
-      );
-
-      if (conversationExists) {
+      // Skip conversation check for AI conversations
+      if (isAiConversation) {
+        // AI conversations don't need to be in the conversation list
+        console.log("AI conversation detected, fetching AI messages");
         getChatMessagesByConversationId(params.conversationId);
-
-        // Mark all messages in conversation as read when entering
-        const markAsRead = async () => {
-          try {
-            await ChatMessageService.markConversationAsRead(
-              params.conversationId
-            );
-            console.log("✅ Marked conversation as read");
-          } catch (error) {
-            console.error("Error marking conversation as read:", error);
-          }
-        };
-        markAsRead();
       } else {
-        console.error(
-          "Conversation not found in user's conversation list:",
-          params.conversationId
+        // Check if the conversation exists in the user's conversation list
+        const conversationExists = conversations.some(
+          (conv) => conv.conversationId === params.conversationId
         );
-        Alert.alert(
-          "Error",
-          "Conversation not found or you don't have access to it."
-        );
-        navigation.goBack();
+
+        if (conversationExists) {
+          getChatMessagesByConversationId(params.conversationId);
+        } else {
+          console.error(
+            "Conversation not found in user's conversation list:",
+            params.conversationId
+          );
+          Alert.alert(
+            "Error",
+            "Conversation not found or you don't have access to it."
+          );
+          navigation.goBack();
+        }
       }
     } else {
       console.error("No conversationId provided to Conversation screen");
@@ -267,7 +274,14 @@ const ConversationScreen = () => {
     try {
       let response;
 
-      if (params.conversationId) {
+      // Check if this is an AI conversation
+      if (isAiConversation) {
+        // Send message to AI
+        response = await ChatMessageService.createAiChatMessage(
+          message.trim(),
+          "AI"
+        );
+      } else if (params.conversationId) {
         console.log("ConversationId:", params.conversationId);
         conversations.forEach((conv) => {
           console.log(
@@ -552,7 +566,7 @@ const ConversationScreen = () => {
       <View className="absolute top-20 right-8 w-16 h-16 bg-pink-100 rounded-full opacity-20" />
       <View className="absolute bottom-32 left-6 w-12 h-12 bg-blue-100 rounded-full opacity-15" />
 
-      {/* Header - Fixed at top */}
+      {/* Header */}
       <SafeAreaView edges={["top"]}>
         <ConversationHeader
           conversationName={conversationName}
@@ -562,14 +576,14 @@ const ConversationScreen = () => {
           onBackPress={handleBackPress}
           onSearchPress={handleSearchPress}
           onOptionsPress={handleOptionsPress}
-          isAiConversation={false}
+          isAiConversation={isAiConversation}
         />
       </SafeAreaView>
 
-      {/* KeyboardAvoidingView wrapping only messages and input */}
+      {/* KeyboardAvoidingView wrapping both messages and input */}
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {/* Messages List */}
