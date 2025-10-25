@@ -11,4 +11,7 @@ export default interface FileResponse {
   secureUrl: string | null;
   format: string;
   resourceType: string;
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
 }

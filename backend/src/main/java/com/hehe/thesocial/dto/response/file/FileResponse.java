@@ -22,4 +22,7 @@ public class FileResponse {
     int width;
     int height;
     String etag;
+    String title;
+    String description;
+    String thumbnailUrl;
 }
