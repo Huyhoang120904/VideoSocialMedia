@@ -14,12 +14,16 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { UserResponse } from "../../Types/response/UserResponse";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
-import { InboxStackParamList } from "../../Types/response/navigation.types";
+import {
+  InboxStackParamList,
+  AuthedStackParamList,
+} from "../../Types/response/navigation.types";
 import UserDetailService from "../../Services/UserDetailService";
 import ConversationService from "../../Services/ConversationService";
 import { ConversationRequest } from "../../Types/request/ConversationRequest";
 import { useConversations } from "../../Context/ConversationProvider";
 import UserItem, { UserItemData } from "../../Components/UserItem";
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
 
 // Using UserItemData from the UserItem component
 type UserSearchResult = UserItemData;
@@ -54,21 +58,29 @@ const UserSearchScreen = () => {
   const mapUserDetailToSearchResult = (
     userDetail: UserDetailResponse
   ): UserSearchResult => {
+    const avatarUrl =
+      userDetail.avatar?.fileName && userDetail.id
+        ? getAvatarUrl(userDetail.id, userDetail.avatar.fileName)
+        : null;
+
     return {
       id: userDetail.id,
       displayName:
         userDetail.displayName || userDetail.shownName || "Unknown User",
       username: userDetail.shownName || userDetail.displayName,
       bio: userDetail.bio,
-      avatar: userDetail.avatar ? { url: userDetail.avatar.url } : undefined,
+      avatar: avatarUrl ? { url: avatarUrl } : undefined,
       isOnline: Math.random() > 0.5, // Placeholder for online status - replace with real data if available
     };
   };
 
   useEffect(() => {
     // Load current user and recent users on component mount
-    loadCurrentUser();
-    loadRecentUsers();
+    const initializeData = async () => {
+      await loadCurrentUser();
+      await loadRecentUsers();
+    };
+    initializeData();
   }, []);
 
   const loadCurrentUser = async () => {
@@ -102,9 +114,12 @@ const UserSearchScreen = () => {
         "asc"
       );
       if (response.result && response.result.content) {
-        const mappedUsers = response.result.content.map(
-          mapUserDetailToSearchResult
-        );
+        const mappedUsers = response.result.content
+          .map(mapUserDetailToSearchResult)
+          .filter(
+            (user: UserSearchResult) =>
+              currentUserDetail && user.id !== currentUserDetail.id
+          ); // Filter out current user
         setRecentUsers(mappedUsers.slice(0, 3)); // Show only first 3 as recent
       }
     } catch (err) {
@@ -122,9 +137,11 @@ const UserSearchScreen = () => {
       const displayNameResults =
         await UserDetailService.searchByDisplayName(query);
 
-      const mappedResults = (displayNameResults.result || []).map(
-        mapUserDetailToSearchResult
-      );
+      const mappedResults = (displayNameResults.result || [])
+        .map(mapUserDetailToSearchResult)
+        .filter(
+          (user) => currentUserDetail && user.id !== currentUserDetail.id
+        ); // Filter out current user
       setSearchResults(mappedResults);
     } catch (err) {
       console.error("Error searching users:", err);
@@ -132,6 +149,18 @@ const UserSearchScreen = () => {
       setSearchResults([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleViewProfile = (user: UserSearchResult) => {
+    // Navigate to user profile using parent navigator
+    const parentNavigation =
+      navigation.getParent<StackNavigationProp<AuthedStackParamList>>();
+    if (parentNavigation) {
+      parentNavigation.navigate("UserProfile", {
+        userDetailId: user.id,
+        userDisplayName: user.displayName,
+      });
     }
   };
 
@@ -182,11 +211,15 @@ const UserSearchScreen = () => {
           // Navigate to the newly created conversation using parent navigator
           const parentNavigation = navigation.getParent();
           if (parentNavigation) {
+            // Construct avatar URL properly
+            // user.avatar can be either { url: string } or FileResponse with fileName
+            const avatarUrl = user.avatar?.url || null;
+
             parentNavigation.navigate("Conversation", {
               conversationId: response.result.conversationId,
               conversationName:
                 response.result.conversationName || user.displayName,
-              avatar: user.avatar,
+              avatar: avatarUrl ? { uri: avatarUrl } : undefined,
             });
           }
         } else {
@@ -204,7 +237,12 @@ const UserSearchScreen = () => {
   };
 
   const renderUserItem = ({ item }: { item: UserSearchResult }) => (
-    <UserItem user={item} onPress={handleUserSelect} />
+    <UserItem
+      user={item}
+      onPress={handleUserSelect}
+      onViewProfile={handleViewProfile}
+      showProfileButton={true}
+    />
   );
 
   const renderEmptyState = () => (

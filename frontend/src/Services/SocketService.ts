@@ -22,15 +22,13 @@ export class SocketService {
 
     // Check if token has changed (for reconnection scenarios)
     if (this.currentToken && this.currentToken !== token) {
-      console.log("SocketService: Token changed, reconnecting...");
       this.disconnect();
     }
 
     this.currentToken = token;
 
     // Get WebSocket URL
-    const baseUrl = process.env.EXPO_PUBLIC_WS_URL || "http://172.20.41.84:8081/ws-native";
-    console.log("SocketService: Using WebSocket URL:", baseUrl);
+    const baseUrl = process.env.EXPO_PUBLIC_WS_URL || "http://192.168.1.230:8082/ws-native";
 
     // Add auth token as query parameter
     const url = `${baseUrl}?token=${encodeURIComponent(token)}`;
@@ -47,16 +45,12 @@ export class SocketService {
         // Create STOMP client with SockJS
         this.stompClient = new Client({
           webSocketFactory: () => new SockJS(url) as any,
-          debug: (str) => {
-            // Only log important STOMP messages
-            if (str.includes('CONNECTED') || str.includes('ERROR')) {
-              console.log("STOMP:", str);
-            }
+          debug: () => {
+            // Disable STOMP debug logs
           },
           onConnect: () => {
             clearTimeout(timeout);
             this.isConnecting = false;
-            console.log("🔌 WebSocket connected");
 
             // Process any queued messages
             this.processMessageQueue();
@@ -66,17 +60,14 @@ export class SocketService {
           onStompError: (frame) => {
             clearTimeout(timeout);
             this.isConnecting = false;
-            console.error("❌ STOMP error:", frame);
             reject(new Error("STOMP connection failed"));
           },
           onWebSocketError: (error) => {
             clearTimeout(timeout);
             this.isConnecting = false;
-            console.error("❌ WebSocket error:", error);
             reject(new Error("WebSocket connection failed"));
           },
           onWebSocketClose: () => {
-            console.log("🔌 WebSocket disconnected");
             this.isConnecting = false;
           }
         });
@@ -105,7 +96,6 @@ export class SocketService {
     this.stompClient = null;
     this.isConnecting = false;
     this.currentToken = null;
-    console.log("SocketService: Disconnected");
   }
 
   isConnected(): boolean {
@@ -120,7 +110,6 @@ export class SocketService {
 
   subscribe(destination: string, callback: (message: any) => void): void {
     if (!this.isConnected()) {
-      console.error("❌ Cannot subscribe: WebSocket not connected");
       return;
     }
     
@@ -130,13 +119,11 @@ export class SocketService {
         const data = JSON.parse(message.body);
         callback(data);
       } catch (error) {
-        console.error("❌ Error parsing message:", error);
         callback(message.body);
       }
     });
 
     this.subscriptions.set(destination, subscription);
-    console.log("🔔 Subscribed to:", destination);
   }
 
   unsubscribe(destination: string): void {
@@ -144,7 +131,6 @@ export class SocketService {
       const subscription = this.subscriptions.get(destination);
       subscription?.unsubscribe();
       this.subscriptions.delete(destination);
-      console.log("🔇 Unsubscribed from:", destination);
     }
   }
 
@@ -160,7 +146,7 @@ export class SocketService {
         body: JSON.stringify(body)
       });
     } catch (error) {
-      console.error("❌ Error sending message:", error);
+      // Silent error handling
     }
   }
 

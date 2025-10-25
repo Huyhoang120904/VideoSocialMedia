@@ -2,10 +2,10 @@ import { api, getAuthToken } from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
 import Page from "../Types/response/Page";
 import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
-import { 
-  DirectChatMessageRequest, 
+import {
+  DirectChatMessageRequest,
   GroupChatMessageRequest,
-  ChatMessageUpdateRequest 
+  ChatMessageUpdateRequest,
 } from "../Types/request";
 
 interface PaginationParams {
@@ -22,8 +22,6 @@ const ChatMessageService = {
     conversationId: string,
     params?: PaginationParams
   ): Promise<ApiResponse<Page<ChatMessageResponse>>> => {
-
-    
     const queryParams = new URLSearchParams();
     if (params?.page !== undefined)
       queryParams.append("page", params.page.toString());
@@ -33,7 +31,7 @@ const ChatMessageService = {
     const url = `/chat-messages/conversation/${conversationId}${
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
-    
+
     console.log("Fetching messages for conversation:", conversationId);
     console.log("Jwt token:", getAuthToken());
     const response = await api.get(url);
@@ -47,7 +45,10 @@ const ChatMessageService = {
   createDirectChatMessage: async (
     request: DirectChatMessageRequest
   ): Promise<ApiResponse<ChatMessageResponse>> => {
-    console.log("Creating direct chat message:", JSON.stringify(request, null, 2));
+    console.log(
+      "Creating direct chat message:",
+      JSON.stringify(request, null, 2)
+    );
     const response = await api.post("/chat-messages", request);
     console.log("Direct chat message creation response:", response.data);
     return response.data;
@@ -60,7 +61,10 @@ const ChatMessageService = {
   createGroupChatMessage: async (
     request: GroupChatMessageRequest
   ): Promise<ApiResponse<ChatMessageResponse>> => {
-    console.log("Creating group chat message:", JSON.stringify(request, null, 2));
+    console.log(
+      "Creating group chat message:",
+      JSON.stringify(request, null, 2)
+    );
     const response = await api.post("/chat-messages/group", request);
     console.log("Group chat message creation response:", response.data);
     return response.data;
@@ -84,9 +88,7 @@ const ChatMessageService = {
    * Delete a chat message
    * DELETE /chat-messages/{messageId}
    */
-  deleteChatMessage: async (
-    messageId: string
-  ): Promise<ApiResponse<void>> => {
+  deleteChatMessage: async (messageId: string): Promise<ApiResponse<void>> => {
     console.log("Deleting chat message:", messageId);
     const response = await api.delete(`/chat-messages/${messageId}`);
     console.log("Chat message deletion response:", response.data);
@@ -121,8 +123,8 @@ const ChatMessageService = {
     participantIds: string[]
   ): Promise<ApiResponse<ChatMessageResponse>> => {
     // Find the other participant (not the current user)
-    const receiverId = participantIds.find(id => id !== currentUserId);
-    
+    const receiverId = participantIds.find((id) => id !== currentUserId);
+
     if (!receiverId) {
       throw new Error("No other participant found in conversation");
     }
@@ -146,6 +148,25 @@ const ChatMessageService = {
     };
 
     return ChatMessageService.createGroupChatMessage(request);
+  },
+
+  /**
+   * Send a message to AI chat
+   * POST /chat-messages/ai
+   */
+  createAiChatMessage: async (
+    message: string,
+    receiverId: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const request: DirectChatMessageRequest = {
+      message,
+      receiverId,
+    };
+
+    console.log("Creating AI chat message:", JSON.stringify(request, null, 2));
+    const response = await api.post("/chat-messages/ai", request);
+    console.log("AI chat message creation response:", response.data);
+    return response.data;
   },
 };
 

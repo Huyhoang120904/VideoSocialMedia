@@ -30,4 +30,6 @@ public interface UserDetailRepository extends MongoRepository<UserDetail, String
             "{ '$unwind': { 'path': '$user', 'preserveNullAndEmptyArrays': true } }"
     })
     Optional<UserDetail> findByIdWithUser(String userDetailId);
+
+    User User(User user);
 }

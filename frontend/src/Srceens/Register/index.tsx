@@ -1,29 +1,25 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
-  TextInput,
-  TouchableOpacity,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Animated,
   Dimensions,
 } from "react-native";
+import { Text, TextInput, Button } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { UnauthedStackParamList } from "../../Types/response/navigation.types";
-import { Ionicons } from "@expo/vector-icons";
 
 type RegisterNavigationProp = StackNavigationProp<
   UnauthedStackParamList,
   "Register"
 >;
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const RegisterScreen = () => {
   const [username, setUsername] = useState("");
@@ -99,14 +95,14 @@ const RegisterScreen = () => {
     <View className="flex-1 bg-white">
       {/* Clean Background with subtle gradient */}
       <LinearGradient
-        colors={['#fafafa', '#ffffff', '#f8fafc']}
+        colors={["#fafafa", "#ffffff", "#f8fafc"]}
         className="absolute inset-0"
       />
-      
+
       {/* Minimal decorative elements */}
       <View className="absolute top-20 right-8 w-16 h-16 bg-pink-100 rounded-full opacity-30" />
       <View className="absolute bottom-32 left-6 w-12 h-12 bg-blue-100 rounded-full opacity-20" />
-      
+
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -117,11 +113,11 @@ const RegisterScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View 
+          <Animated.View
             className="flex-1 justify-center px-6 py-8"
             style={{
               opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
+              transform: [{ translateY: slideAnim }],
             }}
           >
             <View className="w-full max-w-sm mx-auto space-y-10">
@@ -134,7 +130,7 @@ const RegisterScreen = () => {
                   </Text>
                   <View className="w-12 h-0.5 bg-gray-300" />
                 </View>
-                
+
                 <View className="space-y-2">
                   <Text className="text-gray-900 text-2xl font-light text-center">
                     Create account
@@ -150,132 +146,172 @@ const RegisterScreen = () => {
                 {/* Username Input */}
                 <View className="mb-6">
                   <TextInput
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 text-gray-900 text-base"
-                    placeholder="Username"
-                    placeholderTextColor="#9ca3af"
+                    mode="outlined"
+                    label="Username"
+                    placeholder="Enter your username"
                     value={username}
                     onChangeText={setUsername}
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="username"
+                    style={{ backgroundColor: "#f9fafb" }}
+                    outlineStyle={{ borderRadius: 16, borderColor: "#e5e7eb" }}
+                    theme={{
+                      colors: {
+                        primary: "#000000",
+                        onSurfaceVariant: "#9ca3af",
+                      },
+                    }}
                   />
                 </View>
 
                 {/* Email Input */}
                 <View className="mb-6">
                   <TextInput
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 text-gray-900 text-base"
-                    placeholder="Email"
-                    placeholderTextColor="#9ca3af"
+                    mode="outlined"
+                    label="Email"
+                    placeholder="Enter your email"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="email"
                     keyboardType="email-address"
+                    style={{ backgroundColor: "#f9fafb" }}
+                    outlineStyle={{ borderRadius: 16, borderColor: "#e5e7eb" }}
+                    theme={{
+                      colors: {
+                        primary: "#000000",
+                        onSurfaceVariant: "#9ca3af",
+                      },
+                    }}
                   />
                 </View>
 
                 {/* Password Input */}
                 <View className="mb-6">
-                  <View className="relative">
-                    <TextInput
-                      className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 text-gray-900 text-base pr-12"
-                      placeholder="Password"
-                      placeholderTextColor="#9ca3af"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete="password-new"
-                    />
-                    <TouchableOpacity
-                      className="absolute right-4 top-1/2 -translate-y-1/2"
-                      onPress={() => setShowPassword(!showPassword)}
-                    >
-                      <Ionicons 
-                        name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                        size={20} 
-                        color="#9ca3af" 
+                  <TextInput
+                    mode="outlined"
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="password-new"
+                    right={
+                      <TextInput.Icon
+                        icon={showPassword ? "eye-off" : "eye"}
+                        onPress={() => setShowPassword(!showPassword)}
                       />
-                    </TouchableOpacity>
-                  </View>
+                    }
+                    style={{ backgroundColor: "#f9fafb" }}
+                    outlineStyle={{ borderRadius: 16, borderColor: "#e5e7eb" }}
+                    theme={{
+                      colors: {
+                        primary: "#000000",
+                        onSurfaceVariant: "#9ca3af",
+                      },
+                    }}
+                  />
                 </View>
 
                 {/* Confirm Password Input */}
                 <View className="mb-6">
-                  <View className="relative">
-                    <TextInput
-                      className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 text-gray-900 text-base pr-12"
-                      placeholder="Confirm password"
-                      placeholderTextColor="#9ca3af"
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                      secureTextEntry={!showConfirmPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete="password-new"
-                    />
-                    <TouchableOpacity
-                      className="absolute right-4 top-1/2 -translate-y-1/2"
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      <Ionicons 
-                        name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
-                        size={20} 
-                        color="#9ca3af" 
+                  <TextInput
+                    mode="outlined"
+                    label="Confirm Password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="password-new"
+                    right={
+                      <TextInput.Icon
+                        icon={showConfirmPassword ? "eye-off" : "eye"}
+                        onPress={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                       />
-                    </TouchableOpacity>
-                  </View>
+                    }
+                    style={{ backgroundColor: "#f9fafb" }}
+                    outlineStyle={{ borderRadius: 16, borderColor: "#e5e7eb" }}
+                    theme={{
+                      colors: {
+                        primary: "#000000",
+                        onSurfaceVariant: "#9ca3af",
+                      },
+                    }}
+                  />
                 </View>
 
                 {/* Clean Register Button */}
-                <TouchableOpacity
-                  className={`w-full bg-black rounded-2xl py-4 items-center justify-center ${
-                    isLoading ? "opacity-70" : ""
-                  }`}
+                <Button
+                  mode="contained"
                   onPress={handleRegister}
                   disabled={isLoading}
-                  activeOpacity={0.8}
+                  loading={isLoading}
+                  style={{
+                    borderRadius: 16,
+                    paddingVertical: 8,
+                    backgroundColor: "#000000",
+                  }}
+                  labelStyle={{
+                    fontSize: 16,
+                    fontWeight: "500",
+                  }}
+                  contentStyle={{ paddingVertical: 4 }}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <Text className="text-white font-medium text-base">
-                      Sign up
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  Sign up
+                </Button>
 
                 {/* Minimal Divider */}
                 <View className="flex-row items-center gap-4 my-4">
                   <View className="flex-1 h-px bg-gray-200" />
-                  <Text className="text-gray-400 text-xs">or</Text>
+                  <Text variant="labelSmall" style={{ color: "#9ca3af" }}>
+                    or
+                  </Text>
                   <View className="flex-1 h-px bg-gray-200" />
                 </View>
 
                 {/* Clean Google Button */}
-                <TouchableOpacity
-                  className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex-row items-center justify-center gap-3"
+                <Button
+                  mode="outlined"
                   onPress={handleGoogleSignup}
-                  activeOpacity={0.8}
+                  icon="google"
+                  style={{
+                    borderRadius: 16,
+                    borderColor: "#e5e7eb",
+                    paddingVertical: 8,
+                  }}
+                  labelStyle={{
+                    fontSize: 16,
+                    fontWeight: "500",
+                  }}
+                  contentStyle={{ paddingVertical: 4 }}
+                  textColor="#374151"
                 >
-                  <Ionicons name="logo-google" size={20} color="#4285f4" />
-                  <Text className="text-gray-700 font-medium text-base">
-                    Continue with Google
-                  </Text>
-                </TouchableOpacity>
+                  Continue with Google
+                </Button>
               </View>
 
               {/* Clean Sign In Link */}
               <View className="items-center space-y-6">
-                <TouchableOpacity onPress={handleSignInNav}>
-                  <Text className="text-gray-500 text-sm">
+                <Button
+                  mode="text"
+                  onPress={handleSignInNav}
+                  labelStyle={{ fontSize: 14 }}
+                >
+                  <Text variant="bodyMedium" style={{ color: "#6b7280" }}>
                     Already have an account?{" "}
-                    <Text className="text-black font-medium">Sign in</Text>
+                    <Text style={{ color: "#000000", fontWeight: "500" }}>
+                      Sign in
+                    </Text>
                   </Text>
-                </TouchableOpacity>
+                </Button>
               </View>
             </View>
           </Animated.View>

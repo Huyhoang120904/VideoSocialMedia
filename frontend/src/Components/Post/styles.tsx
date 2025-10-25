@@ -10,18 +10,18 @@ const getResponsiveFontSize = (baseFontSize: number) => {
 
     // Phương pháp 2: Dựa trên PixelRatio và density
     const pixelRatio = PixelRatio.get();
-    const densityScale = pixelRatio > 2 ? 1.1 : pixelRatio > 1.5 ? 1.05 : 1.0;
+    const densityScale = pixelRatio > 2 ? 1.0 : pixelRatio > 1.5 ? 0.95 : 0.9;
 
     // Phương pháp 3: Dựa trên aspect ratio
     const aspectRatio = windowHeight / windowWidth;
-    const aspectScale = aspectRatio > 2 ? 0.9 : aspectRatio > 1.8 ? 1.0 : 1.1;
+    const aspectScale = aspectRatio > 2 ? 0.95 : aspectRatio > 1.8 ? 1.0 : 1.05;
 
     // Kết hợp cả ba phương pháp
     let finalScale = widthScale * densityScale * aspectScale;
 
     // Giới hạn scale 
-    const minScale = 0.8;
-    const maxScale = 1.5;
+    const minScale = 0.85;
+    const maxScale = 1.2;
     finalScale = Math.max(minScale, Math.min(maxScale, finalScale));
 
     const finalSize = Math.round(baseFontSize * finalScale);
@@ -29,18 +29,46 @@ const getResponsiveFontSize = (baseFontSize: number) => {
     return finalSize;
 };
 
+// Function để tính responsive bottom position dựa trên navigation bar height
+const getResponsiveBottomPosition = () => {
+    // Tính toán dựa trên chiều cao màn hình thực tế
+    const screenHeight = windowHeight;
+    
+    // Chiều cao navigation bar thực tế (thường là 60-80px)
+    let navHeight = 60; // Base height
+    
+    // Điều chỉnh dựa trên kích thước màn hình
+    if (screenHeight < 700) {
+        navHeight = 50; // Màn hình nhỏ
+    } else if (screenHeight > 900) {
+        navHeight = 70; // Màn hình lớn - giảm từ 80 xuống 70
+    } else {
+        navHeight = 60; // Màn hình trung bình
+    }
+    
+    // Khoảng cách nhỏ phía trên navigation bar
+    const spacing = 4; // 4px spacing
+    
+    // Tính bottom position
+    const bottomPosition = navHeight + spacing;
+    
+    console.log(`Screen height: ${screenHeight}, Nav height: ${navHeight}, Bottom position: ${bottomPosition}`);
+    
+    return bottomPosition;
+};
+
 // 🎯 GIẢI PHÁP TỰ ĐỘNG: Không cần truyền giá trị!
 const AutoFontSizes = {
-    // Tự động tính toán dựa trên màn hình (giảm một chút)
-    get small() { return getResponsiveFontSize(10); },    // 12 -> 10
-    get medium() { return getResponsiveFontSize(12); },   // 14 -> 12
-    get large() { return getResponsiveFontSize(14); },    // 16 -> 14
-    get xlarge() { return getResponsiveFontSize(16); },   // 18 -> 16
+    // Tự động tính toán dựa trên màn hình - optimized for TikTok-like UI
+    get small() { return getResponsiveFontSize(9); },     // Icon text
+    get medium() { return getResponsiveFontSize(11); },   // Description
+    get large() { return getResponsiveFontSize(13); },    // Title
+    get xlarge() { return getResponsiveFontSize(15); },   // Large title
 
-    // Hoặc tự động theo category (giảm một chút)
-    get titleTop() { return getResponsiveFontSize(12); }, // 14 -> 12
-    get iconText() { return getResponsiveFontSize(7); },  // 8 -> 7
-    get description() { return getResponsiveFontSize(10); }, // 12 -> 10
+    // Specific use cases
+    get titleTop() { return getResponsiveFontSize(10); },
+    get iconText() { return getResponsiveFontSize(8); },
+    get description() { return getResponsiveFontSize(10); },
 }; const styles = StyleSheet.create({
     container: {
         width: '100%',
@@ -73,99 +101,100 @@ const AutoFontSizes = {
         alignItems: 'center',
         zIndex: 1,
     },
-    // playButton: {
-    //     backgroundColor: 'rgba(0,0,0,0.5)',
-    //     borderRadius: 50,
-    //     width: 60,
-    //     height: 60,
-    //     justifyContent: 'center',
-    //     alignItems: 'center',
-    //     marginLeft: 10,
-    // },
-    // RightVideo styles
     rightVideoContainer: {
         position: "absolute",
-        right: 10,
-        top: '50%',
-        transform: [{ translateY: -120 }], // Center vertically with offset
+        right: windowWidth > 400 ? 16 : 8, // Responsive right margin
+        bottom: getResponsiveBottomPosition(), // Dynamic bottom position - same as bottomVideoContainer
         alignItems: "center",
-        zIndex: 40, // Higher than video player controls
+        zIndex: 40,
+        justifyContent: "flex-end",
     },
     avatarContainer: {
         alignItems: "center",
-        marginBottom: 20,
+        marginBottom: 8, // 8px spacing between avatar and heart icon
     },
     avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 30,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2,
         borderColor: "#fff",
-        marginBottom: 5,
     },
     plusIcon: {
         position: "absolute",
-        top: 37,
         backgroundColor: "#fff",
-        borderRadius: 30,
+        borderRadius: 12,
+        bottom: -8,
+        alignSelf: "center",
     },
     iconContainer: {
         alignItems: "center",
-        marginBottom: 15,
+        marginBottom: 12, // Reduced spacing for tighter layout
+        minWidth: 40, // Ensure consistent width
+    },
+    likeIconContainer: {
+        alignItems: "center",
+        marginTop: 12, // Increased spacing to 12px from avatarContainer
+        marginBottom: 12, // Keep spacing to next icon
+        minWidth: 40, // Ensure consistent width
     },
     iconText: {
         color: "#fff",
-        fontSize: AutoFontSizes.small, // Tăng lên để dễ đọc hơn
+        fontSize: AutoFontSizes.small,
         fontFamily: "TikTokSans-Bold",
-        marginTop: 0,
-        fontWeight: "500",
+        marginTop: 2,
+        fontWeight: "600",
+        textAlign: "center",
+        minWidth: 20,
     },
 
-    // BottomVideo styles
+    // BottomVideo styles - TikTok-like positioning with responsive adjustments
     bottomVideoContainer: {
         position: "absolute",
-        left: 10,
-        right: 80, // Leave space for right side buttons
+        left: windowWidth > 400 ? 16 : 12, // Responsive left margin
+        right: 16, // Reduced right margin since music icon moved
+        bottom: getResponsiveBottomPosition(), // Dynamic bottom position based on navigation bar height
         flexDirection: "row",
         alignItems: "flex-end",
         zIndex: 10,
-        bottom: 0,
-       
     },
     contentLeft: {
         flex: 1,
-        marginRight: 10, // Thêm khoảng cách với music icon
+        marginRight: 8, // Reduced margin to bring avatar closer
     },
     title: {
         color: "#fff",
-        fontSize: AutoFontSizes.large, // Tăng lên lớn hơn nữa
-        marginBottom: 5,
+        fontSize: AutoFontSizes.large,
+        marginBottom: 4,
         fontFamily: "TikTokSans-Bold",
+        lineHeight: 20,
     },
     description: {
         color: "#fff",
-        fontSize: AutoFontSizes.medium, // Tăng lên cho dễ đọc
+        fontSize: AutoFontSizes.medium,
         fontFamily: "TikTokSans-Regular",
+        opacity: 0.9,
+        lineHeight: 16,
     },
     musicIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 30,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         borderWidth: 2,
         borderColor: "#fff",
-        marginRight: 0,
     },
 
     // Top video
     topVideoContainer: {
         position: "absolute",
-        top: 40,
+        top: 10, // Further reduced to make it even taller like TikTok
         left: 0,
         right: 0,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
         zIndex: 100,
-        height: 50,
+        height: 70, // Increased height for better TikTok-like appearance
     },
     titleTop: {
         color: "#aaa",

@@ -5,22 +5,24 @@ import { Animated } from "react-native";
 
 interface ConversationHeaderProps {
   conversationName: string;
-  avatar?: any;
+  avatarUrl?: string | null;
   fadeAnim: Animated.Value;
   slideAnim: Animated.Value;
   onBackPress: () => void;
   onSearchPress: () => void;
   onOptionsPress: () => void;
+  isAiConversation?: boolean;
 }
 
 export default function ConversationHeader({
   conversationName,
-  avatar,
+  avatarUrl,
   fadeAnim,
   slideAnim,
   onBackPress,
   onSearchPress,
   onOptionsPress,
+  isAiConversation = false,
 }: ConversationHeaderProps) {
   return (
     <Animated.View
@@ -39,10 +41,15 @@ export default function ConversationHeader({
       </TouchableOpacity>
 
       <View className="flex-row items-center flex-1 ml-2">
-        {avatar?.url ? (
+        {isAiConversation ? (
+          <View className="w-10 h-10 bg-indigo-100 rounded-full mr-3 items-center justify-center">
+            <Ionicons name="sparkles" size={20} color="#6366f1" />
+          </View>
+        ) : avatarUrl ? (
           <Image
-            source={{ uri: avatar.url }}
+            source={{ uri: avatarUrl }}
             className="w-10 h-10 rounded-full mr-3 border-2 border-gray-100"
+            style={{ resizeMode: "cover" }}
           />
         ) : (
           <View className="w-10 h-10 bg-gray-300 rounded-full mr-3 items-center justify-center">
@@ -58,7 +65,9 @@ export default function ConversationHeader({
           >
             {conversationName}
           </Text>
-          <Text className="text-gray-500 text-sm">Active now</Text>
+          <Text className="text-gray-500 text-sm">
+            {isAiConversation ? "Always active" : "Active now"}
+          </Text>
         </View>
       </View>
 

@@ -51,15 +51,24 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     const inputRef = React.useRef<TextInput>(null);
     const translateY = useRef(new Animated.Value(0)).current;
 
-    const panResponder = PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: () => false,
+    const headerPanResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
+            // Only respond to downward gestures
+            return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && gestureState.dy > 0;
+        },
+        onPanResponderGrant: () => {
+            // Reset any ongoing animations
+            translateY.setOffset(translateY._value);
+            translateY.setValue(0);
+        },
         onPanResponderMove: (evt, gestureState) => {
             if (gestureState.dy > 0) {
                 translateY.setValue(gestureState.dy);
             }
         },
         onPanResponderRelease: (evt, gestureState) => {
+            translateY.flattenOffset();
             if (gestureState.dy > 100) {
                 // Close modal if dragged down more than 100px
                 Animated.timing(translateY, {
@@ -83,95 +92,65 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     const emojis = ['😀', '😂', '🥰', '😍', '🤩', '😎', '🔥', '💯', '👏', '❤️',
         '💕', '😭', '😱', '🤔', '👍', '👎', '🙏', '💪', '✨', '🎉'];
 
-    // Sample TikTok-style comments
+    // Sample TikTok-style comments matching the image
     const defaultComments: Comment[] = [
         {
             id: '1',
-            username: 'Nguyễn Quang Huy',
+            username: 'Kitty.',
             avatar: 'https://picsum.photos/40/40?random=1',
-            comment: '127k luôn vạt đồ ăn và nước à shop',
-            timeAgo: '23 giờ',
-            likes: 0,
+            comment: '🌹',
+            timeAgo: '4 ngày',
+            likes: 2777,
             isLiked: false,
-            replies: []
+            replies: [{ id: 'r1', username: 'User', avatar: '', comment: 'Reply', timeAgo: '1 ngày', likes: 0, isLiked: false }]
         },
         {
             id: '2',
-            username: 'Nguyễn Huy Hoàng',
+            username: '@ yêu đi rồi Khóc 94',
             avatar: 'https://picsum.photos/40/40?random=2',
-            comment: 'có vạt k a',
-            timeAgo: '23 giờ',
-            likes: 2,
-            isLiked: false,
-            replies: []
-        },
-        {
-            id: '3',
-            username: 'Dương Hoàng Huy',
-            avatar: 'https://picsum.photos/40/40?random=3',
-            comment: 'những mà đi thực tế rồi mới thấy đồ ăn lúc nào cũng thừa thốt, ko được đầy đặn như trên clip 😂',
-            timeAgo: '9 giờ',
-            likes: 10,
-            isLiked: false,
-            replies: []
-        },
-        {
-            id: '4',
-            username: 'Nguyễn Xuân Hồ',
-            avatar: 'https://picsum.photos/40/40?random=4',
-            comment: 'Nhìn ngon ghê 🤤',
-            timeAgo: '5 giờ',
-            likes: 15,
-            isLiked: true,
-            replies: []
-        },
-        {
-            id: '5',
-            username: 'Lê Trường Giang',
-            avatar: 'https://picsum.photos/40/40?random=5',
-            comment: 'Đói bụng quá rồi',
-            timeAgo: '4 giờ',
-            likes: 8,
-            isLiked: false,
-            replies: []
-        },
-        {
-            id: '6',
-            username: 'Nguyễn Quốc Huy',
-            avatar: 'https://picsum.photos/40/40?random=6',
-            comment: 'Tiền đâu mà ăn 😭',
-            timeAgo: '3 giờ',
-            likes: 25,
-            isLiked: true,
-            replies: []
-        },
-        {
-            id: '7',
-            username: 'Võ Đăng Khoa',
-            avatar: 'https://picsum.photos/40/40?random=7',
-            comment: 'Shop ở đâu vậy admin?',
-            timeAgo: '2 giờ',
-            likes: 5,
-            isLiked: false,
-            replies: []
-        },
-        {
-            id: '8',
-            username: 'Trần Ngọc Huyền',
-            avatar: 'https://picsum.photos/40/40?random=8',
-            comment: 'Tối nay ăn gì đây 🤔',
-            timeAgo: '1 giờ',
+            comment: 'chính xác 90% là cheney trần',
+            timeAgo: '2 ngày',
             likes: 12,
             isLiked: false,
             replies: []
         },
         {
-            id: '9',
-            username: 'Lê Mẫn Nghi',
-            avatar: 'https://picsum.photos/40/40?random=9',
-            comment: 'Giá cả thế nào?',
-            timeAgo: '45 phút',
-            likes: 3,
+            id: '3',
+            username: '我爱你',
+            avatar: 'https://picsum.photos/40/40?random=3',
+            comment: 'con rắn mạnh nhất tiktok 😭',
+            timeAgo: '2 ngày',
+            likes: 2076,
+            isLiked: false,
+            replies: []
+        },
+        {
+            id: '4',
+            username: '@con khùng#',
+            avatar: 'https://picsum.photos/40/40?random=4',
+            comment: '🇻🇳🇻🇳 rắn xa neo 😂😂😂',
+            timeAgo: '1 ngày',
+            likes: 60,
+            isLiked: false,
+            replies: []
+        },
+        {
+            id: '5',
+            username: 'User123',
+            avatar: 'https://picsum.photos/40/40?random=5',
+            comment: 'Video hay quá! 👏',
+            timeAgo: '1 ngày',
+            likes: 45,
+            isLiked: true,
+            replies: []
+        },
+        {
+            id: '6',
+            username: 'TikTokFan',
+            avatar: 'https://picsum.photos/40/40?random=6',
+            comment: 'Làm thêm video về chủ đề này đi bạn ơi',
+            timeAgo: '12 giờ',
+            likes: 8,
             isLiked: false,
             replies: []
         },
@@ -239,10 +218,10 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
             <View style={styles.commentContent}>
                 <View style={styles.commentHeader}>
                     <Text style={styles.commentUsername}>{item.username}</Text>
+                    <Text style={styles.commentTime}>{item.timeAgo}</Text>
                 </View>
                 <Text style={styles.commentText}>{item.comment}</Text>
                 <View style={styles.commentMeta}>
-                    <Text style={styles.commentTime}>{item.timeAgo}</Text>
                     <TouchableOpacity
                         onPress={() => handleLikeComment(item.id)}
                         activeOpacity={0.7}
@@ -250,25 +229,23 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                     >
                         <Text style={styles.replyLinkText}>Trả lời</Text>
                     </TouchableOpacity>
-                    {item.likes > 0 && (
-                        <TouchableOpacity
-                            style={styles.likeButton}
-                            onPress={() => handleLikeComment(item.id)}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons
-                                name={item.isLiked ? 'heart' : 'heart-outline'}
-                                size={14}
-                                color={item.isLiked ? '#FE2C55' : '#666'}
-                            />
-                            <Text style={[
-                                styles.likeCount,
-                                { color: item.isLiked ? '#FE2C55' : '#666' }
-                            ]}>
-                                {item.likes}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                        style={styles.likeButton}
+                        onPress={() => handleLikeComment(item.id)}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons
+                            name={item.isLiked ? 'heart' : 'heart-outline'}
+                            size={14}
+                            color={item.isLiked ? '#FE2C55' : '#666'}
+                        />
+                        <Text style={[
+                            styles.likeCount,
+                            { color: item.isLiked ? '#FE2C55' : '#666' }
+                        ]}>
+                            {item.likes.toLocaleString()}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
                 {item.replies && item.replies.length > 0 && (
                     <TouchableOpacity style={styles.viewRepliesButton}>
@@ -288,7 +265,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         >
             <TouchableWithoutFeedback onPress={onClose}>
                 <View style={styles.modalOverlay}>
-                    <TouchableWithoutFeedback onPress={() => { }}>
+                    <TouchableWithoutFeedback onPress={() => {}}>
                         <Animated.View
                             style={[
                                 styles.modalContainer,
@@ -297,8 +274,10 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 }
                             ]}
                         >
+                    {/* Drag Handle */}
+                    <View style={styles.dragHandle} {...headerPanResponder.panHandlers} />
 
-                            <View style={styles.modalHeader}>
+                    <View style={styles.modalHeader} {...headerPanResponder.panHandlers}>
                                 <View style={{ width: 32 }} />
                                 <Text style={styles.modalTitle}>
                                     {commentsList.length} bình luận
@@ -313,32 +292,36 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 </View>
                             </View>
 
-                            <ScrollView
+                            <FlatList
+                                data={commentsList}
+                                renderItem={renderComment}
+                                keyExtractor={(item) => item.id}
                                 style={styles.commentsList}
                                 contentContainerStyle={styles.commentsContainer}
                                 showsVerticalScrollIndicator={true}
                                 scrollEnabled={true}
                                 nestedScrollEnabled={true}
                                 bounces={true}
-                                alwaysBounceVertical={true}
                                 scrollEventThrottle={16}
-                            >
-                                {commentsList.length === 0 ? (
+                                keyboardShouldPersistTaps="handled"
+                                removeClippedSubviews={false}
+                                scrollsToTop={false}
+                                getItemLayout={(data, index) => ({
+                                    length: 80, // Approximate height of each comment
+                                    offset: 80 * index,
+                                    index,
+                                })}
+                                initialNumToRender={10}
+                                maxToRenderPerBatch={5}
+                                windowSize={10}
+                                ListEmptyComponent={() => (
                                     <View style={styles.emptyContainer}>
                                         <Ionicons name="chatbubble-outline" size={48} color="#666" />
                                         <Text style={styles.emptyText}>No comments yet</Text>
                                         <Text style={styles.emptySubText}>Be the first to comment!</Text>
                                     </View>
-                                ) : (
-                                    <>
-                                        {commentsList.map((item) => (
-                                            <View key={item.id}>
-                                                {renderComment({ item })}
-                                            </View>
-                                        ))}
-                                    </>
                                 )}
-                            </ScrollView>
+                            />
 
                             {showEmojiPicker && (
                                 <View style={styles.emojiPicker}>
@@ -366,6 +349,22 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 style={styles.inputContainer}
                             >
                                 <View style={styles.inputWrapper}>
+                                    <Image 
+                                        source={{ uri: 'https://i.pravatar.cc/150?u=user' }} 
+                                        style={styles.userAvatar} 
+                                    />
+                                    <TextInput
+                                        ref={inputRef}
+                                        style={styles.commentInput}
+                                        placeholder="Thêm bình luận..."
+                                        placeholderTextColor="#666"
+                                        value={newComment}
+                                        onChangeText={setNewComment}
+                                        multiline
+                                        maxLength={500}
+                                        returnKeyType="done"
+                                        onSubmitEditing={handleSendComment}
+                                    />
                                     <TouchableOpacity
                                         style={styles.iconButton}
                                         activeOpacity={0.7}
@@ -383,32 +382,11 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                             color={showEmojiPicker ? "#FE2C55" : "#666"}
                                         />
                                     </TouchableOpacity>
-                                    <TextInput
-                                        ref={inputRef}
-                                        style={styles.commentInput}
-                                        placeholder="Thêm bình luận..."
-                                        placeholderTextColor="#666"
-                                        value={newComment}
-                                        onChangeText={setNewComment}
-                                        multiline
-                                        maxLength={500}
-                                        returnKeyType="done"
-                                        onSubmitEditing={handleSendComment}
-                                    />
                                     <TouchableOpacity
-                                        onPress={handleSendComment}
-                                        style={[
-                                            styles.sendButton,
-                                            {
-                                                opacity: newComment.trim() ? 1 : 0.5,
-                                                backgroundColor: newComment.trim() ? '#FE2C55' : 'rgba(254, 44, 85, 0.3)',
-                                                transform: [{ scale: newComment.trim() ? 1 : 0.95 }]
-                                            }
-                                        ]}
-                                        disabled={!newComment.trim()}
-                                        activeOpacity={0.8}
+                                        style={styles.iconButton}
+                                        activeOpacity={0.7}
                                     >
-                                        <Ionicons name="send" size={18} color="#fff" />
+                                        <Ionicons name="at" size={20} color="#666" />
                                     </TouchableOpacity>
                                 </View>
                             </KeyboardAvoidingView>

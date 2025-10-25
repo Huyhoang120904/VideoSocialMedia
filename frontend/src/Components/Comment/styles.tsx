@@ -79,25 +79,21 @@ const styles = StyleSheet.create({
     commentsList: {
         flex: 1,
         paddingHorizontal: 16,
-        zIndex: 1,
-        elevation: 1,
     },
     commentsContainer: {
         paddingVertical: 10,
         paddingBottom: 20,
         flexGrow: 1,
-        minHeight: 400,
     },
     commentItem: {
         flexDirection: "row",
         backgroundColor: "#fff",
-        borderBottomWidth: 1,
-        borderBottomColor: "#eee",
         paddingHorizontal: 0,
         paddingVertical: 12,
         marginBottom: 0,
         borderRadius: 0,
         marginHorizontal: 0,
+        minHeight: 80, // Fixed height for better performance
     },
     commentAvatar: {
         width: 38,
@@ -337,7 +333,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginRight: 12,
         borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "rgba(0, 0, 0, 0.1)",
     },
     addCommentText: {
         color: "#666",

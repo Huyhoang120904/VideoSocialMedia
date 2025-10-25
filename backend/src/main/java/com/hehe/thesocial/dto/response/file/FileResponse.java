@@ -17,6 +17,7 @@ public class FileResponse {
     FileType fileType;
     Long size;
     String url;
+    String secureUrl;
     String format;
     int width;
     int height;

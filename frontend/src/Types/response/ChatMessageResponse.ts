@@ -3,6 +3,6 @@ export interface ChatMessageResponse {
   message: string;
   sender: string;
   conversationId: string;
-  time: string;
+  createdAt: string;
   edited: boolean;
 }

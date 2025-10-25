@@ -47,17 +47,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse storeFile(MultipartFile multipartFile) {
-        // Xử lý trường hợp không có authentication
-        String uploader;
-        try {
-            uploader = SecurityContextHolder.getContext().getAuthentication().getName();
-            if (uploader == null || "anonymousUser".equals(uploader)) {
-                uploader = "anonymous";
-            }
-        } catch (Exception e) {
-            uploader = "anonymous";
-        }
-
+        String uploader = SecurityContextHolder.getContext().getAuthentication().getName();
         if (multipartFile.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_FILE);
         }
@@ -92,9 +82,6 @@ public class FileServiceImpl implements FileService {
                     .url(fileUrl)
                     .format(fileExtension.substring(1)) // Remove the dot
                     .resourceType(resourceType)
-                    .width(0) // Default values, can be updated later for images/videos
-                    .height(0)
-                    .etag(null)
                     .build();
 
             // For images, you might want to get dimensions (optional)
@@ -157,7 +144,6 @@ public class FileServiceImpl implements FileService {
         if (fileExtension == null) return "raw";
 
         String ext = fileExtension.toLowerCase();
-        // Bỏ dấu chấm khỏi regex vì fileExtension đã bao gồm dấu chấm
         if (ext.matches("\\.(jpg|jpeg|png|gif|bmp|webp)")) {
             return "image";
         } else if (ext.matches("\\.(mp4|avi|mov|wmv|flv|webm|mkv)")) {

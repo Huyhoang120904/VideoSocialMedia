@@ -90,6 +90,26 @@ const UserDetailService = {
     return UserDetailService.updateUserDetail(userDetailId, formData);
   },
 
+  // UPDATE - Update avatar only
+  updateAvatar: async (
+    userDetailId: string,
+    avatarFile: any
+  ): Promise<ApiResponse<UserDetailResponse>> => {
+    const formData = new FormData();
+    formData.append("avatar", avatarFile);
+
+    const response = await api.patch(
+      `/user-details/${userDetailId}/avatar`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  },
+
   // DELETE - Delete user detail
   deleteUserDetail: async (
     userDetailId: string

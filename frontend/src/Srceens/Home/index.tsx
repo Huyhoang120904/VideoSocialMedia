@@ -4,10 +4,7 @@ import {
   FlatList,
   Dimensions,
   ViewToken,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   View,
-  PanResponder,
   ActivityIndicator,
   Text,
   StyleSheet,
@@ -19,15 +16,9 @@ import type { RootState } from "../../store/index";
 import { fetchVideos } from "../../Services/VideoService";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
+import { useFocusEffect, useRoute } from "@react-navigation/native";
 
 const { height, width } = Dimensions.get("window");
-const SCROLL_THRESHOLD = 50; // Ngưỡng để chuyển video
-
-interface GetItemLayoutData {
-  length: number;
-  offset: number;
-  index: number;
-}
 
 interface ScrollToIndexFailInfo {
   index: number;
@@ -36,15 +27,19 @@ interface ScrollToIndexFailInfo {
 }
 
 export default function Home() {
+  const route = useRoute();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isTabActive, setIsTabActive] = useState(true);
   const flatListRef = useRef<FlatList<Video>>(null);
   const videos = useSelector((state: RootState) => state.videos.videos);
   const dispatch = useDispatch();
-
-  const scrollStartOffset = useRef(0);
-  const isManualScrolling = useRef(false);
+  
+  const isScrolling = useRef(false);
+  const scrollDirection = useRef<'up' | 'down' | null>(null);
+  const lastScrollY = useRef(0);
+  const hasScrolledToVideo = useRef(false);
 
   const loadVideos = useCallback(async () => {
     if (loading) return;
@@ -54,7 +49,8 @@ export default function Home() {
 
     try {
       const response = await fetchVideos();
-      if (response.code === 200 && response.result) {
+      
+      if (response.code === 1000 && response.result) {
         dispatch(setVideos(response.result));
       } else {
         setError(response.message || "Failed to load videos");
@@ -65,63 +61,111 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [dispatch, loading]);
+  }, [dispatch]);
 
+  // Load videos lần đầu
   useEffect(() => {
-    if (videos.length === 0) {
+    if (videos.length === 0 && !loading) {
       loadVideos();
     }
-  }, [videos.length, loadVideos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos.length]);
 
-  // Bắt đầu scroll
-  const handleScrollBegin = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollStartOffset.current = event.nativeEvent.contentOffset.y;
-      isManualScrolling.current = true;
-    },
-    []
-  );
-
-  // Xử lý khi scroll
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!isManualScrolling.current) return;
-
-      const currentOffset = event.nativeEvent.contentOffset.y;
-      const diff = currentOffset - scrollStartOffset.current;
-      const nextIndex = Math.round(currentOffset / height);
-
-      if (Math.abs(diff) >= SCROLL_THRESHOLD) {
-        let targetIndex = currentIndex;
-
-        if (diff > 0 && nextIndex > currentIndex) {
-          targetIndex = Math.min(currentIndex + 1, videos.length - 1);
-        } else if (diff < 0 && nextIndex < currentIndex) {
-          targetIndex = Math.max(currentIndex - 1, 0);
-        }
-
-        if (targetIndex !== currentIndex) {
-          setCurrentIndex(targetIndex);
-          flatListRef.current?.scrollToIndex({
-            index: targetIndex,
-            animated: true,
-            viewPosition: 0,
-          });
-        }
+  // Handle tab focus/blur to pause/resume video
+  useFocusEffect(
+    useCallback(() => {
+      setIsTabActive(true);
+      
+      if (videos.length === 0 && !loading) {
+        loadVideos();
       }
-    },
-    [currentIndex, videos.length]
+
+      return () => {
+        setIsTabActive(false);
+        hasScrolledToVideo.current = false; // Reset khi rời tab
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [videos.length, loading])
   );
 
-  // Kết thúc scroll
-  const handleScrollEnd = useCallback(() => {
-    isManualScrolling.current = false;
+  // Scroll to specific video if videoId is provided
+  useEffect(() => {
+    const params = route.params as any;
+    if (params?.videoId && videos.length > 0 && !hasScrolledToVideo.current && isTabActive) {
+      const videoIndex = videos.findIndex(v => v.id === params.videoId);
+      if (videoIndex !== -1) {
+        hasScrolledToVideo.current = true;
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: videoIndex,
+            animated: false,
+          });
+          setCurrentIndex(videoIndex);
+        }, 100);
+      }
+    }
+  }, [route.params, videos, isTabActive]);
+
+  // Xử lý scroll để giới hạn 1 video mỗi lần
+  const handleScrollBeginDrag = useCallback((event: any) => {
+    isScrolling.current = true;
+    lastScrollY.current = event.nativeEvent.contentOffset.y;
+    scrollDirection.current = null;
+  }, []);
+
+  const handleScroll = useCallback((event: any) => {
+    if (!isScrolling.current) return;
+    
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+    
+    if (Math.abs(diff) > 10) {
+      scrollDirection.current = diff > 0 ? 'down' : 'up';
+    }
+  }, []);
+
+  const handleScrollEndDrag = useCallback(() => {
+    if (!scrollDirection.current) {
+      // Nếu không có scroll direction rõ ràng, snap về vị trí hiện tại
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex,
+        animated: true,
+      });
+      isScrolling.current = false;
+      return;
+    }
+
+    // Tính toán index mới (chỉ cho phép +1 hoặc -1)
+    let newIndex = currentIndex;
+    if (scrollDirection.current === 'down') {
+      newIndex = Math.min(currentIndex + 1, videos.length - 1);
+    } else if (scrollDirection.current === 'up') {
+      newIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    // Scroll đến video mới
     flatListRef.current?.scrollToIndex({
-      index: currentIndex,
+      index: newIndex,
       animated: true,
-      viewPosition: 0,
     });
-  }, [currentIndex]);
+
+    setCurrentIndex(newIndex);
+    isScrolling.current = false;
+    scrollDirection.current = null;
+  }, [currentIndex, videos.length]);
+
+  // Xử lý khi item hiển thị thay đổi
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (!isScrolling.current && viewableItems.length > 0 && viewableItems[0].index !== null) {
+        setCurrentIndex(viewableItems[0].index);
+      }
+    }
+  ).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
 
   const getItemLayout = useCallback(
     (_data: ArrayLike<Video> | null | undefined, index: number) => ({
@@ -136,24 +180,24 @@ export default function Home() {
     ({ item, index }: { item: Video; index: number }) => (
       <Post
         video={item}
-        isActive={index === currentIndex}
+        isActive={index === currentIndex && isTabActive}
         itemHeight={height}
       />
     ),
-    [currentIndex, height]
+    [currentIndex, isTabActive]
   );
 
   const keyExtractor = useCallback((item: Video) => item.id, []);
 
   const handleScrollToIndexFailed = useCallback(
     (info: ScrollToIndexFailInfo) => {
-      setTimeout(() => {
+      const wait = new Promise(resolve => setTimeout(resolve, 500));
+      wait.then(() => {
         flatListRef.current?.scrollToIndex({
           index: info.index,
-          animated: true,
-          viewPosition: 0,
+          animated: false,
         });
-      }, 100);
+      });
     },
     []
   );
@@ -210,14 +254,16 @@ export default function Home() {
             snapToAlignment="start"
             decelerationRate="fast"
             bounces={false}
-            onScrollBeginDrag={handleScrollBegin}
+            onScrollBeginDrag={handleScrollBeginDrag}
             onScroll={handleScroll}
-            onMomentumScrollEnd={handleScrollEnd}
+            onScrollEndDrag={handleScrollEndDrag}
             scrollEventThrottle={16}
-            initialNumToRender={2}
-            maxToRenderPerBatch={2}
-            windowSize={3}
-            removeClippedSubviews
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            initialNumToRender={3}
+            maxToRenderPerBatch={3}
+            windowSize={5}
+            removeClippedSubviews={true}
             getItemLayout={getItemLayout}
             onScrollToIndexFailed={handleScrollToIndexFailed}
           />

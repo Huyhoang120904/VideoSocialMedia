@@ -4,9 +4,13 @@ package com.hehe.thesocial.service.video;
 import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FileDocument;
+import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.entity.Video;
 import com.hehe.thesocial.entity.enums.FileType;
 import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.repository.FileRepository;
+import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.repository.VideoRepository;
 import com.hehe.thesocial.service.file.FileService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,8 @@ public class VideoServiceImpl implements VideoService{
     FileRepository fileRepository;
     FileMapper fileMapper;
     FileService fileService;
+    VideoRepository videoRepository;
+    UserDetailRepository userDetailRepository;
 
     @Override
     public Page<FileResponse> getAllVideos(Pageable pageable) {
@@ -51,6 +57,64 @@ public class VideoServiceImpl implements VideoService{
         }
         
         return videos.map(fileMapper::toFileResponse);
+    }
+
+    @Override
+    public Page<FileResponse> getVideosByUserId(String userDetailId, Pageable pageable) {
+        log.info("Getting videos for userDetail ID: {} with page: {}, size: {}", userDetailId, pageable.getPageNumber(), pageable.getPageSize());
+        
+        // Find UserDetail by ID directly
+        UserDetail userDetail = userDetailRepository.findById(userDetailId)
+                .orElseThrow(() -> new RuntimeException("UserDetail not found with ID: " + userDetailId));
+        
+        // Query videos by uploader
+        Page<Video> videos = videoRepository.findByUploader(userDetail, pageable);
+        log.info("Found {} videos for user: {}", videos.getTotalElements(), userDetail.getDisplayName());
+        
+        // Convert Video entities to FileResponse by extracting video_ref
+        return videos.map(video -> {
+            FileDocument videoFile = video.getVideo();
+            return fileMapper.toFileResponse(videoFile);
+        });
+    }
+
+    @Override
+    public ApiResponse<FileResponse> uploadVideo(MultipartFile file, String title, String description) {
+        log.info("Uploading video: {}, title: {}, description: {}", file.getOriginalFilename(), title, description);
+
+        if (!isVideo(file)) {
+            return ApiResponse.<FileResponse>builder()
+                    .code(4000)
+                    .message("File must be a video format")
+                    .build();
+        }
+
+        // Store file using FileService
+        FileResponse savedFile = fileService.storeFile(file);
+        log.info("Video file stored with ID: {}", savedFile.getId());
+
+        // Create Video entity
+        FileDocument fileDocument = fileRepository.findById(savedFile.getId())
+                .orElseThrow(() -> new RuntimeException("File not found after storage"));
+
+        UserDetail uploader = userDetailRepository.findByUserId(
+                org.springframework.security.core.context.SecurityContextHolder
+                        .getContext().getAuthentication().getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Video video = Video.builder()
+                .uploader(uploader)
+                .video(fileDocument)
+                .duration(0.0) // Default duration, can be updated later
+                .build();
+
+        videoRepository.save(video);
+        log.info("Video entity created with ID: {}", video.getId());
+
+        return ApiResponse.<FileResponse>builder()
+                .result(savedFile)
+                .message("Video uploaded successfully")
+                .build();
     }
 
     @Override

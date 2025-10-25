@@ -37,8 +37,29 @@ public class VideoController {
         
         return ApiResponse.<Page<FileResponse>>builder()
                 .result(videos)
-                .message(videos.isEmpty() ? "No videos found" : "Videos retrieved successfully")
+                .message(videos.getTotalElements() == 0 ? "No videos found" : "Videos retrieved successfully")
                 .build();
+    }
+
+    @GetMapping("/user/{userId}")
+    public ApiResponse<Page<FileResponse>> getVideosByUserId(
+            @PathVariable String userId,
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+        
+        Page<FileResponse> videos = videoService.getVideosByUserId(userId, pageable);
+        
+        return ApiResponse.<Page<FileResponse>>builder()
+                .result(videos)
+                .message(videos.getTotalElements() == 0 ? "No videos found for this user" : "User videos retrieved successfully")
+                .build();
+    }
+
+    @PostMapping("/upload")
+    public ApiResponse<FileResponse> uploadVideo(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "description", required = false) String description) {
+        return videoService.uploadVideo(file, title, description);
     }
 
     @PostMapping("/tiktok")

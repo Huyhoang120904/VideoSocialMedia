@@ -62,24 +62,33 @@ public class ConversationServiceImpl implements ConversationService {
 
         validateParticipantCount(participants);
 
-        // Check for existing conversation with same participants for direct
-        // conversations
-        validateNoDuplicateConversation(participants);
+        // Check for existing conversation with same participants for direct conversations
+        // If exists, return the existing one instead of creating a new one
+        if (participants.size() == 2) {
+            List<String> sortedParticipantIds = participants.stream()
+                    .map(UserDetail::getId)
+                    .sorted()
+                    .collect(Collectors.toList());
 
+            String hash = participantHash(sortedParticipantIds.get(0), sortedParticipantIds.get(1));
+
+            return conversationRepository.findByParticipantHash(hash)
+                    .map(existingConversation -> {
+                        log.info("Found existing conversation with ID: {}", existingConversation.getConversationId());
+                        return conversationMapper.toConversationResponse(existingConversation);
+                    })
+                    .orElseGet(() -> {
+                        // Create new conversation if not found
+                        return createNewConversation(request, participants, currentUserId, sortedParticipantIds, hash);
+                    });
+        }
+
+        // For group conversations, create new one
         Conversation conversation = conversationMapper.toConversation(request);
 
         setCreatorId(conversation, participants, currentUserId);
         conversation.setUserDetails(participants);
         conversation.setConversationType(determineConversationType(participants.size()));
-
-        // Set participant hash for direct conversations
-        if (participants.size() == 2) {
-            participantIds = participants.stream()
-                    .map(UserDetail::getId)
-                    .sorted()
-                    .collect(Collectors.toList());
-            conversation.setParticipantHash(participantHash(participantIds.get(0), participantIds.get(1)));
-        }
 
         conversation = conversationRepository.save(conversation);
         log.info("Created conversation with ID: {} and {} participants", conversation.getConversationId(),
@@ -98,6 +107,7 @@ public class ConversationServiceImpl implements ConversationService {
 
         return response;
     }
+
 
     @Transactional
     @Override
@@ -290,6 +300,22 @@ public class ConversationServiceImpl implements ConversationService {
                 throw new AppException(ErrorCode.CONVERSATION_ALREADY_EXISTS);
             }
         }
+    }
+
+    private ConversationResponse createNewConversation(ConversationRequest request, Set<UserDetail> participants,
+                                                       String currentUserId, List<String> participantIds, String hash) {
+        Conversation conversation = conversationMapper.toConversation(request);
+
+        setCreatorId(conversation, participants, currentUserId);
+        conversation.setUserDetails(participants);
+        conversation.setConversationType(ConversationType.DIRECT);
+        conversation.setParticipantHash(hash);
+
+        conversation = conversationRepository.save(conversation);
+        log.info("Created conversation with ID: {} and {} participants", conversation.getConversationId(),
+                participants.size());
+
+        return conversationMapper.toConversationResponse(conversation);
     }
 
     private String participantHash(String participant1, String participant2) {

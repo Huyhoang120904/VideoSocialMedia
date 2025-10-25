@@ -42,184 +42,211 @@ public class ChatMessageServiceImpl {
     UserDetailRepository userDetailRepository;
     ConversationRepository conversationRepository;
 
+    // ============ Public Methods ============
+
     public Page<ChatMessageResponse> getAllChatMessageByConversationId(String conversationId, Pageable pageable) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserDetail currentUser = getCurrentUser();
+        Conversation conversation = getConversation(conversationId);
 
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        validateUserIsParticipant(conversation, currentUser.getId());
 
-        // Validate that the conversation exists and user is a participant
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("time").descending()
+        );
 
-        Set<String> participantIds = conversation.getUserDetails().stream()
-                .map(UserDetail::getId)
-                .collect(Collectors.toSet());
+        Page<ChatMessage> chatMessages = chatMessageRepository.findAllByConversationId(conversationId, sortedPageable);
+        Page<ChatMessageResponse> responses = chatMessages.map(chatMessageMapper::toChatMessageResponse);
 
-        if (!participantIds.contains(userDetail.getId())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        responses.getContent().forEach(response ->
+                response.setSender(response.getSender().equals(currentUser.getId()) ? "me" : "other")
+        );
 
-        pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("time").descending());
-
-        Page<ChatMessage> chatMessages = chatMessageRepository.findAllByConversationId(conversationId, pageable);
-
-        Page<ChatMessageResponse> chatMessageResponses = chatMessages.map(chatMessageMapper::toChatMessageResponse);
-
-        chatMessageResponses.getContent().forEach(chatMessageResponse -> {
-            chatMessageResponse.setSender(chatMessageResponse.getSender().equals(userDetail.getId()) ? "me" : "other");
-        });
-
-        return chatMessageResponses;
+        return responses;
     }
 
     @Transactional
     public ChatMessageResponse createDirectChatMessage(DirectChatMessageRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserDetail sender = getCurrentUser();
+        UserDetail receiver = getUserDetailById(request.getReceiverId());
 
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        Conversation conversation = findOrCreateDirectConversation(sender, receiver);
+        Set<String> participantIds = getParticipantIds(conversation);
 
-        UserDetail receiverDetail = userDetailRepository.findById(request.getReceiverId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        ChatMessage chatMessage = buildChatMessage(
+                request.getMessage(),
+                conversation.getConversationId(),
+                sender.getId()
+        );
 
-        // Find or create conversation for direct messaging
-        String hash = participantHash(userDetail.getId(), request.getReceiverId());
-        Conversation conversation = conversationRepository.findByParticipantHash(hash).orElseGet(
-                () -> conversationRepository.save(Conversation.builder().conversationType(ConversationType.DIRECT)
-                        .participantHash(hash).userDetails(Set.of(userDetail, receiverDetail)).build()));
-
-        Set<String> participantIds = conversation.getUserDetails().stream().map(UserDetail::getId)
-                .collect(Collectors.toSet());
-
-        // Validate user is participant in the conversation
-        if (!participantIds.contains(userDetail.getId())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        ChatMessage chatMessage = ChatMessage.builder().message(request.getMessage())
-                .conversationId(conversation.getConversationId()).edited(false).senderId(userDetail.getId())
-                .time(LocalDateTime.now())
-
-                .build();
-
-        ChatMessage savedChatMessage = chatMessageRepository.save(chatMessage);
-
-        ChatMessageResponse chatMessageResponse = chatMessageMapper.toChatMessageResponse(savedChatMessage);
-
-        producer.sendMessage(ChatMessageEventDTO.builder().response(chatMessageResponse)
-                .eventType(EventType.MESSAGE_CREATE).participantsIds(participantIds).build());
-
-        return chatMessageResponse;
+        return saveAndBroadcastMessage(chatMessage, participantIds);
     }
 
+    @Transactional
     public ChatMessageResponse createGroupChatMessage(GroupChatMessageRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserDetail sender = getCurrentUser();
+        Conversation conversation = getConversation(request.getGroupId());
 
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        validateGroupConversation(conversation);
+        validateUserIsParticipant(conversation, sender.getId());
 
-        Conversation conversation = conversationRepository.findById(request.getGroupId())
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+        ChatMessage chatMessage = buildChatMessage(
+                request.getMessage(),
+                conversation.getConversationId(),
+                sender.getId()
+        );
 
-        // Validate that the conversation is a group chat and user is a participant
-        if (conversation.getConversationType() != ConversationType.GROUP) {
-            throw new AppException(ErrorCode.INVALID_CONVERSATION_TYPE);
-        }
-
-        boolean isParticipant = conversation.getUserDetails().stream()
-                .anyMatch(participant -> participant.getId().equals(userDetail.getId()));
-
-        if (!isParticipant) {
-            throw new AppException(ErrorCode.CONVERSATION_ACCESS_DENIED);
-        }
-
-        ChatMessage chatMessage = ChatMessage.builder().message(request.getMessage())
-                .conversationId(conversation.getConversationId()).edited(false).senderId(userDetail.getId())
-                .time(LocalDateTime.now())
-                .build();
-
-        ChatMessage savedChatMessage = chatMessageRepository.save(chatMessage);
-
-        ChatMessageResponse chatMessageResponse = chatMessageMapper.toChatMessageResponse(savedChatMessage);
-
-        Set<String> participantIds = conversation.getUserDetails().stream().map(UserDetail::getId)
-                .collect(Collectors.toSet());
-
-        producer.sendMessage(ChatMessageEventDTO.builder().response(chatMessageResponse).participantsIds(participantIds)
-                .eventType(EventType.MESSAGE_CREATE).build());
-
-        return chatMessageResponse;
+        Set<String> participantIds = getParticipantIds(conversation);
+        return saveAndBroadcastMessage(chatMessage, participantIds);
     }
 
+    @Transactional
     public ChatMessageResponse updateChatMessage(String chatMessageId, ChatMessageUpdateRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserDetail currentUser = getCurrentUser();
+        ChatMessage existingMessage = getChatMessage(chatMessageId);
 
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        validateMessageOwnership(existingMessage, currentUser.getId());
 
-        // Validate chat message exists and belongs to the sender
-        ChatMessage existingChatMessage = chatMessageRepository.findById(chatMessageId)
-                .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+        Conversation conversation = getConversation(existingMessage.getConversationId());
+        validateUserIsParticipant(conversation, currentUser.getId());
 
-        if (!existingChatMessage.getSenderId().equals(userDetail.getId())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        existingMessage.setMessage(request.getMessage());
+        existingMessage.setEdited(true);
+        existingMessage.setCreatedAt(LocalDateTime.now());
 
-        // Validate user is still a participant in the conversation
-        Conversation conversation = conversationRepository.findById(existingChatMessage.getConversationId())
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
-
-        Set<String> participantIds = conversation.getUserDetails().stream().map(UserDetail::getId)
-                .collect(Collectors.toSet());
-
-        if (!participantIds.contains(userDetail.getId())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        // Update the message
-        existingChatMessage.setMessage(request.getMessage());
-        existingChatMessage.setEdited(true);
-        existingChatMessage.setTime(LocalDateTime.now()); // Update timestamp for edited message
-
-        ChatMessage updatedChatMessage = chatMessageRepository.save(existingChatMessage);
-
-        return chatMessageMapper.toChatMessageResponse(updatedChatMessage);
+        ChatMessage updatedMessage = chatMessageRepository.save(existingMessage);
+        return chatMessageMapper.toChatMessageResponse(updatedMessage);
     }
 
+    @Transactional
     public void deleteChatMessage(String chatMessageId) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserDetail currentUser = getCurrentUser();
+        ChatMessage chatMessage = getChatMessage(chatMessageId);
 
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        validateMessageOwnership(chatMessage, currentUser.getId());
 
-        // Validate chat message exists and belongs to the sender
-        ChatMessage chatMessage = chatMessageRepository.findById(chatMessageId)
-                .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
-
-        if (!chatMessage.getSenderId().equals(userDetail.getId())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        // Validate user is still a participant in the conversation
-        Conversation conversation = conversationRepository.findById(chatMessage.getConversationId())
-                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
-
-        Set<String> participantIds = conversation.getUserDetails().stream().map(UserDetail::getId)
-                .collect(Collectors.toSet());
-
-        if (!participantIds.contains(userDetail.getId())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        Conversation conversation = getConversation(chatMessage.getConversationId());
+        validateUserIsParticipant(conversation, currentUser.getId());
 
         chatMessageRepository.deleteById(chatMessageId);
     }
 
-    public String participantHash(String participant1, String participant2) {
-        String[] participants = { participant1, participant2 };
-        java.util.Arrays.sort(participants);
+    @Transactional
+    public ChatMessageResponse sendMessageToCurrentUser(String senderId, String message) {
+        UserDetail receiver = getCurrentUser();
+        UserDetail sender = getUserDetailByUserId(senderId);
 
-        return participants[0] + "_" + participants[1];
+        Conversation conversation = findOrCreateDirectConversation(sender, receiver);
+        Set<String> participantIds = getParticipantIds(conversation);
+
+        ChatMessage chatMessage = buildChatMessage(
+                message,
+                conversation.getConversationId(),
+                sender.getId()
+        );
+
+        return saveAndBroadcastMessage(chatMessage, participantIds);
     }
 
+    // ============ Private Helper Methods ============
+
+    private UserDetail getCurrentUser() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userDetailRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+    }
+
+    private UserDetail getUserDetailById(String userDetailId) {
+        return userDetailRepository.findById(userDetailId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private UserDetail getUserDetailByUserId(String userId) {
+        return userDetailRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private Conversation getConversation(String conversationId) {
+        return conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
+    }
+
+    private ChatMessage getChatMessage(String chatMessageId) {
+        return chatMessageRepository.findById(chatMessageId)
+                .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+    }
+
+    private Set<String> getParticipantIds(Conversation conversation) {
+        return conversation.getUserDetails().stream()
+                .map(UserDetail::getId)
+                .collect(Collectors.toSet());
+    }
+
+    private void validateUserIsParticipant(Conversation conversation, String userId) {
+        Set<String> participantIds = getParticipantIds(conversation);
+        if (!participantIds.contains(userId)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    private void validateGroupConversation(Conversation conversation) {
+        if (conversation.getConversationType() != ConversationType.GROUP) {
+            throw new AppException(ErrorCode.INVALID_CONVERSATION_TYPE);
+        }
+    }
+
+    private void validateMessageOwnership(ChatMessage chatMessage, String userId) {
+        if (!chatMessage.getSenderId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    private Conversation findOrCreateDirectConversation(UserDetail user1, UserDetail user2) {
+        String hash = participantHash(user1.getId(), user2.getId());
+
+        return conversationRepository.findByParticipantHash(hash)
+                .orElseGet(() -> createDirectConversation(user1, user2, hash));
+    }
+
+    private Conversation createDirectConversation(UserDetail user1, UserDetail user2, String hash) {
+        Conversation newConversation = Conversation.builder()
+                .conversationType(ConversationType.DIRECT)
+                .participantHash(hash)
+                .userDetails(Set.of(user1, user2))
+                .build();
+
+        return conversationRepository.save(newConversation);
+    }
+
+    private ChatMessage buildChatMessage(String message, String conversationId, String senderId) {
+        return ChatMessage.builder()
+                .message(message)
+                .conversationId(conversationId)
+                .senderId(senderId)
+                .edited(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    private ChatMessageResponse saveAndBroadcastMessage(ChatMessage chatMessage, Set<String> participantIds) {
+        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+        ChatMessageResponse response = chatMessageMapper.toChatMessageResponse(savedMessage);
+
+        ChatMessageEventDTO event = ChatMessageEventDTO.builder()
+                .response(response)
+                .eventType(EventType.MESSAGE_CREATE)
+                .participantsIds(participantIds)
+                .build();
+
+        producer.sendMessage(event);
+
+        return response;
+    }
+
+    private String participantHash(String participant1, String participant2) {
+        String[] participants = {participant1, participant2};
+        java.util.Arrays.sort(participants);
+        return participants[0] + "_" + participants[1];
+    }
 }
