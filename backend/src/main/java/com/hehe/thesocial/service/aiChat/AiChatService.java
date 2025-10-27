@@ -9,7 +9,7 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
-import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
+import com.hehe.thesocial.service.chatMessage.ChatMessageService;
 import com.hehe.thesocial.service.conversation.ConversationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AiChatService {
     ChatClient chatClient;
-    ChatMessageServiceImpl chatMessageServiceImpl;
+    ChatMessageService chatMessageService;
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
     MongoChatMemory mongoChatMemory;
@@ -40,7 +40,7 @@ public class AiChatService {
         UserDetail currentUser = getCurrentUser();
 
         // Find or create conversation
-        String conversationId = chatMessageServiceImpl.findOrCreateConversation(currentUser, aiUserDetail);
+        String conversationId = chatMessageService.findOrCreateConversation(currentUser, aiUserDetail);
 
         // Set up chat memory advisor for AI response
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(mongoChatMemory)
@@ -57,7 +57,7 @@ public class AiChatService {
                 .content();
 
         // Get the last saved AI message (already saved by MessageChatMemoryAdvisor) and broadcast it
-        return chatMessageServiceImpl.getAndBroadcastLastMessage(conversationId, aiUserDetail.getId());
+        return chatMessageService.getAndBroadcastLastMessage(conversationId, aiUserDetail.getId());
     }
 
     public ConversationResponse getAiConversation() {
@@ -65,7 +65,7 @@ public class AiChatService {
         UserDetail currentUser = getCurrentUser();
 
         // Find or create conversation with AI
-        String conversationId = chatMessageServiceImpl.findOrCreateConversation(currentUser, aiUserDetail);
+        String conversationId = chatMessageService.findOrCreateConversation(currentUser, aiUserDetail);
 
         // Get the conversation details using ConversationService
         return conversationService.getConversationById(conversationId);

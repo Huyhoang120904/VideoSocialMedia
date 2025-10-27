@@ -1,17 +1,23 @@
 package com.hehe.thesocial.service.video;
 
 
-import com.hehe.thesocial.dto.ApiResponse;
+import com.hehe.thesocial.dto.request.video.*;
 import com.hehe.thesocial.dto.response.file.FileResponse;
+import com.hehe.thesocial.dto.response.video.VideoUploadResponse;
 import com.hehe.thesocial.entity.FileDocument;
+import com.hehe.thesocial.entity.MetaData;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.Video;
-import com.hehe.thesocial.entity.enums.FileType;
 import com.hehe.thesocial.mapper.file.FileMapper;
+import com.hehe.thesocial.entity.HashTag;
 import com.hehe.thesocial.repository.FileRepository;
+import com.hehe.thesocial.repository.HashTagRepository;
+import com.hehe.thesocial.repository.MetaDataRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.VideoRepository;
 import com.hehe.thesocial.service.file.FileService;
+import com.hehe.thesocial.exception.AppException;
+import com.hehe.thesocial.exception.ErrorCode;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -21,6 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
@@ -40,11 +47,13 @@ public class VideoServiceImpl implements VideoService{
     final FileService fileService;
     final VideoRepository videoRepository;
     final UserDetailRepository userDetailRepository;
+    final MetaDataRepository metaDataRepository;
+    final HashTagRepository hashTagRepository;
     
     @Value("${file.upload-dir:uploads}")
     String uploadDir;
     
-    @Value("${server.host:172.20.82.76}")
+    @Value("${server.host}")
     String serverHost;
     
     @Value("${server.port:8082}")
@@ -87,183 +96,217 @@ public class VideoServiceImpl implements VideoService{
     }
 
     @Override
-    public ApiResponse<FileResponse> uploadVideo(MultipartFile file, String title, String description, MultipartFile thumbnail) {
+    @Transactional
+    public VideoUploadResponse uploadVideo(VideoUploadRequest request) {
         log.info("Uploading video: {}, title: {}, description: {}, has thumbnail: {}", 
-                file.getOriginalFilename(), title, description, thumbnail != null && !thumbnail.isEmpty());
+                request.getFile().getOriginalFilename(), request.getTitle(), request.getDescription(), 
+                request.getThumbnail() != null && !request.getThumbnail().isEmpty());
 
-        if (!isVideo(file)) {
-            return ApiResponse.<FileResponse>builder()
-                    .code(4000)
-                    .message("File must be a video format")
-                    .build();
-        }
+        validateVideoFile(request.getFile());
 
         // Store file using FileService
-        FileResponse savedFile = fileService.storeFile(file);
+        FileResponse savedFile = fileService.storeFile(request.getFile());
         log.info("Video file stored with ID: {}", savedFile.getId());
 
-        // Get the FileDocument to update with thumbnail
-        FileDocument fileDocument = fileRepository.findById(savedFile.getId())
-                .orElseThrow(() -> new RuntimeException("File not found after storage"));
+        // Get the FileDocument for the video
+        FileDocument videoFileDocument = fileRepository.findById(savedFile.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 
-        // Handle thumbnail upload from frontend
-        if (thumbnail != null && !thumbnail.isEmpty()) {
-            try {
-                log.info("Processing thumbnail from frontend: {}, size: {}", 
-                        thumbnail.getOriginalFilename(), thumbnail.getSize());
-                
-                String uploader = org.springframework.security.core.context.SecurityContextHolder
-                        .getContext().getAuthentication().getName();
-                
-                // Create thumbnail directory
-                String thumbnailDir = uploadDir + "/thumbnailImage/" + uploader;
-                Path thumbnailPath = Paths.get(thumbnailDir);
-                Files.createDirectories(thumbnailPath);
-                log.info("Thumbnail directory created: {}", thumbnailPath.toAbsolutePath());
-                
-                // Generate unique filename for thumbnail
-                String originalFilename = thumbnail.getOriginalFilename();
-                String fileExtension = "";
-                if (originalFilename != null && originalFilename.contains(".")) {
-                    fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                }
-                String uniqueThumbnailFilename = UUID.randomUUID() + fileExtension;
-                log.info("Generated thumbnail filename: {}", uniqueThumbnailFilename);
-                
-                // Save thumbnail to local storage
-                Path thumbnailFilePath = thumbnailPath.resolve(uniqueThumbnailFilename);
-                Files.copy(thumbnail.getInputStream(), thumbnailFilePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("Thumbnail saved to: {}", thumbnailFilePath.toAbsolutePath());
-                
-                // Create thumbnail URL
-                String host = (serverHost != null && !serverHost.isEmpty()) ? serverHost : "172.20.82.76";
-                String thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + 
-                                    "/files/thumbnailImage/" + uploader + "/" + uniqueThumbnailFilename;
-                
-                // Update FileDocument with thumbnail URL (OVERWRITE auto-generated one)
-                log.info("Updating FileDocument with custom thumbnail URL: {}", thumbnailUrl);
-                log.info("Previous thumbnail URL: {}", fileDocument.getThumbnailUrl());
-                fileDocument.setThumbnailUrl(thumbnailUrl);
-                fileDocument = fileRepository.save(fileDocument);
-                log.info("FileDocument updated, new thumbnail URL: {}", fileDocument.getThumbnailUrl());
-                
-                log.info("✅ Thumbnail uploaded successfully from frontend: {}", thumbnailUrl);
-            } catch (Exception e) {
-                log.error("❌ Failed to upload thumbnail from frontend: {}", e.getMessage(), e);
-                // Continue without thumbnail - not a critical error
-            }
-        } else {
-            log.warn("⚠️ No thumbnail provided from frontend, using auto-generated thumbnail");
-            log.warn("Current thumbnail URL: {}", fileDocument.getThumbnailUrl());
+        // Get current user
+        UserDetail uploader = getCurrentUser();
+
+        // Process thumbnail if provided and store as FileDocument
+        FileDocument thumbnailFileDocument = null;
+        if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+            thumbnailFileDocument = processThumbnail(request.getThumbnail());
         }
 
-        UserDetail uploader = userDetailRepository.findByUserId(
-                org.springframework.security.core.context.SecurityContextHolder
-                        .getContext().getAuthentication().getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        // Create MetaData entity with initial values
+        MetaData metaData = MetaData.builder()
+                .lovesCount(0L)
+                .commentsCount(0L)
+                .favouritesCount(0L)
+                .viewsCount(0L)
+                .sharesCount(0L)
+                .build();
+        
+        metaData = metaDataRepository.save(metaData);
+        log.info("MetaData created with ID: {}", metaData.getId());
 
+        // Process hashTags if provided
+        List<HashTag> hashTags = null;
+        if (request.getHashTags() != null && !request.getHashTags().isEmpty()) {
+            hashTags = processHashTags(request.getHashTags());
+            log.info("Processed {} hashTags", hashTags.size());
+        }
+
+        // Create Video entity
         Video video = Video.builder()
                 .uploader(uploader)
-                .video(fileDocument)
-                .duration(0.0) // Default duration, can be updated later
-                .title(title != null ? title : "")
-                .description(description != null ? description : "")
+                .file(videoFileDocument)
+                .thumbnail(thumbnailFileDocument)
+                .duration(request.getDuration() != null ? request.getDuration() : 0.0)
+                .title(request.getTitle() != null ? request.getTitle() : "")
+                .description(request.getDescription() != null ? request.getDescription() : "")
+                .metaData(metaData)
+                .hashTags(hashTags)
                 .build();
 
-        videoRepository.save(video);
-        log.info("Video entity created with ID: {} with title: {}", video.getId(), title);
+        video = videoRepository.save(video);
+        log.info("Video entity created with ID: {} including MetaData", video.getId());
 
-        // Return FileResponse from Video entity (includes title and description)
+        // Convert to FileResponse
         FileResponse videoFileResponse = fileMapper.toFileResponseFromVideo(video);
         
-        return ApiResponse.<FileResponse>builder()
-                .result(videoFileResponse)
+        return VideoUploadResponse.builder()
+                .video(videoFileResponse)
                 .message("Video uploaded successfully")
+                .uploadId(video.getId())
+                .thumbnailUrl(videoFileResponse.getThumbnailUrl())
                 .build();
     }
 
-    @Override
-    public ApiResponse<String> uploadToTikTok(MultipartFile file) {
-        log.info("Starting TikTok upload for file: {}", file.getOriginalFilename());
 
+    @Override
+    @Transactional
+    public FileResponse updateVideo(String videoId, VideoUpdateRequest request) {
+        log.info("Updating video with ID: {}", videoId);
+        
+        // Find the video by ID
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+        
+        // Update fields if provided
+        updateVideoFields(video, request);
+        
+        // Handle thumbnail update if provided
+        if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+            FileDocument thumbnailFileDocument = processThumbnail(request.getThumbnail());
+            video.setThumbnail(thumbnailFileDocument);
+        }
+        
+        // Save the updated video
+        Video updatedVideo = videoRepository.save(video);
+        log.info("Video updated successfully with ID: {}", updatedVideo.getId());
+        
+        // Return FileResponse from updated Video entity
+        return fileMapper.toFileResponseFromVideo(updatedVideo);
+    }
+
+    // Private helper methods
+    
+    private void validateVideoFile(MultipartFile file) {
         if (!isVideo(file)) {
-            return ApiResponse.<String>builder()
-                    .code(4000)
-                    .message("File must be a video format")
-                    .build();
+            throw new AppException(ErrorCode.INVALID_FILE);
         }
-
-        FileResponse savedFile = fileService.storeFile(file);
-        log.info("File stored locally with ID: {}", savedFile.getId());
-
-        return uploadById(savedFile.getId());
     }
-
-    @Override
-    public ApiResponse<String> uploadById(String fileId) {
-        log.info("Uploading stored video to TikTok, fileId: {}", fileId);
-
-        FileResponse fileResponse = fileService.findDocumentById(fileId);
-
-        if (!FileType.VIDEO.equals(fileResponse.getFileType())) {
-            return ApiResponse.<String>builder()
-                    .code(4000)
-                    .message("File must be a video to upload to TikTok")
-                    .build();
-        }
-
-        String tikTokVideoId = simulateUpload(fileResponse, null, null, null);
-
-        return ApiResponse.<String>builder()
-                .result(tikTokVideoId)
-                .message("Video successfully uploaded to TikTok")
-                .build();
-    }
-
-    @Override
-    public ApiResponse<String> uploadWithMeta(MultipartFile file, String title, String description, String hashtags) {
-        log.info("Starting TikTok upload with metadata for file: {}", file.getOriginalFilename());
-
-        if (!isVideo(file)) {
-            return ApiResponse.<String>builder()
-                    .code(4000)
-                    .message("File must be a video format")
-                    .build();
-        }
-
-        FileResponse savedFile = fileService.storeFile(file);
-        log.info("File stored locally with ID: {}", savedFile.getId());
-
-        String tikTokVideoId = simulateUpload(savedFile, title, description, hashtags);
-
-        return ApiResponse.<String>builder()
-                .result(tikTokVideoId)
-                .message("Video with metadata successfully uploaded to TikTok")
-                .build();
-    }
-
+    
     private boolean isVideo(MultipartFile file) {
         String contentType = file.getContentType();
         return contentType != null && contentType.startsWith("video/");
     }
-
-    private String simulateUpload(FileResponse fileResponse, String title, String description, String hashtags) {
-        String tikTokVideoId = "tiktok_" + UUID.randomUUID().toString().substring(0, 8);
-
-        log.info("Simulated TikTok upload - FileID: {}, URL: {}, TikTokID: {}",
-                fileResponse.getId(), fileResponse.getUrl(), tikTokVideoId);
-
-        if (title != null || description != null || hashtags != null) {
-            log.info("Video metadata - Title: {}, Description: {}, Hashtags: {}",
-                    title, description, hashtags);
-        }
-
+    
+    private FileDocument processThumbnail(MultipartFile thumbnail) {
         try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            log.info("Processing thumbnail: {}, size: {}", 
+                    thumbnail.getOriginalFilename(), thumbnail.getSize());
+            
+            String uploader = getCurrentUserId();
+            
+            // Create thumbnail directory
+            String thumbnailDir = uploadDir + "/thumbnailImage/" + uploader;
+            Path thumbnailPath = Paths.get(thumbnailDir);
+            Files.createDirectories(thumbnailPath);
+            
+            // Generate unique filename
+            String fileExtension = getFileExtension(thumbnail.getOriginalFilename());
+            String uniqueFilename = UUID.randomUUID() + fileExtension;
+            
+            // Save thumbnail
+            Path thumbnailFilePath = thumbnailPath.resolve(uniqueFilename);
+            Files.copy(thumbnail.getInputStream(), thumbnailFilePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            // Create URL
+            String host = (serverHost != null && !serverHost.isEmpty()) ? serverHost : "172.20.82.76";
+            String thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + 
+                   "/files/thumbnailImage/" + uploader + "/" + uniqueFilename;
+            
+            // Create FileDocument for thumbnail
+            FileDocument thumbnailFileDocument = FileDocument.builder()
+                    .fileName(thumbnail.getOriginalFilename())
+                    .size(thumbnail.getSize())
+                    .url(thumbnailUrl)
+                    .format(fileExtension.substring(1)) // Remove the dot
+                    .resourceType("image")
+                    .build();
+            
+            // Save and return FileDocument
+            thumbnailFileDocument = fileRepository.save(thumbnailFileDocument);
+            
+            log.info("Thumbnail processed successfully: {}", thumbnailUrl);
+            return thumbnailFileDocument;
+        } catch (Exception e) {
+            log.error("Failed to process thumbnail: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.ERROR_UPLOADING_FILE);
         }
-
-        return tikTokVideoId;
     }
+    
+    private List<HashTag> processHashTags(List<String> hashTagNames) {
+        List<HashTag> hashTags = new java.util.ArrayList<>();
+        
+        for (String name : hashTagNames) {
+            if (name != null && !name.trim().isEmpty()) {
+                String trimmedName = name.trim();
+                
+                // Check if hashtag already exists
+                HashTag existingTag = hashTagRepository.findByName(trimmedName);
+                
+                if (existingTag != null) {
+                    hashTags.add(existingTag);
+                } else {
+                    // Create new hashtag
+                    HashTag newTag = HashTag.builder()
+                            .name(trimmedName)
+                            .viewCount(0)
+                            .videoCount(0)
+                            .build();
+                    newTag = hashTagRepository.save(newTag);
+                    hashTags.add(newTag);
+                    log.info("Created new hashtag: {}", trimmedName);
+                }
+            }
+        }
+        
+        return hashTags;
+    }
+    
+    private void updateVideoFields(Video video, VideoUpdateRequest request) {
+        if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
+            log.info("Updating title from '{}' to '{}'", video.getTitle(), request.getTitle());
+            video.setTitle(request.getTitle());
+        }
+        
+        if (request.getDescription() != null) {
+            log.info("Updating description from '{}' to '{}'", video.getDescription(), request.getDescription());
+            video.setDescription(request.getDescription());
+        }
+    }
+    
+    private UserDetail getCurrentUser() {
+        String userId = getCurrentUserId();
+        return userDetailRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+    
+    private String getCurrentUserId() {
+        return org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+    }
+    
+    private String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int lastDotIndex = filename.lastIndexOf(".");
+        return lastDotIndex == -1 ? "" : filename.substring(lastDotIndex);
+    }
+
 }

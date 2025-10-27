@@ -1,11 +1,5 @@
 // Helper utilities for creating FormData objects
-
-export interface UserDetailUpdateParams {
-  displayName?: string;
-  bio?: string;
-  shownName?: string;
-  avatar?: File;
-}
+import { UserDetailUpdateParams } from "../Types/request/UserDetailRequest";
 
 export const createUserDetailUpdateFormData = (
   params: UserDetailUpdateParams

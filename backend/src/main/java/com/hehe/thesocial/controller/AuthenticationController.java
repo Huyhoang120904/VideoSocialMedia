@@ -12,6 +12,7 @@ import com.hehe.thesocial.service.authentication.AuthenticationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,30 +24,31 @@ public class AuthenticationController {
     AuthenticationService authenticationService;
 
     @PostMapping("/token")
-    public ApiResponse<AuthenticateResponse> authenticate(@RequestBody AuthenticateRequest request) {
-        return ApiResponse.<AuthenticateResponse>builder()
+    public ResponseEntity<ApiResponse<AuthenticateResponse>> authenticate(@RequestBody AuthenticateRequest request) {
+        return ResponseEntity.ok(ApiResponse.<AuthenticateResponse>builder()
                 .result(authenticationService.authenticate(request))
-                .build();
+                .build());
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<RefreshResponse> authenticate(@RequestBody RefreshRequest request) {
-        return ApiResponse.<RefreshResponse>builder()
+    public ResponseEntity<ApiResponse<RefreshResponse>> authenticate(@RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(ApiResponse.<RefreshResponse>builder()
                 .result(authenticationService.refreshToken(request))
-                .build();
+                .build());
     }
 
     @PostMapping("/introspect")
-    public ApiResponse<IntrospectResponse> introspectToken(@RequestBody IntrospectRequest request) {
-        return ApiResponse.<IntrospectResponse>builder()
+    public ResponseEntity<ApiResponse<IntrospectResponse>> introspectToken(@RequestBody IntrospectRequest request) {
+        return ResponseEntity.ok(ApiResponse.<IntrospectResponse>builder()
                 .result(authenticationService.introspectToken(request))
-                .build();
+                .build());
     }
 
     @PostMapping("/logout")
-    public ApiResponse<?> authenticate(@RequestBody LogoutRequest request) {
+    public ResponseEntity<ApiResponse<Void>> authenticate(@RequestBody LogoutRequest request) {
         authenticationService.logout(request);
-        return ApiResponse.builder()
-                .build();
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Logout successful")
+                .build());
     }
 }

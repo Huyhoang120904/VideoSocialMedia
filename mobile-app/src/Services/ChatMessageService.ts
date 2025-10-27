@@ -6,12 +6,8 @@ import {
   DirectChatMessageRequest,
   GroupChatMessageRequest,
   ChatMessageUpdateRequest,
+  PaginationParams,
 } from "../Types/request";
-
-interface PaginationParams {
-  page?: number;
-  size?: number;
-}
 
 const ChatMessageService = {
   /**

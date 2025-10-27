@@ -24,7 +24,6 @@ public class FeedItem extends BaseDocument {
     @Field("_id")
     String id;
 
-    // content
     @Field("feed_item_type")
     FeedItemType feedItemType;
 
@@ -35,12 +34,6 @@ public class FeedItem extends BaseDocument {
     @DBRef
     @Field("image_slide_ref")
     ImageSlide imageSlide;
-
-    @Field("caption")
-    String caption;
-
-    @Field("description")
-    String description;
 
     @DBRef
     @Field("hashtags_ref")
@@ -59,8 +52,4 @@ public class FeedItem extends BaseDocument {
 
     @Field("share_count")
     long shareCount;
-
-    // author
-    @Field("avatar")
-    String avatar;
 }

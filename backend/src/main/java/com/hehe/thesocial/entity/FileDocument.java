@@ -49,7 +49,4 @@ public class FileDocument extends BaseDocument {
 
     @Field("etag")
     String etag;
-
-    @Field("thumbnail_url")
-    String thumbnailUrl;
 }

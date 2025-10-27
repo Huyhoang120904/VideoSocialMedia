@@ -1,8 +1,9 @@
 import api from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
 import { LoginResponse } from "../Types/response/LoginResponse";
+import { LoginPayload } from "../Types/request/AuthRequest";
 
-export type LoginPayload = { username: string; password: string };
+export type { LoginPayload };
 
 export const LoginRequest = async (
   payload: LoginPayload

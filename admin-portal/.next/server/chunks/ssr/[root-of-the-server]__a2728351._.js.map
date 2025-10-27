@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
-    {"offset": {"line": 11, "column": 0}, "map": {"version":3,"sources":["file:///D:/Sturdy/PersonalRepository/TiktokClone/admin-portal/src/app/page.tsx"],"sourcesContent":["import { redirect } from \"next/navigation\";\n\n/**\n * Root page that redirects to login page\n *\n * @author: TikTok Clone Admin Team\n * @date: 10/25/2025\n */\nexport default function RootPage() {\n  redirect(\"/login\");\n}\n"],"names":[],"mappings":";;;;AAAA;AAAA;;AAQe,SAAS;IACtB,IAAA,iMAAQ,EAAC;AACX","debugId":null}}]
-}

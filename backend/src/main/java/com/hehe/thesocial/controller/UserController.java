@@ -13,6 +13,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,40 +25,41 @@ public class UserController {
     UserService userService;
 
     @GetMapping("/{userId}")
-    public ApiResponse<UserResponse> getUserById(@PathVariable String userId) {
-        return ApiResponse.<UserResponse>builder()
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable String userId) {
+        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .result(userService.findUserById(userId))
-                .build();
+                .build());
     }
 
     @GetMapping
-    public ApiResponse<PagedModel<EntityModel<UserResponse>>> getUserByPage(@PageableDefault(size = 12, page = 0) Pageable pageable,
+    public ResponseEntity<ApiResponse<PagedModel<EntityModel<UserResponse>>>> getUserByPage(@PageableDefault(size = 12, page = 0) Pageable pageable,
                                                                             PagedResourcesAssembler<UserResponse> assembler) {
-        return ApiResponse.<PagedModel<EntityModel<UserResponse>>>builder()
+        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<UserResponse>>>builder()
                 .result(assembler.toModel(userService.findAllUserBypage(pageable)))
-                .build();
+                .build());
     }
 
     @PostMapping()
-    public ApiResponse<UserResponse> register(@RequestBody RegisterRequest request) {
-        return ApiResponse.<UserResponse>builder()
+    public ResponseEntity<ApiResponse<UserResponse>> register(@RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<UserResponse>builder()
                 .result(userService.register(request))
-                .build();
+                .build());
     }
 
     @PutMapping("/{userId}")
-    public ApiResponse<UserResponse> updateUser(@RequestBody UserUpdateRequest request) {
-        return ApiResponse.<UserResponse>builder()
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(@RequestBody UserUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .result(userService.updateUser(request))
-                .build();
+                .build());
     }
 
     @DeleteMapping("/{userId}")
-    public ApiResponse<Void> deleteUserById(@PathVariable String userId) {
+    public ResponseEntity<ApiResponse<Void>> deleteUserById(@PathVariable String userId) {
 
         userService.deleteUser(userId);
 
-        return ApiResponse.<Void>builder()
-                .build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
+                .message("User deleted successfully")
+                .build());
     }
 }
