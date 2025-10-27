@@ -12,6 +12,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,41 +24,41 @@ public class PermissionController {
     PermissionService permissionService;
 
     @GetMapping("/{permissionId}")
-    public ApiResponse<PermissionResponse> getPermissionById(@PathVariable String permissionId) {
-        return ApiResponse.<PermissionResponse>builder()
+    public ResponseEntity<ApiResponse<PermissionResponse>> getPermissionById(@PathVariable String permissionId) {
+        return ResponseEntity.ok(ApiResponse.<PermissionResponse>builder()
                 .result(permissionService.findPermissionById(permissionId))
-                .build();
+                .build());
     }
 
     @GetMapping
-    public ApiResponse<PagedModel<EntityModel<PermissionResponse>>> getPermissionsByPage(
+    public ResponseEntity<ApiResponse<PagedModel<EntityModel<PermissionResponse>>>> getPermissionsByPage(
             @PageableDefault(size = 12, page = 0) Pageable pageable,  PagedResourcesAssembler<PermissionResponse> assembler) {
-        return ApiResponse.<PagedModel<EntityModel<PermissionResponse>>>builder()
+        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<PermissionResponse>>>builder()
                 .result(assembler.toModel(permissionService.findAllPermissionsByPage(pageable)))
-                .build();
+                .build());
     }
 
     @PostMapping
-    public ApiResponse<PermissionResponse> createPermission(@RequestBody PermissionRequest request) {
-        return ApiResponse.<PermissionResponse>builder()
+    public ResponseEntity<ApiResponse<PermissionResponse>> createPermission(@RequestBody PermissionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<PermissionResponse>builder()
                 .result(permissionService.createPermission(request))
-                .build();
+                .build());
     }
 
     @PutMapping("/{permissionId}")
-    public ApiResponse<PermissionResponse> updatePermission(
+    public ResponseEntity<ApiResponse<PermissionResponse>> updatePermission(
             @PathVariable String permissionId,
             @RequestBody PermissionRequest request) {
-        return ApiResponse.<PermissionResponse>builder()
+        return ResponseEntity.ok(ApiResponse.<PermissionResponse>builder()
                 .result(permissionService.updatePermission(permissionId, request))
-                .build();
+                .build());
     }
 
     @DeleteMapping("/{permissionId}")
-    public ApiResponse<Void> deletePermission(@PathVariable String permissionId) {
+    public ResponseEntity<ApiResponse<Void>> deletePermission(@PathVariable String permissionId) {
         permissionService.deletePermission(permissionId);
-        return ApiResponse.<Void>builder()
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
                 .message("Permission deleted successfully")
-                .build();
+                .build());
     }
 }

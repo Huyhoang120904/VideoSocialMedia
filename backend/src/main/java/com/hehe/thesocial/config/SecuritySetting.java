@@ -28,11 +28,12 @@ public class SecuritySetting {
     static String[] PUBLIC_GET_ENDPOINTS = {
             "/v3/api-docs/**",
             "/swagger-ui/**", "/swagger-ui.html",
-            "/swagger-resources/**", "/webjars/**"
+            "/swagger-resources/**", "/webjars/**", "/files/**",
+            "/videos/**"
     };
 
     static String[] PUBLIC_POST_ENDPOINTS = {
-           "/users/**"
+           "/users/**", "/files/**"
     };
 
     static String[] PUBLIC_PUT_ENDPOINTS = {
@@ -48,7 +49,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**", "/ws/**", "/ws-native/**"
+            "/auth/**","/ws-native/**", "/feed/**"
     };
 
 
@@ -62,7 +63,8 @@ public class SecuritySetting {
                         .requestMatchers(HttpMethod.PUT, PUBLIC_PUT_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.DELETE, PUBLIC_DELETE_ENDPOINTS).permitAll()
                         .requestMatchers(ADMIN_ENDPOINTS).hasRole(PredefinedRoles.ADMIN_ROLE)
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()
+                )
                 .oauth2ResourceServer(oauth2Security ->
                                 oauth2Security.jwt(jwtConfigurer -> jwtConfigurer.decoder(customJwtDecoder)
                                         .jwtAuthenticationConverter(jwtAuthenticationConverter()))
@@ -85,8 +87,7 @@ public class SecuritySetting {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
-//        corsConfiguration.addAllowedOrigin(CORS_URL);
-        corsConfiguration.addAllowedOrigin("*");
+        corsConfiguration.addAllowedOriginPattern("**");
         corsConfiguration.addAllowedMethod("*");
         corsConfiguration.addAllowedHeader("*");
 

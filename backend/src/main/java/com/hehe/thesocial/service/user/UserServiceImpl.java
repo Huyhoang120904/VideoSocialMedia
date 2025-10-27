@@ -4,12 +4,12 @@ import com.hehe.thesocial.constant.PredefinedRoles;
 import com.hehe.thesocial.dto.request.user.RegisterRequest;
 import com.hehe.thesocial.dto.request.user.UserUpdateRequest;
 import com.hehe.thesocial.dto.response.user.UserResponse;
+import com.hehe.thesocial.entity.Role;
+import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.user.UserMapper;
-import com.hehe.thesocial.entity.Role;
-import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.repository.RoleRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
@@ -29,7 +29,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class UserServiceImpl implements UserService {
-
     UserMapper userMapper;
     UserRepository userRepository;
     UserDetailRepository userDetailRepository;
@@ -61,13 +60,17 @@ public class UserServiceImpl implements UserService {
                 );
         user.setRoles(new HashSet<>(List.of(userRole)));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEnable(true);
+
         user = userRepository.save(user);
 
         //Create user detail when registering
         UserDetail userDetail = UserDetail.builder()
                 .user(user)
-                .shownName("@"+user.getUsername())
+                .displayName(user.getUsername())
+                .shownName("@" + user.getUsername())
                 .build();
+
         userDetail = userDetailRepository.save(userDetail);
         userDetailRepository.findById(userDetail.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED));
@@ -79,8 +82,19 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUser(UserUpdateRequest userUpdateRequest) {
         User user = userRepository.findByUsername(userUpdateRequest.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        user.setPassword(userUpdateRequest.getPassword());
-        user.setMail(userUpdateRequest.getMail());
+
+        if (userUpdateRequest.getPassword() != null && !userUpdateRequest.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(userUpdateRequest.getPassword()));
+        }
+
+        if (userUpdateRequest.getMail() != null) {
+            user.setMail(userUpdateRequest.getMail());
+        }
+
+        if (userUpdateRequest.getEnable() != null) {
+            user.setEnable(userUpdateRequest.getEnable());
+        }
+
         user = userRepository.save(user);
         return userMapper.toUserResponse(user);
     }

@@ -1,7 +1,5 @@
 package com.hehe.thesocial.service.file;
 
-import com.cloudinary.Cloudinary;
-import com.cloudinary.utils.ObjectUtils;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.exception.AppException;
@@ -11,7 +9,9 @@ import com.hehe.thesocial.repository.FileRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,7 +19,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -28,7 +34,23 @@ import java.util.*;
 public class FileServiceImpl implements FileService {
     FileMapper fileMapper;
     FileRepository fileRepository;
-    Cloudinary cloudinary;
+
+
+    @NonFinal
+    @Value("${file.upload-dir:uploads}")
+    String uploadDir;
+
+    @NonFinal
+    @Value("${server.port:8082}")
+    String serverPort;
+
+    @NonFinal
+    @Value("${server.servlet.context-path:/api/v1}")
+    String contextPath;
+
+    @NonFinal
+    @Value("${server.host}")
+    String serverHost;
 
     @Override
     public FileResponse storeFile(MultipartFile multipartFile) {
@@ -36,28 +58,69 @@ public class FileServiceImpl implements FileService {
         if (multipartFile.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_FILE);
         }
-        Map<String, String> params = new HashMap<>();
-
-        String folder = "uploads/" + uploader;
-
-        params.put("folder", folder);
-        params.put("public_id", UUID.randomUUID().toString());
-        params.put("resource_type", "auto");
 
         try {
-            Map uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), params);
+            // Create upload directory if it doesn't exist
+            String userUploadDir = uploadDir + "/" + uploader;
+            Path uploadPath = Paths.get(userUploadDir);
+            Files.createDirectories(uploadPath);
 
-            FileDocument fileDocument = FileDocument.builder().fileName(multipartFile.getOriginalFilename()).size(multipartFile.getSize()).publicId((String) uploadResult.get("public_id")).url((String) uploadResult.get("url")).secureUrl((String) uploadResult.get("secure_url")).format((String) uploadResult.get("format")).resourceType((String) uploadResult.get("resource_type")).build();
-
-            if (uploadResult.containsKey("height") && uploadResult.containsKey("width")) {
-                fileDocument.setHeight((int) uploadResult.get("height"));
-                fileDocument.setWidth((int) uploadResult.get("width"));
+            // Generate unique filename
+            String originalFilename = multipartFile.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
-            fileDocument = fileRepository.save(fileDocument);
+            String uniqueFilename = UUID.randomUUID() + fileExtension;
 
+            // Save file to local storage
+            Path filePath = uploadPath.resolve(uniqueFilename);
+            Files.copy(multipartFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Determine resource type based on file extension
+            String resourceType = determineResourceType(fileExtension);
+
+            // Create file URL using configured host (fallback to localhost if not configured)
+            String host = (serverHost != null && !serverHost.isEmpty()) ? serverHost : "172.20.82.76";
+            String fileUrl = "http://" + host + ":" + serverPort + contextPath + "/files/" + uploader + "/" + uniqueFilename;
+
+            // Generate thumbnail for video files
+            String thumbnailUrl = null;
+            if ("video".equals(resourceType)) {
+                try {
+
+                    log.info("Generated thumbnail for video: {}", thumbnailUrl);
+                    
+                    // If thumbnail generation failed, create a default one
+                    if (thumbnailUrl == null) {
+                        log.warn("Thumbnail generation failed, creating default thumbnail");
+                        thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to generate thumbnail for video: {}", e.getMessage());
+                    thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
+                }
+            }
+
+            FileDocument fileDocument = FileDocument.builder()
+                    .fileName(originalFilename)
+                    .size(multipartFile.getSize())
+                    .url(fileUrl)
+                    .format(fileExtension.substring(1)) // Remove the dot
+                    .resourceType(resourceType)
+                    .build();
+
+            // For images, you might want to get dimensions (optional)
+            if ("image".equals(resourceType)) {
+                // You can add image dimension detection here if needed
+                // For now, we'll leave height and width as null
+            }
+
+            fileDocument = fileRepository.save(fileDocument);
             return fileMapper.toFileResponse(fileDocument);
+
         } catch (IOException e) {
-            log.info("Failed to delete file from Cloudinary: {}", e.getMessage());
+            log.error("Failed to store file: {}", e.getMessage());
             throw new AppException(ErrorCode.ERROR_UPLOADING_FILE);
         }
     }
@@ -69,7 +132,8 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse findDocumentById(String id) {
-        FileDocument fileDocument = fileRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+        FileDocument fileDocument = fileRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
         return fileMapper.toFileResponse(fileDocument);
     }
 
@@ -81,14 +145,47 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public void deleteFile(String id) {
-        FileDocument fileDocument = fileRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+        FileDocument fileDocument = fileRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
         try {
-            cloudinary.uploader().destroy(fileDocument.getPublicId(), ObjectUtils.asMap("resource_type", fileDocument.getResourceType()));
-        } catch (Exception e) {
-            log.info("Failed to delete file from Cloudinary: {}", e.getMessage());
+            // Extract the file path from the URL or use publicId
+            String filename = fileDocument.getFileName();
+            String uploader = extractUploaderFromUrl(fileDocument.getUrl());
+            Path filePath = Paths.get(uploadDir, uploader, filename);
+
+            // Delete the physical file
+            Files.deleteIfExists(filePath);
+
+            // Delete the document from database
+            fileRepository.deleteById(fileDocument.getId());
+
+        } catch (IOException e) {
+            log.error("Failed to delete file: {}", e.getMessage());
             throw new AppException(ErrorCode.ERROR_UPLOADING_FILE);
         }
-        fileRepository.deleteById(fileDocument.getId());
     }
 
+    private String determineResourceType(String fileExtension) {
+        if (fileExtension == null) return "raw";
+
+        String ext = fileExtension.toLowerCase();
+        if (ext.matches("\\.(jpg|jpeg|png|gif|bmp|webp)")) {
+            return "image";
+        } else if (ext.matches("\\.(mp4|avi|mov|wmv|flv|webm|mkv)")) {
+            return "video";
+        } else if (ext.matches("\\.(mp3|wav|ogg|aac|flac)")) {
+            return "audio";
+        }
+        return "raw";
+    }
+
+    private String extractUploaderFromUrl(String url) {
+        // Extract uploader from URL pattern: .../files/{uploader}/{filename}
+        String[] parts = url.split("/");
+        if (parts.length >= 3) {
+            return parts[parts.length - 2]; // Second to last part should be uploader
+        }
+        return "unknown";
+    }
 }
