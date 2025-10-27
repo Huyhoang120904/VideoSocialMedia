@@ -6,8 +6,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Optional;
+
 @Repository
 public interface ChatMessageRepository extends MongoRepository<ChatMessage, String> {
     Page<ChatMessage> findAllByConversationId(String conversationId, Pageable pageable);
 
+    void deleteByConversationId(String conversationId);
+
+    List<ChatMessage> findByConversationIdOrderByCreatedAtDesc(String conversationId);
+
+    Optional<ChatMessage> findFirstByConversationIdOrderByCreatedAtDesc(String conversationId);
+    
+    List<ChatMessage> findByConversationIdAndSenderIdNotAndReadParticipantsIdNotContaining(
+        String conversationId, String senderId, String userId);
+    
+    long countByConversationIdAndSenderIdNotAndReadParticipantsIdNotContaining(
+        String conversationId, String senderId, String userId);
 }

@@ -1,5 +1,7 @@
 package com.hehe.thesocial.service.kafka;
 
+import com.hehe.thesocial.dto.event.ChatMessageEventDTO;
+import com.hehe.thesocial.dto.event.ReadStatusEventDTO;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -13,10 +15,14 @@ import org.springframework.stereotype.Service;
 public class KafkaProducer {
     KafkaTemplate<String, Object> kafkaTemplate;
 
-    public void sendMessage(ChatMessageResponse chatMessageResponse) {
+    public void sendMessage(ChatMessageEventDTO chatMessageEventDTO) {
         kafkaTemplate.send("chat_messages",
-                chatMessageResponse);
+                chatMessageEventDTO);
     }
 
+    public void sendReadStatusUpdate(ReadStatusEventDTO readStatusEventDTO) {
+        kafkaTemplate.send("read_status_updates",
+                readStatusEventDTO);
+    }
 
 }
