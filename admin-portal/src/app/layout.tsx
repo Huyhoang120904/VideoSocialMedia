@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import AuthProvider from "@/hooks/AuthProvider";
 import { QueryProvider } from "@/hooks/QueryProvider";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,9 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <QueryProvider>{children}</QueryProvider>
-        </AuthProvider>
+        <ErrorBoundary context="Root Layout">
+          <AuthProvider>
+            <QueryProvider>{children}</QueryProvider>
+          </AuthProvider>
+        </ErrorBoundary>
         <Toaster position="top-right" richColors />
       </body>
     </html>

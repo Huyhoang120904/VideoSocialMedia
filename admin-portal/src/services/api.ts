@@ -1,107 +1,18 @@
 import apiClient from "@/config/axios";
-
-export interface ApiResponse<T> {
-  code: number;
-  message: string;
-  timeStamp: string;
-  result: T;
-}
-
-export interface AuthenticateRequest {
-  username: string;
-  password: string;
-}
-
-export interface AuthenticateResponse {
-  token: string;
-  expireAt: string;
-}
-
-export interface RefreshResponse {
-  token: string;
-  expireAt: string;
-}
-
-export interface IntrospectRequest {
-  token: string;
-}
-
-export interface IntrospectResponse {
-  isValid: boolean;
-  userId: string;
-}
-
-export interface UserResponse {
-  id: string;
-  username: string;
-  mail: string;
-  phoneNumber: string;
-  enable?: boolean;
-  roles: RoleResponse[];
-}
-
-export interface RegisterRequest {
-  username: string;
-  mail: string;
-  phoneNumber: string;
-  password: string;
-}
-
-export interface UserUpdateRequest {
-  username: string;
-  password?: string;
-  mail: string;
-  phoneNumber: string;
-  enable?: boolean;
-}
-
-export interface RoleResponse {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export interface FileResponse {
-  id: string;
-  fileName: string;
-  fileType: string;
-  size: number;
-  url: string;
-  secureUrl: string;
-  format: string;
-  width: number;
-  height: number;
-  etag: string;
-}
-
-export interface PagedResponse<T> {
-  content: T[];
-  pageable: {
-    pageNumber: number;
-    pageSize: number;
-    sort: {
-      empty: boolean;
-      sorted: boolean;
-      unsorted: boolean;
-    };
-    offset: number;
-    paged: boolean;
-    unpaged: boolean;
-  };
-  last: boolean;
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-  sort: {
-    empty: boolean;
-    sorted: boolean;
-    unsorted: boolean;
-  };
-  first: boolean;
-  numberOfElements: number;
-  empty: boolean;
-}
+import {
+  ApiResponse,
+  PagedResponse,
+  UserResponse,
+  FileResponse,
+  AuthenticateRequest,
+  AuthenticateResponse,
+  RefreshResponse,
+  IntrospectRequest,
+  IntrospectResponse,
+  RegisterRequest,
+  UserUpdateRequest,
+  RoleResponse,
+} from "@/types";
 
 class AuthService {
   async authenticate(

@@ -10,6 +10,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +37,7 @@ public class FileController {
     public ResponseEntity<FileResponse> uploadFile(@RequestParam("file") MultipartFile file) {
         log.info("Uploading file: {}", file.getOriginalFilename());
         FileResponse response = fileService.storeFile(file);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/upload-multiple")
@@ -44,7 +45,7 @@ public class FileController {
             @RequestParam("files") MultipartFile[] files) {
         log.info("Uploading {} files", files.length);
         List<FileResponse> responses = fileService.storeMultipleFile(files);
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
     }
 
     @GetMapping("/{id}")
@@ -62,7 +63,7 @@ public class FileController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFile(@PathVariable String id) {
         fileService.deleteFile(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @GetMapping("/thumbnailImage/{uploader}/{filename:.+}")
@@ -76,7 +77,7 @@ public class FileController {
             // Check if file exists
             if (!Files.exists(filePath)) {
                 log.warn("Thumbnail does not exist: {}", filePath);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             
             Resource resource = new UrlResource(filePath.toUri());
@@ -93,14 +94,14 @@ public class FileController {
                         .body(resource);
             } else {
                 log.warn("Thumbnail not found or not readable: {}", filePath);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
         } catch (MalformedURLException e) {
             log.error("Error serving thumbnail: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Unexpected error serving thumbnail: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -116,7 +117,7 @@ public class FileController {
             // Check if file exists
             if (!Files.exists(filePath)) {
                 log.warn("File does not exist: {}", filePath);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             
             Resource resource = new UrlResource(filePath.toUri());
@@ -133,14 +134,14 @@ public class FileController {
                         .body(resource);
             } else {
                 log.warn("File not found or not readable: {}", filePath);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
         } catch (MalformedURLException e) {
             log.error("Error serving file: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Unexpected error serving file: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

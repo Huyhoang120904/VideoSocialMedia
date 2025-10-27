@@ -49,7 +49,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**","/ws-native/**"
+            "/auth/**","/ws-native/**", "/feed/**"
     };
 
 

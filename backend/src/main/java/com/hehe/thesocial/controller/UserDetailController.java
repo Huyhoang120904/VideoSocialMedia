@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,39 +28,39 @@ public class UserDetailController {
 
     // READ - Get current user's detail
     @GetMapping("/me")
-    public ApiResponse<UserDetailResponse> getMyDetail() {
-        return ApiResponse.<UserDetailResponse>builder()
+    public ResponseEntity<ApiResponse<UserDetailResponse>> getMyDetail() {
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.getMyDetail())
-                .build();
+                .build());
     }
 
     // READ - Get user detail by ID
     @GetMapping("/{userDetailId}")
-    public ApiResponse<UserDetailResponse> getUserDetailById(@PathVariable String userDetailId) {
-        return ApiResponse.<UserDetailResponse>builder()
+    public ResponseEntity<ApiResponse<UserDetailResponse>> getUserDetailById(@PathVariable String userDetailId) {
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.getUserDetailById(userDetailId))
-                .build();
+                .build());
     }
 
     // READ - Get user detail by User ID
     @GetMapping("/by-user/{userId}")
-    public ApiResponse<UserDetailResponse> getUserDetailByUserId(@PathVariable String userId) {
-        return ApiResponse.<UserDetailResponse>builder()
+    public ResponseEntity<ApiResponse<UserDetailResponse>> getUserDetailByUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.getUserDetailByUserId(userId))
-                .build();
+                .build());
     }
 
     // READ - Get all user details
     @GetMapping
-    public ApiResponse<List<UserDetailResponse>> getAllUserDetails() {
-        return ApiResponse.<List<UserDetailResponse>>builder()
+    public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getAllUserDetails() {
+        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
                 .result(userDetailService.getAllUserDetails())
-                .build();
+                .build());
     }
 
     // READ - Get paginated user details
     @GetMapping("/paginated")
-    public ApiResponse<Page<UserDetailResponse>> getUserDetailsPaginated(
+    public ResponseEntity<ApiResponse<Page<UserDetailResponse>>> getUserDetailsPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "displayName") String sortBy,
@@ -70,32 +71,32 @@ public class UserDetailController {
                 : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        return ApiResponse.<Page<UserDetailResponse>>builder()
+        return ResponseEntity.ok(ApiResponse.<Page<UserDetailResponse>>builder()
                 .result(userDetailService.getUserDetailsPaginated(pageable))
-                .build();
+                .build());
     }
 
     // READ - Search user details by display name
     @GetMapping("/search/display-name")
-    public ApiResponse<List<UserDetailResponse>> searchByDisplayName(
+    public ResponseEntity<ApiResponse<List<UserDetailResponse>>> searchByDisplayName(
             @RequestParam String displayName) {
-        return ApiResponse.<List<UserDetailResponse>>builder()
+        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
                 .result(userDetailService.searchUserDetailsByDisplayName(displayName))
-                .build();
+                .build());
     }
 
     // READ - Search user details by username
     @GetMapping("/search/username")
-    public ApiResponse<List<UserDetailResponse>> searchByUsername(
+    public ResponseEntity<ApiResponse<List<UserDetailResponse>>> searchByUsername(
             @RequestParam String username) {
-        return ApiResponse.<List<UserDetailResponse>>builder()
+        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
                 .result(userDetailService.searchUserDetailsByUsername(username))
-                .build();
+                .build());
     }
 
     // UPDATE - Update user detail
     @PutMapping(value = "/{userDetailId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<UserDetailResponse> updateUserDetail(
+    public ResponseEntity<ApiResponse<UserDetailResponse>> updateUserDetail(
             @PathVariable String userDetailId,
             @RequestParam(name = "displayName", required = false) String displayName,
             @RequestParam(name = "bio", required = false) String bio,
@@ -109,14 +110,14 @@ public class UserDetailController {
                 .shownName(shownName)
                 .build();
 
-        return ApiResponse.<UserDetailResponse>builder()
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.updateUserDetail(userDetailId, request))
-                .build();
+                .build());
     }
 
     // UPDATE - Update avatar only
     @PatchMapping(value = "/{userDetailId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<UserDetailResponse> updateAvatar(
+    public ResponseEntity<ApiResponse<UserDetailResponse>> updateAvatar(
             @PathVariable String userDetailId,
             @RequestParam(name = "avatar") MultipartFile avatar) {
 
@@ -124,59 +125,59 @@ public class UserDetailController {
                 .avatar(avatar)
                 .build();
 
-        return ApiResponse.<UserDetailResponse>builder()
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.updateUserDetail(userDetailId, request))
-                .build();
+                .build());
     }
 
     // DELETE - Delete user detail
     @DeleteMapping("/{userDetailId}")
     public ResponseEntity<ApiResponse<Void>> deleteUserDetail(@PathVariable String userDetailId) {
         userDetailService.deleteUserDetail(userDetailId);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
                 .message("User detail deleted successfully")
                 .build());
     }
 
     // SOCIAL - Follow a user
     @PostMapping("/follow/{targetUserDetailId}")
-    public ApiResponse<UserDetailResponse> followUser(@PathVariable String targetUserDetailId) {
-        return ApiResponse.<UserDetailResponse>builder()
+    public ResponseEntity<ApiResponse<UserDetailResponse>> followUser(@PathVariable String targetUserDetailId) {
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.followUser(targetUserDetailId))
-                .build();
+                .build());
     }
 
     // SOCIAL - Unfollow a user
     @DeleteMapping("/unfollow/{targetUserDetailId}")
-    public ApiResponse<UserDetailResponse> unfollowUser(@PathVariable String targetUserDetailId) {
-        return ApiResponse.<UserDetailResponse>builder()
+    public ResponseEntity<ApiResponse<UserDetailResponse>> unfollowUser(@PathVariable String targetUserDetailId) {
+        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.unfollowUser(targetUserDetailId))
-                .build();
+                .build());
     }
 
     // SOCIAL - Get followers
     @GetMapping("/{userDetailId}/followers")
-    public ApiResponse<List<UserDetailResponse>> getFollowers(@PathVariable String userDetailId) {
-        return ApiResponse.<List<UserDetailResponse>>builder()
+    public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getFollowers(@PathVariable String userDetailId) {
+        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
                 .result(userDetailService.getFollowers(userDetailId))
-                .build();
+                .build());
     }
 
     // SOCIAL - Get following
     @GetMapping("/{userDetailId}/following")
-    public ApiResponse<List<UserDetailResponse>> getFollowing(@PathVariable String userDetailId) {
-        return ApiResponse.<List<UserDetailResponse>>builder()
+    public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getFollowing(@PathVariable String userDetailId) {
+        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
                 .result(userDetailService.getFollowing(userDetailId))
-                .build();
+                .build());
     }
 
     // SOCIAL - Check if following
     @GetMapping("/{userDetailId}/is-following/{targetUserDetailId}")
-    public ApiResponse<Boolean> isFollowing(
+    public ResponseEntity<ApiResponse<Boolean>> isFollowing(
             @PathVariable String userDetailId,
             @PathVariable String targetUserDetailId) {
-        return ApiResponse.<Boolean>builder()
+        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
                 .result(userDetailService.isFollowing(userDetailId, targetUserDetailId))
-                .build();
+                .build());
     }
 }

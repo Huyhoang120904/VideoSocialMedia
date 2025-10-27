@@ -7,6 +7,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.util.List;
+
 @Document(collection = "videos")
 @Getter
 @Setter
@@ -26,11 +28,11 @@ public class Video extends BaseDocument {
     UserDetail uploader;
 
     @DBRef
-    @Field("video_ref")
-    FileDocument video;
+    @Field("file_ref")
+    FileDocument file;
 
     @Field("thumb_url")
-    String thumbUrl;
+    FileDocument thumbnail;
 
     @Field("duration")
     double duration;
@@ -40,4 +42,12 @@ public class Video extends BaseDocument {
 
     @Field("description")
     String description;
+
+    @DBRef
+    @Field("hashtags_ref")
+    List<HashTag> hashTags;
+
+    @DBRef
+    @Field("metadata_ref")
+    MetaData metaData;
 }

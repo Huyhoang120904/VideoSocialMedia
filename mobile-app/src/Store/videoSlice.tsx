@@ -2,14 +2,21 @@ import { createSlice } from "@reduxjs/toolkit";
 
 export interface Video {
   id: string;
-  uri: string;
-  title: string;
+  fileName: string;
+  size: number;
+  url: string;
+  secureUrl?: string;
+  format: string;
+  resourceType: string;
+  title?: string;
   description?: string;
-  likes: number;
-  comments: number;
-  shares: number;
-  outstanding: number;
   thumbnailUrl?: string;
+  // Frontend-specific fields for UI state
+  uri: string; // Computed from url/secureUrl for video player
+  likes?: number; // Default to 0, can be updated from other APIs
+  comments?: number; // Default to 0, can be updated from other APIs
+  shares?: number; // Default to 0, can be updated from other APIs
+  outstanding?: number; // Default to 0, can be updated from other APIs
 }
 
 interface VideoState {
@@ -43,5 +50,6 @@ const videoSlice = createSlice({
   },
 });
 
-export const { setVideos, updateVideo, addVideo, clearVideos } = videoSlice.actions;
+export const { setVideos, updateVideo, addVideo, clearVideos } =
+  videoSlice.actions;
 export default videoSlice.reducer;

@@ -29,7 +29,7 @@ spring:
       api-key: ${OPENAI_API_KEY}
 server:
   port: 8082
-  host: ${SERVER_HOST:172.20.82.76}
+  host: ${SERVER_HOST}
   servlet:
     context-path: /api/v1
   cors: ${CORS_URL}

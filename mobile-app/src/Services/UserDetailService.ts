@@ -1,10 +1,8 @@
 import { api } from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
 import { UserDetailResponse } from "../Types/response/UserDetailResponse";
-import {
-  createUserDetailUpdateFormData,
-  UserDetailUpdateParams,
-} from "../Utils/FormDataHelper";
+import { UserDetailUpdateParams } from "../Types/request/UserDetailRequest";
+import { createUserDetailUpdateFormData } from "../Utils/FormDataHelper";
 
 const UserDetailService = {
   // READ - Get current user's detail

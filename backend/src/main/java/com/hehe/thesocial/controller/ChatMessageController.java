@@ -7,6 +7,7 @@ import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.service.aiChat.AiChatService;
+import com.hehe.thesocial.service.chatMessage.ChatMessageService;
 import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatMessageController {
-    ChatMessageServiceImpl chatMessageService;
+    ChatMessageService chatMessageService;
     AiChatService aiChatService;
 
     @GetMapping("/conversation/{conversationId}")

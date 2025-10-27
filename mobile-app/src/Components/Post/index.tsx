@@ -22,11 +22,12 @@ const formatTime = (seconds: number): string => {
 interface VideoData {
   id: string;
   uri: string;
-  title: string;
-  likes: number;
-  comments: number;
-  outstanding: number;
-  shares: number;
+  title?: string;
+  description?: string;
+  likes?: number;
+  comments?: number;
+  outstanding?: number;
+  shares?: number;
 }
 
 interface PostProps {
@@ -61,8 +62,8 @@ export default function Post({
 
   // Debug video URI
   useEffect(() => {
-    console.log('Video URI:', video.uri);
-    console.log('Video ID:', video.id);
+    console.log("Video URI:", video.uri);
+    console.log("Video ID:", video.id);
   }, [video.uri, video.id]);
 
   useEffect(() => {
@@ -253,13 +254,16 @@ export default function Post({
 
       <RightVideo
         id={video.id}
-        likes={video.likes}
-        comments={video.comments}
-        shares={video.shares}
-        outstanding={video.outstanding}
+        likes={video.likes || 0}
+        comments={video.comments || 0}
+        shares={video.shares || 0}
+        outstanding={video.outstanding || 0}
       />
 
-      <BottomVideo title={video.title} description={video.description || ''} />
+      <BottomVideo
+        title={video.title || ""}
+        description={video.description || ""}
+      />
     </View>
   );
 }

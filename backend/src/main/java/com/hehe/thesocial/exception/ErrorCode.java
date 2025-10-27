@@ -17,16 +17,18 @@ public enum ErrorCode {
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1053, "File not found!"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, 1101, "User not found!"),
-    ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 1102, "Role not found!"),
-    CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1103, "Conversation not found!"),
-    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1104, "Message not found!"),
+    VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, 1102, "Video not found!"),
+    IMAGE_SLIDE_NOT_FOUND(HttpStatus.NOT_FOUND, 1103, "Image slide not found!"),
+    ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 1104, "Role not found!"),
+    CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1105, "Conversation not found!"),
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1106, "Message not found!"),
 
-    INVALID_KEY(HttpStatus.UNAUTHORIZED, 1105, "Invalid key"),
-    USER_EXISTED(HttpStatus.BAD_REQUEST, 1106, "Already following user!"),
-    INVALID_CONVERSATION_PARTICIPANTS(HttpStatus.BAD_REQUEST, 1107, "Conversation info not valid"),
-    CONVERSATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, 1108, "Conversation between these participants already exists!"),
-    INVALID_CONVERSATION_TYPE(HttpStatus.BAD_REQUEST, 1109, "Invalid conversation type for this operation"),
-    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1110, "Access denied to this conversation");
+    INVALID_KEY(HttpStatus.UNAUTHORIZED, 1107, "Invalid key"),
+    USER_EXISTED(HttpStatus.BAD_REQUEST, 1108, "Already following user!"),
+    INVALID_CONVERSATION_PARTICIPANTS(HttpStatus.BAD_REQUEST, 1109, "Conversation info not valid"),
+    CONVERSATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, 1110, "Conversation between these participants already exists!"),
+    INVALID_CONVERSATION_TYPE(HttpStatus.BAD_REQUEST, 1111, "Invalid conversation type for this operation"),
+    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1112, "Access denied to this conversation");
 
 
     private final HttpStatus httpStatus;

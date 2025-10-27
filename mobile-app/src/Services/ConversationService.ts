@@ -3,13 +3,8 @@ import { ApiResponse } from "../Types/ApiResponse";
 import Page from "../Types/response/Page";
 import { ConversationResponse } from "../Types/response/ConversationResponse";
 import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
-import { ConversationRequest } from "../Types/request/ConversationRequest";
+import { ConversationRequest, PaginationParams } from "../Types/request";
 import ChatMessageService from "./ChatMessageService";
-
-interface PaginationParams {
-  page?: number;
-  size?: number;
-}
 
 const ConversationService = {
   // Get user's conversations with pagination support
@@ -91,7 +86,10 @@ const ConversationService = {
     conversationId: string,
     params?: PaginationParams
   ): Promise<ApiResponse<Page<ChatMessageResponse>>> => {
-    return ChatMessageService.getMessagesByConversationId(conversationId, params);
+    return ChatMessageService.getMessagesByConversationId(
+      conversationId,
+      params
+    );
   },
 };
 

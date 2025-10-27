@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
-public class ChatMessageServiceImpl {
+public class ChatMessageServiceImpl implements ChatMessageService {
     ChatMessageRepository chatMessageRepository;
     ChatMessageMapper chatMessageMapper;
     KafkaProducer producer;
@@ -50,6 +50,7 @@ public class ChatMessageServiceImpl {
 
     // ============ Public Methods ============
 
+    @Override
     public Page<ChatMessageResponse> getAllChatMessageByConversationId(String conversationId, Pageable pageable) {
         UserDetail currentUser = getCurrentUser();
         Conversation conversation = getConversation(conversationId);
@@ -84,6 +85,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse createDirectChatMessage(DirectChatMessageRequest request) {
         UserDetail sender = getCurrentUser();
         UserDetail receiver = getUserDetailById(request.getReceiverId());
@@ -101,6 +103,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse createGroupChatMessage(GroupChatMessageRequest request) {
         UserDetail sender = getCurrentUser();
         Conversation conversation = getConversation(request.getGroupId());
@@ -119,6 +122,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse updateChatMessage(String chatMessageId, ChatMessageUpdateRequest request) {
         UserDetail currentUser = getCurrentUser();
         ChatMessage existingMessage = getChatMessage(chatMessageId);
@@ -137,6 +141,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public void deleteChatMessage(String chatMessageId) {
         UserDetail currentUser = getCurrentUser();
         ChatMessage chatMessage = getChatMessage(chatMessageId);
@@ -150,6 +155,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse markMessageAsRead(String messageId) {
         UserDetail currentUser = getCurrentUser();
         ChatMessage message = getChatMessage(messageId);
@@ -194,6 +200,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public void markConversationMessagesAsRead(String conversationId) {
         UserDetail currentUser = getCurrentUser();
         Conversation conversation = getConversation(conversationId);
@@ -234,12 +241,14 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public String findOrCreateConversation(UserDetail user1, UserDetail user2) {
         Conversation conversation = findOrCreateDirectConversation(user1, user2);
         return conversation.getConversationId();
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse getAndBroadcastLastMessage(String conversationId, String senderId) {
         // Get the last message from this sender in this conversation
         Pageable pageable = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -277,6 +286,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse sendMessageToCurrentUser(String senderId, String message) {
         UserDetail receiver = getCurrentUser();
         UserDetail sender = getUserDetailByUserId(senderId);

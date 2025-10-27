@@ -9,15 +9,14 @@ const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // Include cookies in requests
 });
 
-// Request interceptor to add auth token
+// Request interceptor - tokens are now handled via HttpOnly cookies
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Cookies are automatically included with withCredentials: true
+    // No need to manually add Authorization header
     return config;
   },
   (error) => {
@@ -25,7 +24,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle authentication errors
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -35,36 +34,26 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const currentToken = localStorage.getItem("accessToken");
-        if (currentToken) {
-          console.log("Attempting to refresh token using current access token");
+        // Attempt to refresh token via API route
+        const refreshResponse = await fetch("/api/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+        });
 
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            token: currentToken, // Use access token for refresh
-          });
-
-          if (response.data.code === 1000 && response.data.result) {
-            const { token: newAccessToken } = response.data.result;
-            localStorage.setItem("accessToken", newAccessToken);
-
-            // Update the original request with new token
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-            return apiClient(originalRequest);
-          } else {
-            throw new Error("Refresh failed: Invalid response");
-          }
+        if (refreshResponse.ok) {
+          // Token refreshed successfully, retry original request
+          return apiClient(originalRequest);
         } else {
-          // No token available, redirect to login
-          console.log("No access token available, redirecting to login");
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          window.location.href = "/login";
+          // Refresh failed, redirect to login
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
         }
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
       }
     }
 

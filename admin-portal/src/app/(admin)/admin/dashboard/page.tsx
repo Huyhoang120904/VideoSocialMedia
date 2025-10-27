@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -7,35 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Users, Video, TrendingUp, Eye, HardDrive } from "lucide-react";
-import {
-  analyticsService,
-  AnalyticsResponse,
-} from "@/services/admin/analyticsService";
-import { toast } from "sonner";
+import { Users, Video, TrendingUp, HardDrive } from "lucide-react";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { useAnalytics } from "@/hooks/queries";
 
-export default function AdminDashboard() {
-  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        setLoading(true);
-        const response = await analyticsService.getDashboardAnalytics();
-        if (response.code === 1000 && response.result) {
-          setAnalytics(response.result);
-        }
-      } catch (error) {
-        console.error("Failed to fetch analytics:", error);
-        toast.error("Failed to load dashboard data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-  }, []);
+function DashboardContent() {
+  const { data: analytics, isLoading, error } = useAnalytics();
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -45,7 +22,7 @@ export default function AdminDashboard() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -70,6 +47,10 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error) {
+    throw error; // Let ErrorBoundary handle it
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -88,10 +69,10 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {analytics?.totalUsers || 0}
+              {analytics?.result?.totalUsers || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {analytics?.activeUsersToday || 0} active today
+              {analytics?.result?.activeUsersToday || 0} active today
             </p>
           </CardContent>
         </Card>
@@ -103,10 +84,10 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {analytics?.totalVideos || 0}
+              {analytics?.result?.totalVideos || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {analytics?.videosUploadedToday || 0} uploaded today
+              {analytics?.result?.videosUploadedToday || 0} uploaded today
             </p>
           </CardContent>
         </Card>
@@ -118,7 +99,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatFileSize(analytics?.totalStorageUsed || 0)}
+              {formatFileSize(analytics?.result?.totalStorageUsed || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               Total platform storage
@@ -153,7 +134,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Users by Role</h4>
-                  {analytics?.usersByRole.map((role) => (
+                  {analytics?.result?.usersByRole?.map((role) => (
                     <div
                       key={role.role}
                       className="flex justify-between text-sm"
@@ -165,7 +146,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Videos by Type</h4>
-                  {analytics?.videosByType.map((type) => (
+                  {analytics?.result?.videosByType?.map((type) => (
                     <div
                       key={type.type}
                       className="flex justify-between text-sm"
@@ -214,5 +195,13 @@ export default function AdminDashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <ErrorBoundary context="Admin Dashboard">
+      <DashboardContent />
+    </ErrorBoundary>
   );
 }
