@@ -6,6 +6,7 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.repository.FileRepository;
+import com.hehe.thesocial.service.thumbnail.ThumbnailService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -32,6 +33,7 @@ import java.util.*;
 public class FileServiceImpl implements FileService {
     FileMapper fileMapper;
     FileRepository fileRepository;
+    ThumbnailService thumbnailService;
 
     @NonFinal
     @Value("${file.upload-dir:uploads}")
@@ -44,6 +46,10 @@ public class FileServiceImpl implements FileService {
     @NonFinal
     @Value("${server.servlet.context-path:/api/v1}")
     String contextPath;
+
+    @NonFinal
+    @Value("${server.host:172.20.82.76}")
+    String serverHost;
 
     @Override
     public FileResponse storeFile(MultipartFile multipartFile) {
@@ -73,8 +79,27 @@ public class FileServiceImpl implements FileService {
             // Determine resource type based on file extension
             String resourceType = determineResourceType(fileExtension);
 
-            // Create file URL
-            String fileUrl = "http://localhost:" + serverPort + contextPath + "/files/" + uploader + "/" + uniqueFilename;
+            // Create file URL using configured host (fallback to localhost if not configured)
+            String host = (serverHost != null && !serverHost.isEmpty()) ? serverHost : "172.20.82.76";
+            String fileUrl = "http://" + host + ":" + serverPort + contextPath + "/files/" + uploader + "/" + uniqueFilename;
+
+            // Generate thumbnail for video files
+            String thumbnailUrl = null;
+            if ("video".equals(resourceType)) {
+                try {
+                    thumbnailUrl = thumbnailService.generateThumbnail(filePath.toString(), uploader);
+                    log.info("Generated thumbnail for video: {}", thumbnailUrl);
+                    
+                    // If thumbnail generation failed, create a default one
+                    if (thumbnailUrl == null) {
+                        log.warn("Thumbnail generation failed, creating default thumbnail");
+                        thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to generate thumbnail for video: {}", e.getMessage());
+                    thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
+                }
+            }
 
             FileDocument fileDocument = FileDocument.builder()
                     .fileName(originalFilename)
@@ -82,6 +107,7 @@ public class FileServiceImpl implements FileService {
                     .url(fileUrl)
                     .format(fileExtension.substring(1)) // Remove the dot
                     .resourceType(resourceType)
+                    .thumbnailUrl(thumbnailUrl)
                     .build();
 
             // For images, you might want to get dimensions (optional)

@@ -53,8 +53,9 @@ public class VideoController {
     public ApiResponse<FileResponse> uploadVideo(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title,
-            @RequestParam(value = "description", required = false) String description) {
-        return videoService.uploadVideo(file, title, description);
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail) {
+        return videoService.uploadVideo(file, title, description, thumbnail);
     }
 
     @PostMapping("/tiktok")

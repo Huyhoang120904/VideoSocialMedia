@@ -59,6 +59,12 @@ export default function Post({
     p.muted = false;
   });
 
+  // Debug video URI
+  useEffect(() => {
+    console.log('Video URI:', video.uri);
+    console.log('Video ID:', video.id);
+  }, [video.uri, video.id]);
+
   useEffect(() => {
     const timeListener = player.addListener("timeUpdate", (e) => {
       // Always update currentTime when not dragging
@@ -253,7 +259,7 @@ export default function Post({
         outstanding={video.outstanding}
       />
 
-      <BottomVideo title={video.title} />
+      <BottomVideo title={video.title} description={video.description || ''} />
     </View>
   );
 }

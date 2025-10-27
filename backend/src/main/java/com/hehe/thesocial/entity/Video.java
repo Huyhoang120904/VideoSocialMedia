@@ -34,4 +34,10 @@ public class Video extends BaseDocument {
 
     @Field("duration")
     double duration;
+
+    @Field("title")
+    String title;
+
+    @Field("description")
+    String description;
 }

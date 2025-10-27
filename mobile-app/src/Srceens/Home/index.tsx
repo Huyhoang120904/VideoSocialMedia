@@ -10,9 +10,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { setVideos, Video } from "../../Store/videoSlice";
+import { setVideos, Video } from "../../store/videoSlice";
 import Post from "../../Components/Post";
-import type { RootState } from "../../Store/index";
+import type { RootState } from "../../store/index";
 import { fetchVideos } from "../../Services/VideoService";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
@@ -32,26 +32,28 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTabActive, setIsTabActive] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const flatListRef = useRef<FlatList<Video>>(null);
   const videos = useSelector((state: RootState) => state.videos.videos);
   const dispatch = useDispatch();
-
+  
   const isScrolling = useRef(false);
-  const scrollDirection = useRef<"up" | "down" | null>(null);
+  const scrollDirection = useRef<'up' | 'down' | null>(null);
   const lastScrollY = useRef(0);
   const hasScrolledToVideo = useRef(false);
 
   const loadVideos = useCallback(async () => {
-    if (loading) return;
+    if (loading || hasLoaded) return;
 
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetchVideos();
-
+      
       if (response.code === 1000 && response.result) {
         dispatch(setVideos(response.result));
+        setHasLoaded(true);
       } else {
         setError(response.message || "Failed to load videos");
       }
@@ -61,22 +63,37 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [dispatch]);
+  }, [dispatch, loading, hasLoaded]);
+
+  // Function to refresh videos (for pull-to-refresh)
+  const refreshVideos = useCallback(async () => {
+    setHasLoaded(false);
+    setError(null);
+    await loadVideos();
+  }, [loadVideos]);
 
   // Load videos lần đầu
   useEffect(() => {
-    if (videos.length === 0 && !loading) {
+    if (!hasLoaded && !loading) {
       loadVideos();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videos.length]);
+  }, [hasLoaded, loading, loadVideos]);
+
+  // Reload videos when videos array becomes empty (after clearVideos)
+  useEffect(() => {
+    if (videos.length === 0 && hasLoaded && !loading) {
+      console.log('Videos cleared, reloading...');
+      setHasLoaded(false);
+    }
+  }, [videos.length, hasLoaded, loading]);
 
   // Handle tab focus/blur to pause/resume video
   useFocusEffect(
     useCallback(() => {
       setIsTabActive(true);
-
-      if (videos.length === 0 && !loading) {
+      
+      // Only load if not already loaded and not currently loading
+      if (!hasLoaded && !loading) {
         loadVideos();
       }
 
@@ -84,20 +101,14 @@ export default function Home() {
         setIsTabActive(false);
         hasScrolledToVideo.current = false; // Reset khi rời tab
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [videos.length, loading])
+    }, [hasLoaded, loading, loadVideos])
   );
 
   // Scroll to specific video if videoId is provided
   useEffect(() => {
     const params = route.params as any;
-    if (
-      params?.videoId &&
-      videos.length > 0 &&
-      !hasScrolledToVideo.current &&
-      isTabActive
-    ) {
-      const videoIndex = videos.findIndex((v) => v.id === params.videoId);
+    if (params?.videoId && videos.length > 0 && !hasScrolledToVideo.current && isTabActive) {
+      const videoIndex = videos.findIndex(v => v.id === params.videoId);
       if (videoIndex !== -1) {
         hasScrolledToVideo.current = true;
         setTimeout(() => {
@@ -120,12 +131,12 @@ export default function Home() {
 
   const handleScroll = useCallback((event: any) => {
     if (!isScrolling.current) return;
-
+    
     const currentY = event.nativeEvent.contentOffset.y;
     const diff = currentY - lastScrollY.current;
-
+    
     if (Math.abs(diff) > 10) {
-      scrollDirection.current = diff > 0 ? "down" : "up";
+      scrollDirection.current = diff > 0 ? 'down' : 'up';
     }
   }, []);
 
@@ -142,9 +153,9 @@ export default function Home() {
 
     // Tính toán index mới (chỉ cho phép +1 hoặc -1)
     let newIndex = currentIndex;
-    if (scrollDirection.current === "down") {
+    if (scrollDirection.current === 'down') {
       newIndex = Math.min(currentIndex + 1, videos.length - 1);
-    } else if (scrollDirection.current === "up") {
+    } else if (scrollDirection.current === 'up') {
       newIndex = Math.max(currentIndex - 1, 0);
     }
 
@@ -162,11 +173,7 @@ export default function Home() {
   // Xử lý khi item hiển thị thay đổi
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (
-        !isScrolling.current &&
-        viewableItems.length > 0 &&
-        viewableItems[0].index !== null
-      ) {
+      if (!isScrolling.current && viewableItems.length > 0 && viewableItems[0].index !== null) {
         setCurrentIndex(viewableItems[0].index);
       }
     }
@@ -200,7 +207,7 @@ export default function Home() {
 
   const handleScrollToIndexFailed = useCallback(
     (info: ScrollToIndexFailInfo) => {
-      const wait = new Promise((resolve) => setTimeout(resolve, 500));
+      const wait = new Promise(resolve => setTimeout(resolve, 500));
       wait.then(() => {
         flatListRef.current?.scrollToIndex({
           index: info.index,
@@ -293,35 +300,35 @@ export default function Home() {
 const styles = StyleSheet.create({
   centerContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
     paddingHorizontal: 20,
   },
   loadingText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
     marginTop: 10,
-    textAlign: "center",
+    textAlign: 'center',
   },
   errorText: {
-    color: "#ff4444",
+    color: '#ff4444',
     fontSize: 16,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: 10,
   },
   retryText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
-    textAlign: "center",
-    backgroundColor: "#333",
+    textAlign: 'center',
+    backgroundColor: '#333',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   emptyText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
-    textAlign: "center",
+    textAlign: 'center',
   },
 });
