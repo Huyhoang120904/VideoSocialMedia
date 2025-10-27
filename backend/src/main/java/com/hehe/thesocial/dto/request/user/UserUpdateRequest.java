@@ -11,4 +11,5 @@ public class UserUpdateRequest {
     String password;
     String mail;
     String phoneNumber;
+    Boolean enable;
 }

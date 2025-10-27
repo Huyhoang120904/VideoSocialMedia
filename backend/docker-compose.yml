@@ -16,34 +16,29 @@ services:
     networks:
       - thesocial-network
     healthcheck:
-      test: ["CMD", "mongosh", "--username=root", "--password=rootpassword123", "--eval", "db.adminCommand('ping')", "--authenticationDatabase=admin"]
+      test: [ "CMD", "mongosh", "--username=superadmin", "--password=123456", "--eval", "db.adminCommand('ping')", "--authenticationDatabase=admin" ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
 
   kafka:
-    image: bitnami/kafka:3.7.0
-    container_name: thesocial-kafka
-    restart: unless-stopped
+    image: redpanda/redpanda:latest
+    container_name: thesocial-redpanda
     ports:
-      - "9092:9092" # for local development
-      - "9093:9093" # for docker internal communication
-    environment:
-      # Enable KRaft mode
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - ALLOW_PLAINTEXT_LISTENER=yes
-    volumes:
-      - kafka_data:/bitnami/kafka
+      - "9092:9092"
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --advertise-kafka-addr 192.168.100.191:9092
     networks:
       - thesocial-network
+
 
 volumes:
   mongodb_data:

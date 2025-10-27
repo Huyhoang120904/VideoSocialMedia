@@ -1,14 +1,17 @@
 package com.hehe.thesocial.dto.request.chat;
 
-import lombok.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChatMessageUpdateRequest {
-    String update;
-    String id;
+    @NotNull(message = "Message is required")
+    @NotBlank(message = "Message cannot be blank")
+    String message;
 }

@@ -77,14 +77,12 @@ public class WebSocketListener {
         try {
             StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
             log.info("===== WebSocket Disconnected =====");
-            log.info("Session ID: {}", accessor.getSessionId());
-            
+
             // Get disconnect status
             CloseStatus closeStatus = event.getCloseStatus();
             if (closeStatus != null) {
                 log.info("Close status: {} - {}", closeStatus.getCode(), closeStatus.getReason());
             }
-            
             // Log principal if available
             if (accessor.getUser() != null) {
                 log.info("Disconnected user: {}", accessor.getUser().getName());
@@ -112,5 +110,7 @@ public class WebSocketListener {
             log.error("Error in subscription handler", e);
         }
     }
+
+
 
 }

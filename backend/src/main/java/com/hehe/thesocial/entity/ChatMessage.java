@@ -3,13 +3,15 @@ package com.hehe.thesocial.entity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.MongoId;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Document("chat_messages")
+@Document(value = "chat_message")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -17,17 +19,28 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ChatMessage {
-    @MongoId
+    @EqualsAndHashCode.Include
+    @Id
     String id;
 
-    String message;
-    String sender;
-    FileDocument fileDocument;
     String conversationId;
-    LocalDateTime time;
 
-    boolean edited;
+    String senderId;
+    String message;
+    LocalDateTime createdAt;
+    Boolean edited;
 
+    String role;
+    String content;
+
+    @DBRef
+    FileDocument fileDocument;
+
+    @DBRef
+    FileDocument avatar;
+
+    @Field("read_participants_id")
     List<String> readParticipantsId;
 }

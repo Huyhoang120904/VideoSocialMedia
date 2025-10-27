@@ -1,5 +1,8 @@
 package com.hehe.thesocial.config;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -11,29 +14,26 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    JwtHandshakeInterceptor jwtHandshakeInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/chat");
+        registry.enableSimpleBroker("/queue", "/user");
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
-
-
+        System.out.println("WebSocketConfig: Message broker configured with /queue destination");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Add endpoint with SockJS for browsers
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();
-
-        // Add raw WebSocket endpoint for mobile apps at a different path
         registry.addEndpoint("/ws-native")
-                .setAllowedOriginPatterns("*");
-
+                .setAllowedOriginPatterns("*")
+                .addInterceptors(jwtHandshakeInterceptor)
+                .withSockJS();
+        System.out.println("WebSocketConfig: STOMP endpoint registered at /ws-native");
     }
-
 }

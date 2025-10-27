@@ -1,27 +1,33 @@
 package com.hehe.thesocial.entity;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.util.Date;
 
-@Document
+@Document(collection = "invalid_tokens")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class InvalidToken {
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class InvalidToken extends BaseDocument {
+    @EqualsAndHashCode.Include
     @MongoId
+    @Field("_id")
     String id;
 
+    @Field("user_id")
     String userId;
 
+    @Field("token_id")
     String tokenId;
 
+    @Field("expire_at")
     Date expireAt;
 }

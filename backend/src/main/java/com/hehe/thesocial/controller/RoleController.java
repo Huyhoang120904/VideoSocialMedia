@@ -12,6 +12,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,59 +26,59 @@ public class RoleController {
 
 
     @GetMapping("/{roleId}")
-    public ApiResponse<RoleResponse> getRoleById(@PathVariable String roleId) {
-        return ApiResponse.<RoleResponse>builder()
+    public ResponseEntity<ApiResponse<RoleResponse>> getRoleById(@PathVariable String roleId) {
+        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
                 .result(roleService.findRoleById(roleId))
-                .build();
+                .build());
     }
 
     @GetMapping
-    public ApiResponse<PagedModel<EntityModel<RoleResponse>>> getRolesByPage(
+    public ResponseEntity<ApiResponse<PagedModel<EntityModel<RoleResponse>>>> getRolesByPage(
             @PageableDefault(size = 12, page = 0) Pageable pageable,  PagedResourcesAssembler<RoleResponse> assembler) {
-        return ApiResponse.<PagedModel<EntityModel<RoleResponse>>>builder()
+        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<RoleResponse>>>builder()
                 .result(assembler.toModel(roleService.findAllRolesByPage(pageable)))
-                .build();
+                .build());
     }
 
     @PostMapping
-    public ApiResponse<RoleResponse> createRole(@RequestBody RoleRequest request) {
-        return ApiResponse.<RoleResponse>builder()
+    public ResponseEntity<ApiResponse<RoleResponse>> createRole(@RequestBody RoleRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<RoleResponse>builder()
                 .result(roleService.createRole(request))
-                .build();
+                .build());
     }
 
     @PutMapping("/{roleId}")
-    public ApiResponse<RoleResponse> updateRole(
+    public ResponseEntity<ApiResponse<RoleResponse>> updateRole(
             @PathVariable String roleId,
             @RequestBody RoleRequest request) {
-        return ApiResponse.<RoleResponse>builder()
+        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
                 .result(roleService.updateRole(roleId, request))
-                .build();
+                .build());
     }
 
     @DeleteMapping("/{roleId}")
-    public ApiResponse<Void> deleteRole(@PathVariable String roleId) {
+    public ResponseEntity<ApiResponse<Void>> deleteRole(@PathVariable String roleId) {
         roleService.deleteRole(roleId);
-        return ApiResponse.<Void>builder()
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
                 .message("Role deleted successfully")
-                .build();
+                .build());
     }
 
     @PostMapping("/{roleId}/permissions/{permissionId}")
-    public ApiResponse<RoleResponse> addPermissionToRole(
+    public ResponseEntity<ApiResponse<RoleResponse>> addPermissionToRole(
             @PathVariable String roleId,
             @PathVariable String permissionId) {
-        return ApiResponse.<RoleResponse>builder()
+        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
                 .result(roleService.addPermissionToRole(roleId, permissionId))
-                .build();
+                .build());
     }
 
     @DeleteMapping("/{roleId}/permissions/{permissionId}")
-    public ApiResponse<RoleResponse> removePermissionFromRole(
+    public ResponseEntity<ApiResponse<RoleResponse>> removePermissionFromRole(
             @PathVariable String roleId,
             @PathVariable String permissionId) {
-        return ApiResponse.<RoleResponse>builder()
+        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
                 .result(roleService.removePermissionFromRole(roleId, permissionId))
-                .build();
+                .build());
     }
 }
