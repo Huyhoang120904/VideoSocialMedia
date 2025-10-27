@@ -3,18 +3,18 @@ spring:
     name: TheSocial
   data:
     mongodb:
-      uri: mongodb://localhost:27017/thesocial
+      uri: ${MONGODB_URL}
       auto-index-creation: true
       # Configuration for DocumentReference loading
       repositories:
         enabled: true
   servlet:
     multipart:
-      max-file-size: 20MB
+      max-file-size: 50MB
       max-request-size: 50MB
       enabled: true
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOSTRAP_SERVER}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

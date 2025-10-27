@@ -2,7 +2,6 @@ package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
-import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.service.video.VideoService;
@@ -14,10 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 
 @RestController

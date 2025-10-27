@@ -1,5 +1,6 @@
 package com.hehe.thesocial.dto.response.auth;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -9,6 +10,13 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class IntrospectResponse {
-    boolean isValid;
+    @JsonProperty("isValid")
+    boolean valid;
+    
+    @JsonProperty("userId")
     String userId;
+    
+    public boolean isValid() {
+        return valid;
+    }
 }

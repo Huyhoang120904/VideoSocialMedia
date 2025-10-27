@@ -63,6 +63,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // Check if user account is enabled
+        if (user.getEnable() == null || !user.getEnable()) {
+            throw new AppException(ErrorCode.USER_ACCOUNT_DISABLED);
+        }
+
         boolean isAuthenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
         if (!isAuthenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -89,7 +94,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             isValid = false;
         }
         return IntrospectResponse.builder()
-                .isValid(isValid)
+                .valid(isValid)
                 .userId(userId)
                 .build();
     }
@@ -113,6 +118,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             User userEntity = userRepository.findByUsername(usename)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            
+            // Check if user account is enabled
+            if (userEntity.getEnable() == null || !userEntity.getEnable()) {
+                throw new AppException(ErrorCode.USER_ACCOUNT_DISABLED);
+            }
+            
             String token = generateToken(userEntity);
 
             return RefreshResponse.builder()

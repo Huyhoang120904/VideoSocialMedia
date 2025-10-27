@@ -10,6 +10,7 @@ public enum ErrorCode {
 
 
     UNAUTHENTICATED(HttpStatus.BAD_REQUEST, 1001, "Invalid authentication info"),
+    USER_ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, 1002, "User account is disabled"),
 
     INVALID_FILE(HttpStatus.BAD_REQUEST, 1051, "File uploaded not valid!"),
     ERROR_UPLOADING_FILE(HttpStatus.INTERNAL_SERVER_ERROR, 1052, "File uploaded having trouble"),
