@@ -40,7 +40,7 @@ public class User extends BaseDocument {
 
     @Field("enable")
     @Builder.Default
-    Boolean enable = false;
+    Boolean enable = true;
 
     @DBRef(lazy = false)
     @Field("roles_ref")
