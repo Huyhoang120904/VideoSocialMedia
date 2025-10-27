@@ -1,7 +1,12 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 
+
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://192.168.100.55:8082/api/v1";
+  process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.82.76:8082/api/v1";
+
+
+console.log("USING API: " + API_URL);
+
 
 let accessToken: string | null = null;
 let isRefreshing = false;
@@ -10,6 +15,10 @@ let pendingQueue: {
   reject: (value?: unknown) => void;
   config: any;
 }[] = [];
+
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
 const processQueue = (error: any, token: string | null = null) => {
   pendingQueue.forEach((p) => {
@@ -35,14 +44,14 @@ export const clearAuthToken: () => void = () => {
   accessToken = null;
 };
 
+
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 30000, // Increased timeout to 30 seconds
 });
-
-// Debug logging
-console.log("🔗 API Base URL:", API_URL);
-console.log("🌐 Environment API URL:", process.env.EXPO_PUBLIC_API_URL);
 
 api.interceptors.request.use((config) => {
   if (getAuthToken()) {
@@ -55,6 +64,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<any>) => {
+
     const original = error.config as any;
     const status = error.response?.status;
 

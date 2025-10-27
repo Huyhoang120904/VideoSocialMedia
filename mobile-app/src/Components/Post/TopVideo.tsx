@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Text, View, Animated, Pressable, PanResponder } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import styles from "./styles";
 import { useNavigation } from '@react-navigation/native';
 
@@ -81,40 +83,62 @@ export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
     });
 
     return (
-        <View style={styles.topVideoContainer} {...panResponder.panHandlers}>
-            {/* Container con để căn giữa */}
-            <View ref={containerRef} style={{ flexDirection: 'row', alignSelf: 'center' }}>
-                {tabs.map((item, index) => (
-                    <Pressable
-                        key={index}
-                        onPress={() => handlePress(index)}
-                        style={{ paddingHorizontal: 8, paddingVertical: 6 }}
-                    >
-                        <View ref={el => { tabRefs.current[index] = el }}>
-                            <Text
-                                style={[
-                                    styles.titleTop,
-                                    activeTab === item && { fontWeight: "800", color: "#fff" },
-                                ]}
-                            >
-                                {item}
-                            </Text>
-                        </View>
-                    </Pressable>
-                ))}
+        <View style={styles.topVideoContainer}>
+            {/* Gradient overlay for better readability */}
+            <LinearGradient
+                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
+                style={styles.topGradient}
+            />
+            
+            {/* Search icon */}
+            <Pressable style={styles.searchIcon}>
+                <Ionicons name="search" size={24} color="#fff" />
+            </Pressable>
 
-                {/* Underline */}
-                <Animated.View
-                    style={{
-                        position: "absolute",
-                        bottom: 0,
-                        width: underlineWidth,
-                        height: 3,
-                        backgroundColor: "#fff",
-                        borderRadius: 3,
-                        transform: [{ translateX }],
-                    }}
-                />
+            {/* Tabs container */}
+            <View style={styles.tabsWrapper} {...panResponder.panHandlers}>
+                <View ref={containerRef} style={{ flexDirection: 'row', alignSelf: 'center' }}>
+                    {tabs.map((item, index) => (
+                        <Pressable
+                            key={index}
+                            onPress={() => handlePress(index)}
+                            style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                        >
+                            <View ref={el => { tabRefs.current[index] = el }}>
+                                <Text
+                                    style={[
+                                        styles.titleTop,
+                                        activeTab === item && { 
+                                            fontWeight: "800", 
+                                            color: "#fff",
+                                            fontSize: 12, // Giảm từ 14 xuống 12 để nhỏ hơn
+                                        },
+                                    ]}
+                                >
+                                    {item}
+                                </Text>
+                            </View>
+                        </Pressable>
+                    ))}
+
+                    {/* Underline with shadow */}
+                    <Animated.View
+                        style={{
+                            position: "absolute",
+                            bottom: 0,
+                            width: underlineWidth,
+                            height: 4,
+                            backgroundColor: "#fff",
+                            borderRadius: 2,
+                            transform: [{ translateX }],
+                            shadowColor: "#fff",
+                            shadowOffset: { width: 0, height: 0 },
+                            shadowOpacity: 0.8,
+                            shadowRadius: 4,
+                            elevation: 5,
+                        }}
+                    />
+                </View>
             </View>
         </View>
     );

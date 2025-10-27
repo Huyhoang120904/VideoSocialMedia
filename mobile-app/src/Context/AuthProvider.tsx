@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       try {
         const raw = await SecureStore.getItemAsync(TOKEN_KEY);
         if (raw) {
-          const token = JSON.parse(raw);
+          const token = raw; // Token is already a string, no need to parse
           setAuthToken(token);
           setHasSession(true);
           setIsAuthenticated(true); // Set authenticated if we have a valid token

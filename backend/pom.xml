@@ -132,6 +132,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
+        
+        <!-- FFmpeg for video thumbnail generation -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>1.5.9</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

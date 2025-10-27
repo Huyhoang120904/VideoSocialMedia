@@ -2,6 +2,7 @@ import api from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
 import { Video } from "../Store/videoSlice";
 import FileResponse from "../Types/response/FileResponse";
+import { getVideoUrl } from "../Utils/ImageUrlHelper";
 
 // Interface for paginated response from backend
 interface PaginatedResponse {
@@ -21,26 +22,27 @@ export interface VideoListResponse {
     totalPages: number;
 }
 
-export const fetchVideos = async (): Promise<ApiResponse<Video[]>> => {
+export const fetchVideos = async (retryCount: number = 0): Promise<ApiResponse<Video[]>> => {
+    const MAX_RETRIES = 3;
+    
     try {
         const { data } = await api.get<ApiResponse<PaginatedResponse>>("/videos");
         
         // Transform FileResponse[] to Video[]
         const videos: Video[] = data.result?.content?.map((file: FileResponse) => {
-            // Replace localhost with correct IP for frontend access
-            let videoUrl = file.url || file.secureUrl || '';
-            if (videoUrl.includes('localhost:8082')) {
-                videoUrl = videoUrl.replace('localhost:8082', '192.168.1.230:8082');
-            }
+            // Use helper function to get correct video URL for current platform
+            const videoUrl = getVideoUrl(file.url || file.secureUrl || '');
             
             const video = {
                 id: file.id,
                 uri: videoUrl,
-                title: file.fileName || 'Untitled Video',
+                title: file.title || file.fileName || 'Untitled Video',
+                description: file.description || '',
                 likes: 0, // Default values since FileResponse doesn't have these
                 comments: 0,
                 shares: 0,
-                outstanding: 0
+                outstanding: 0,
+                thumbnailUrl: file.thumbnailUrl
             };
             return video;
         }) || [];
@@ -51,7 +53,7 @@ export const fetchVideos = async (): Promise<ApiResponse<Video[]>> => {
         };
     } catch (error: any) {
         // Log detailed API error information
-        console.error("API Fetch Videos Error:", error);
+        console.error(`API Fetch Videos Error (attempt ${retryCount + 1}):`, error);
 
         // Log request details
         if (error.config) {
@@ -69,6 +71,18 @@ export const fetchVideos = async (): Promise<ApiResponse<Video[]>> => {
             console.log("Response Data:", error.response.data);
         }
 
+        // Retry logic for network errors
+        if (retryCount < MAX_RETRIES && (
+            error.code === 'NETWORK_ERROR' || 
+            error.message?.includes('Network Error') ||
+            error.message?.includes('timeout') ||
+            !error.response
+        )) {
+            console.log(`Retrying fetchVideos in ${(retryCount + 1) * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+            return fetchVideos(retryCount + 1);
+        }
+
         throw new Error(
             error.response?.data?.message || "Failed to fetch videos"
         );
@@ -83,20 +97,19 @@ export const fetchVideosByUserId = async (userId: string, page: number = 0, size
         
         // Transform FileResponse[] to Video[]
         const videos: Video[] = data.result?.content?.map((file: FileResponse) => {
-            // Replace localhost with correct IP for frontend access
-            let videoUrl = file.url || file.secureUrl || '';
-            if (videoUrl.includes('localhost:8082')) {
-                videoUrl = videoUrl.replace('localhost:8082', '192.168.1.230:8082');
-            }
+            // Use helper function to get correct video URL for current platform
+            const videoUrl = getVideoUrl(file.url || file.secureUrl || '');
             
             return {
                 id: file.id,
                 uri: videoUrl,
-                title: file.fileName || 'Untitled Video',
+                title: file.title || file.fileName || 'Untitled Video',
+                description: file.description || '',
                 likes: 0, // Default values since FileResponse doesn't have these
                 comments: 0,
                 shares: 0,
-                outstanding: 0
+                outstanding: 0,
+                thumbnailUrl: file.thumbnailUrl
             };
         }) || [];
 
