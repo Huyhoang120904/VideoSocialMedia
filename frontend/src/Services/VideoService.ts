@@ -2,7 +2,7 @@ import api from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
 import { Video } from "../store/videoSlice";
 import FileResponse from "../Types/response/FileResponse";
-import { getVideoUrl } from "../Utils/ImageUrlHelper";
+import { getVideoUrl, getThumbnailUrl } from "../Utils/ImageUrlHelper";
 
 // Interface for paginated response from backend
 interface PaginatedResponse {
@@ -42,7 +42,7 @@ export const fetchVideos = async (retryCount: number = 0): Promise<ApiResponse<V
                 comments: 0,
                 shares: 0,
                 outstanding: 0,
-                thumbnailUrl: file.thumbnailUrl
+                thumbnailUrl: getThumbnailUrl(file.thumbnailUrl || '')
             };
             return video;
         }) || [];
@@ -109,7 +109,7 @@ export const fetchVideosByUserId = async (userId: string, page: number = 0, size
                 comments: 0,
                 shares: 0,
                 outstanding: 0,
-                thumbnailUrl: file.thumbnailUrl
+                thumbnailUrl: getThumbnailUrl(file.thumbnailUrl || '')
             };
         }) || [];
 

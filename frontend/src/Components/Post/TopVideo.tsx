@@ -91,9 +91,9 @@ export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
             />
             
             {/* Search icon */}
-            <Pressable style={styles.searchIcon}>
+            {/* <Pressable style={styles.searchIcon}>
                 <Ionicons name="search" size={24} color="#fff" />
-            </Pressable>
+            </Pressable> */}
 
             {/* Tabs container */}
             <View style={styles.tabsWrapper} {...panResponder.panHandlers}>

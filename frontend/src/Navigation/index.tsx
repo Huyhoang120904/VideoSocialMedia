@@ -17,8 +17,8 @@ import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
 import { ChatMessageProvider } from "../Context/ChatMessageProvider";
-// TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
-// import { SocketProvider } from "../Context/SocketProvider";
+import { NewestMessageProvider } from "../Context/NewestMessageProvider";
+import { SocketProvider } from "../Context/SocketProvider";
 
 export default function RootNavigation() {
   const Stack = createStackNavigator();
@@ -59,17 +59,18 @@ export default function RootNavigation() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        {/* TEMPORARILY COMMENTED OUT - SocketProvider causing WebSocket timeout errors */}
-        {/* <SocketProvider> */}
+        <SocketProvider>
           <ConversationProvider>
             <ChatMessageProvider>
-              <NavigationContainer>
-                <Switcher />
-              </NavigationContainer>
+              <NewestMessageProvider>
+                <NavigationContainer>
+                  <Switcher />
+                </NavigationContainer>
+              </NewestMessageProvider>
             </ChatMessageProvider>
           </ConversationProvider>
-        {/* </SocketProvider> */}
-      </AuthProvider>
+        </SocketProvider>
+</AuthProvider>
     </SafeAreaProvider>
   );
 }
