@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance } from "axios";
 
 
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.82.76:8082/api/v1";
+  process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.239.147:8082/api/v1";
 
 
 console.log("USING API: " + API_URL);

@@ -28,7 +28,7 @@ export class SocketService {
     this.currentToken = token;
 
     // Get WebSocket URL
-    const baseUrl = process.env.EXPO_PUBLIC_WS_URL || "http://192.168.239.147:8082/ws-native";
+    const baseUrl = process.env.EXPO_PUBLIC_WS_URL || "http://172.20.82.76:8082/ws-native";
 
     // Add auth token as query parameter
     const url = `${baseUrl}?token=${encodeURIComponent(token)}`;

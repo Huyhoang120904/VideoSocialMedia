@@ -23,6 +23,7 @@ interface VideoData {
   id: string;
   uri: string;
   title: string;
+  description?: string;
   likes: number;
   comments: number;
   outstanding: number;
@@ -50,14 +51,37 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
 
   const player = useVideoPlayer(video.uri, (p) => {
     p.loop = true;
-    p.muted = false;
+    p.muted = true; // Start muted for better UX
+    p.allowsExternalPlayback = false;
+    p.allowsPictureInPicture = false;
+    p.shouldPlay = isActive; // Auto-play when active
   });
 
   // Debug video URI
   useEffect(() => {
     console.log('Video URI:', video.uri);
     console.log('Video ID:', video.id);
-  }, [video.uri, video.id]);
+    console.log('Player status:', {
+      isLoaded: player.status === 'readyToPlay',
+      status: player.status,
+      error: player.error
+    });
+    
+    // Test if video URL is accessible
+    if (video.uri) {
+      fetch(video.uri, { method: 'GET' })
+        .then(response => {
+          console.log('Video URL accessibility test:', {
+            url: video.uri,
+            status: response.status,
+            accessible: response.ok
+          });
+        })
+        .catch(error => {
+          console.error('Video URL not accessible:', error);
+        });
+    }
+  }, [video.uri, video.id, player.status, player.error]);
 
   useEffect(() => {
     const timeListener = player.addListener("timeUpdate", (e) => {
@@ -88,11 +112,26 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
 
   useEffect(() => {
     if (isActive) {
+      console.log('Attempting to play video:', video.uri);
       player.play();
     } else {
       player.pause();
     }
   }, [isActive, player, video.uri]);
+
+  // Handle video errors
+  useEffect(() => {
+    const errorListener = player.addListener("statusChange", (e) => {
+      console.log('Video status changed:', e.status);
+      if (e.status === 'error') {
+        console.error('Video error:', player.error);
+      }
+    });
+
+    return () => {
+      errorListener.remove();
+    };
+  }, [player]);
 
   // Additional effect to ensure time sync when not dragging
   useEffect(() => {
@@ -108,6 +147,7 @@ export default function Post({ video, isActive, itemHeight = screenHeight }: Pos
   }, [isDragging, isPlaying, currentTime, player]);
 
   const handlePlayPause = () => {
+    console.log('Play/Pause pressed. Current playing state:', isPlaying);
     if (isPlaying) {
       player.pause();
     } else {
