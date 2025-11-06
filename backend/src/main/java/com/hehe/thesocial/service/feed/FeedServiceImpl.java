@@ -1,7 +1,6 @@
 package com.hehe.thesocial.service.feed;
 
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
-import com.hehe.thesocial.entity.MetaData;
 import com.hehe.thesocial.entity.Video;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.mapper.file.FileMapper;
@@ -24,13 +23,13 @@ public class FeedServiceImpl implements FeedService {
 
     @Override
     public Page<FeedItemResponse> getAllFeedItems(Pageable pageable) {
-        log.info("Getting all videos for feed with page: {}, size: {}", 
+        log.info("Getting all videos for feed with page: {}, size: {}",
                 pageable.getPageNumber(), pageable.getPageSize());
-        
+
         // Fetch all Videos
         Page<Video> videos = videoRepository.findAll(pageable);
         log.info("Found {} videos", videos.getTotalElements());
-        
+
         // Map each Video to FeedItemResponse
         return videos.map(this::convertVideoToFeedItem);
     }
@@ -44,30 +43,13 @@ public class FeedServiceImpl implements FeedService {
 
         // Convert video FileDocument to FileResponse
         if (video.getFile() != null) {
-            builder.video(fileMapper.toFileResponseFromVideo(video));
+            builder.video(fileMapper.toFileResponse(video.getFile()));
         }
 
-        // Extract metrics from MetaData if present
-        MetaData metaData = video.getMetaData();
-        if (metaData != null) {
-            builder.likeCount(metaData.getLovesCount() != null ? metaData.getLovesCount() : 0L)
-                   .commentCount(metaData.getCommentsCount() != null ? metaData.getCommentsCount() : 0L)
-                   .shareCount(metaData.getSharesCount() != null ? metaData.getSharesCount() : 0L);
-        } else {
-            builder.likeCount(0L)
-                   .commentCount(0L)
-                   .shareCount(0L);
-        }
-
-        // Extract hashtag IDs if present
-        if (video.getHashTags() != null && !video.getHashTags().isEmpty()) {
-            builder.hashTagIds(
-                video.getHashTags().stream()
-                        .map(hashtag -> hashtag.getId())
-                        .filter(id -> id != null)
-                        .collect(java.util.stream.Collectors.toSet())
-            );
-        }
+        // Set default counts (metadata and hashtags not yet implemented in Video entity)
+        builder.likeCount(0L)
+               .commentCount(0L)
+               .shareCount(0L);
 
         return builder.build();
     }

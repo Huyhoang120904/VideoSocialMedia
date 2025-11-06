@@ -10,10 +10,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ImageSlideRepository extends MongoRepository<ImageSlide, String> {
-    
-    @Query("{'uploader_ref.$id': ?0}")
-    Page<ImageSlide> findByUploaderId(String uploaderId, Pageable pageable);
-    
-    Page<ImageSlide> findByUploader(UserDetail uploader, Pageable pageable);
 }
 

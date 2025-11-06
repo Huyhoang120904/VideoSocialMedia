@@ -25,25 +25,6 @@ public class ImageSlide extends BaseDocument {
     String id;
 
     @DBRef
-    @Field("uploader_ref")
-    UserDetail uploader;
-
-    @DBRef
     @Field("images_ref")
     List<FileDocument> images;
-
-    @DBRef
-    @Field("thumb_url")
-    FileDocument thumbnail;
-
-    @Field("caption")
-    String captions;
-
-    @DBRef
-    @Field("hashtags_ref")
-    List<HashTag> hashTags;
-
-    @DBRef
-    @Field("metadata_ref")
-    MetaData metaData;
 }

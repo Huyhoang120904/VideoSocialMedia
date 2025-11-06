@@ -24,7 +24,7 @@ public class Comment extends BaseDocument {
     String content;
 
     @Field("like_count")
-    long likeCount;
+    long loveCount;
 
     @Field("dislike_count")
     long dislikeCount;
@@ -32,14 +32,19 @@ public class Comment extends BaseDocument {
     @Field("reply_count")
     int replyCount;
 
-    // Normalize user detail
+    @Field("love_by")
+    Set<String> lovedBy;
+
+    @Field("disliked_by")
+    Set<String> dislikedBy;
+
+    @DBRef
+    @Field("replies_ref")
+    Set<Comment> replies;
+
     @Field("user_detail_id")
     String userDetailId;
 
     @Field("avatar_url")
     String avatarUrl;
-
-    @DBRef
-    @Field("replies_ref")
-    Set<Comment> replies;
 }

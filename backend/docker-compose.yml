@@ -39,7 +39,6 @@ services:
     networks:
       - thesocial-network
 
-
 volumes:
   mongodb_data:
   kafka_data:

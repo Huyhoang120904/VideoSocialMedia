@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,7 +56,20 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse storeFile(MultipartFile multipartFile) {
-        String uploader = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String uploader;
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            uploader = jwt.getClaim("userDetailId");
+
+            if (uploader == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+        } else {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
         if (multipartFile.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_FILE);
         }
@@ -103,7 +118,8 @@ public class FileServiceImpl implements FileService {
             }
 
             FileDocument fileDocument = FileDocument.builder()
-                    .fileName(originalFilename)
+                    .fileName(uniqueFilename)
+                    .originalFileName(originalFilename)
                     .size(multipartFile.getSize())
                     .url(fileUrl)
                     .format(fileExtension.substring(1)) // Remove the dot

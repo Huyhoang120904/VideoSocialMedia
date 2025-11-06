@@ -9,6 +9,8 @@ export const getAvatarUrl = (
   userDetailId: string,
   fileName?: string
 ): string | null => {
+  console.log(`avt: ${API_URL}/files/${userDetailId}/${fileName}`);
+
   if (!fileName) {
     return null;
   }
@@ -20,18 +22,21 @@ export const getAvatarUrl = (
  * Handles localhost URLs by replacing with configured API host
  */
 export const getVideoUrl = (originalUrl: string): string => {
-  if (!originalUrl) return '';
-  
+  if (!originalUrl) return "";
+
   // If it's already a proper URL, check if it needs host replacement
-  if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
+  if (originalUrl.startsWith("http://") || originalUrl.startsWith("https://")) {
     // Replace localhost with configured API host
-    if (originalUrl.includes('localhost:8082')) {
-      const apiHost = API_URL.replace('/api/v1', '');
-      return originalUrl.replace('localhost:8082', apiHost.replace('http://', ''));
+    if (originalUrl.includes("localhost:8082")) {
+      const apiHost = API_URL.replace("/api/v1", "");
+      return originalUrl.replace(
+        "localhost:8082",
+        apiHost.replace("http://", "")
+      );
     }
     return originalUrl;
   }
-  
+
   // If it's a relative path, construct full URL using configured API_URL
-  return `${API_URL}${originalUrl.startsWith('/') ? '' : '/'}${originalUrl}`;
+  return `${API_URL}${originalUrl.startsWith("/") ? "" : "/"}${originalUrl}`;
 };
