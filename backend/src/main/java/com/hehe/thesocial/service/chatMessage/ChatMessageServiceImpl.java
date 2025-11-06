@@ -28,6 +28,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -306,9 +308,21 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     // ============ Private Helper Methods ============
 
     private UserDetail getCurrentUser() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
+
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return userDetailRepository.findById(userDetailId)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     private UserDetail getUserDetailById(String userDetailId) {
@@ -379,7 +393,6 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .conversationId(conversationId)
                 .senderId(senderId)
                 .edited(false)
-                .createdAt(LocalDateTime.now())
                 .readParticipantsId(new java.util.ArrayList<>())
                 .build();
     }

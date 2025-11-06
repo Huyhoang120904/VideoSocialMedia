@@ -1,6 +1,7 @@
 package com.hehe.thesocial.dto.response.conversation;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.enums.ConversationType;
@@ -15,6 +16,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ConversationListResponse {
     String conversationId;
 

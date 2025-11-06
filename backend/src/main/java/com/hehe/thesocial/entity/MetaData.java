@@ -20,18 +20,19 @@ public class MetaData {
     @Field("_id")
     String id;
 
+    @Builder.Default
     @Field("loves_count")
-    Long lovesCount = 0L;
+    Long loveCount = 0L;
     
+    @Builder.Default
     @Field("comments_count")
     Long commentsCount = 0L;
-    
-    @Field("favourites_count")
-    Long favouritesCount = 0L;
-    
+
+    @Builder.Default
     @Field("views_count")
     Long viewsCount = 0L;
     
+    @Builder.Default
     @Field("shares_count")
     Long sharesCount = 0L;
 }

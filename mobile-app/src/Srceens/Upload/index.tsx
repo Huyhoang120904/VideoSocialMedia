@@ -8,8 +8,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Video } from "expo-av";
-import { uploadVideo } from "../../Services/VideoService";
-import { uploadImageSlide } from "../../Services/ImageSlideService";
+import { uploadFeedItem } from "../../Services/FeedItemService";
 import { useDispatch } from "react-redux";
 import { clearVideos } from "../../Store/videoSlice";
 import {
@@ -174,15 +173,23 @@ export default function Upload() {
 
       try {
         const formData = new FormData();
-        formData.append("file", {
+
+        // Add feedItemType parameter
+        formData.append("feedItemType", "VIDEO");
+
+        // Add video file (parameter name changed from "file" to "videoFile")
+        formData.append("videoFile", {
           uri: selectedVideo.uri,
           type: "video/mp4",
           name: selectedVideo.fileName,
         } as any);
+
         formData.append("title", title.trim());
+
         if (description.trim()) {
           formData.append("description", description.trim());
         }
+
         if (thumbnail) {
           formData.append("thumbnail", {
             uri: thumbnail.uri,
@@ -190,14 +197,16 @@ export default function Upload() {
             name: thumbnail.fileName,
           } as any);
         }
+
         if (selectedVideo.duration && selectedVideo.duration > 0) {
           formData.append("duration", selectedVideo.duration.toString());
         }
+
         if (hashTags.trim()) {
           formData.append("hashTags", hashTags.trim());
         }
 
-        await uploadVideo(formData, (progressEvent: any) => {
+        await uploadFeedItem(formData, (progressEvent: any) => {
           const progress = Math.round(
             (progressEvent.loaded * 100) / (progressEvent.total || 1)
           );
@@ -237,6 +246,9 @@ export default function Upload() {
       try {
         const formData = new FormData();
 
+        // Add feedItemType parameter
+        formData.append("feedItemType", "IMAGE_SLIDE");
+
         selectedImages.forEach((image) => {
           formData.append("images", {
             uri: image.uri,
@@ -261,7 +273,7 @@ export default function Upload() {
           formData.append("hashTags", hashTags.trim());
         }
 
-        await uploadImageSlide(formData, (progressEvent: any) => {
+        await uploadFeedItem(formData, (progressEvent: any) => {
           const progress = Math.round(
             (progressEvent.loaded * 100) / (progressEvent.total || 1)
           );

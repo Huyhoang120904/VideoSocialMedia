@@ -1,6 +1,7 @@
 package com.hehe.thesocial.dto.response.conversation;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
 import com.hehe.thesocial.entity.FileDocument;
@@ -16,6 +17,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ConversationResponse {
     String conversationId;
     Set<UserDetailResponse> userDetails;
