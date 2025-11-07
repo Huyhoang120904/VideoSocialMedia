@@ -6,7 +6,6 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.repository.FileRepository;
-import com.hehe.thesocial.service.thumbnail.ThumbnailService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -16,6 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,7 +25,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -33,7 +36,7 @@ import java.util.*;
 public class FileServiceImpl implements FileService {
     FileMapper fileMapper;
     FileRepository fileRepository;
-    ThumbnailService thumbnailService;
+
 
     @NonFinal
     @Value("${file.upload-dir:uploads}")
@@ -48,12 +51,25 @@ public class FileServiceImpl implements FileService {
     String contextPath;
 
     @NonFinal
-    @Value("${server.host:172.20.82.76}")
+    @Value("${server.host}")
     String serverHost;
 
     @Override
     public FileResponse storeFile(MultipartFile multipartFile) {
-        String uploader = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String uploader;
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            uploader = jwt.getClaim("userDetailId");
+
+            if (uploader == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+        } else {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
         if (multipartFile.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_FILE);
         }
@@ -87,7 +103,7 @@ public class FileServiceImpl implements FileService {
             String thumbnailUrl = null;
             if ("video".equals(resourceType)) {
                 try {
-                    thumbnailUrl = thumbnailService.generateThumbnail(filePath.toString(), uploader);
+
                     log.info("Generated thumbnail for video: {}", thumbnailUrl);
                     
                     // If thumbnail generation failed, create a default one
@@ -102,12 +118,12 @@ public class FileServiceImpl implements FileService {
             }
 
             FileDocument fileDocument = FileDocument.builder()
-                    .fileName(originalFilename)
+                    .fileName(uniqueFilename)
+                    .originalFileName(originalFilename)
                     .size(multipartFile.getSize())
                     .url(fileUrl)
                     .format(fileExtension.substring(1)) // Remove the dot
                     .resourceType(resourceType)
-                    .thumbnailUrl(thumbnailUrl)
                     .build();
 
             // For images, you might want to get dimensions (optional)

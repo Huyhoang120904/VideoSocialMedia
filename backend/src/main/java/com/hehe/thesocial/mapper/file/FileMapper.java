@@ -2,7 +2,6 @@ package com.hehe.thesocial.mapper.file;
 
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FileDocument;
-import com.hehe.thesocial.entity.Video;
 import com.hehe.thesocial.entity.enums.FileType;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -27,18 +26,5 @@ public interface FileMapper {
             default:
                 return null;
         }
-    }
-
-    // New method to map from Video entity including title and description
-    default FileResponse toFileResponseFromVideo(Video video) {
-        if (video == null || video.getVideo() == null) {
-            return null;
-        }
-        
-        FileDocument fileDocument = video.getVideo();
-        FileResponse response = toFileResponse(fileDocument);
-        response.setTitle(video.getTitle());
-        response.setDescription(video.getDescription());
-        return response;
     }
 }

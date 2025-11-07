@@ -28,6 +28,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +41,7 @@ import java.util.stream.Collectors;
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
-public class ChatMessageServiceImpl {
+public class ChatMessageServiceImpl implements ChatMessageService {
     ChatMessageRepository chatMessageRepository;
     ChatMessageMapper chatMessageMapper;
     KafkaProducer producer;
@@ -50,6 +52,7 @@ public class ChatMessageServiceImpl {
 
     // ============ Public Methods ============
 
+    @Override
     public Page<ChatMessageResponse> getAllChatMessageByConversationId(String conversationId, Pageable pageable) {
         UserDetail currentUser = getCurrentUser();
         Conversation conversation = getConversation(conversationId);
@@ -84,6 +87,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse createDirectChatMessage(DirectChatMessageRequest request) {
         UserDetail sender = getCurrentUser();
         UserDetail receiver = getUserDetailById(request.getReceiverId());
@@ -101,6 +105,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse createGroupChatMessage(GroupChatMessageRequest request) {
         UserDetail sender = getCurrentUser();
         Conversation conversation = getConversation(request.getGroupId());
@@ -119,6 +124,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse updateChatMessage(String chatMessageId, ChatMessageUpdateRequest request) {
         UserDetail currentUser = getCurrentUser();
         ChatMessage existingMessage = getChatMessage(chatMessageId);
@@ -137,6 +143,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public void deleteChatMessage(String chatMessageId) {
         UserDetail currentUser = getCurrentUser();
         ChatMessage chatMessage = getChatMessage(chatMessageId);
@@ -150,6 +157,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse markMessageAsRead(String messageId) {
         UserDetail currentUser = getCurrentUser();
         ChatMessage message = getChatMessage(messageId);
@@ -194,6 +202,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public void markConversationMessagesAsRead(String conversationId) {
         UserDetail currentUser = getCurrentUser();
         Conversation conversation = getConversation(conversationId);
@@ -234,12 +243,14 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public String findOrCreateConversation(UserDetail user1, UserDetail user2) {
         Conversation conversation = findOrCreateDirectConversation(user1, user2);
         return conversation.getConversationId();
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse getAndBroadcastLastMessage(String conversationId, String senderId) {
         // Get the last message from this sender in this conversation
         Pageable pageable = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -277,6 +288,7 @@ public class ChatMessageServiceImpl {
     }
 
     @Transactional
+    @Override
     public ChatMessageResponse sendMessageToCurrentUser(String senderId, String message) {
         UserDetail receiver = getCurrentUser();
         UserDetail sender = getUserDetailByUserId(senderId);
@@ -296,9 +308,21 @@ public class ChatMessageServiceImpl {
     // ============ Private Helper Methods ============
 
     private UserDetail getCurrentUser() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userDetailRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
+
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return userDetailRepository.findById(userDetailId)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     private UserDetail getUserDetailById(String userDetailId) {
@@ -369,7 +393,6 @@ public class ChatMessageServiceImpl {
                 .conversationId(conversationId)
                 .senderId(senderId)
                 .edited(false)
-                .createdAt(LocalDateTime.now())
                 .readParticipantsId(new java.util.ArrayList<>())
                 .build();
     }

@@ -22,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -50,14 +52,7 @@ public class ConversationServiceImpl implements ConversationService {
     @Transactional
     @Override
     public ConversationResponse createConversation(ConversationRequest request) {
-        String userId = getCurrentUserId();
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
-
-        UserDetail userDetail = userDetailRepository.findByUser(user)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
-
+        UserDetail userDetail = getCurrentUserDetail();
         String currentUserId = userDetail.getId();
 
         List<String> participantIds = request.getParticipantIds();
@@ -201,12 +196,25 @@ public class ConversationServiceImpl implements ConversationService {
     // Helper methods
 
     private String getCurrentUserId() {
-        return SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
+
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return userDetailId;
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     private UserDetail getCurrentUserDetail() {
-        String userId = getCurrentUserId();
-        return userDetailRepository.findByUser(User.builder().id(userId).build())
+        String userDetailId = getCurrentUserId();
+        return userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
     }
 

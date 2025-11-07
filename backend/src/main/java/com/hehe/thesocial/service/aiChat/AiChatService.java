@@ -9,7 +9,7 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
-import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
+import com.hehe.thesocial.service.chatMessage.ChatMessageService;
 import com.hehe.thesocial.service.conversation.ConversationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +17,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +29,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AiChatService {
     ChatClient chatClient;
-    ChatMessageServiceImpl chatMessageServiceImpl;
+    ChatMessageService chatMessageService;
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
     MongoChatMemory mongoChatMemory;
@@ -40,7 +42,7 @@ public class AiChatService {
         UserDetail currentUser = getCurrentUser();
 
         // Find or create conversation
-        String conversationId = chatMessageServiceImpl.findOrCreateConversation(currentUser, aiUserDetail);
+        String conversationId = chatMessageService.findOrCreateConversation(currentUser, aiUserDetail);
 
         // Set up chat memory advisor for AI response
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(mongoChatMemory)
@@ -57,7 +59,7 @@ public class AiChatService {
                 .content();
 
         // Get the last saved AI message (already saved by MessageChatMemoryAdvisor) and broadcast it
-        return chatMessageServiceImpl.getAndBroadcastLastMessage(conversationId, aiUserDetail.getId());
+        return chatMessageService.getAndBroadcastLastMessage(conversationId, aiUserDetail.getId());
     }
 
     public ConversationResponse getAiConversation() {
@@ -65,16 +67,28 @@ public class AiChatService {
         UserDetail currentUser = getCurrentUser();
 
         // Find or create conversation with AI
-        String conversationId = chatMessageServiceImpl.findOrCreateConversation(currentUser, aiUserDetail);
+        String conversationId = chatMessageService.findOrCreateConversation(currentUser, aiUserDetail);
 
         // Get the conversation details using ConversationService
         return conversationService.getConversationById(conversationId);
     }
 
     private UserDetail getCurrentUser() {
-        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userDetailRepository.findByUserId(currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
+
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return userDetailRepository.findById(userDetailId)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     private UserDetail getOrCreateAiUser() {

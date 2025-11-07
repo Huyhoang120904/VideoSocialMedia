@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.util.List;
 import java.util.Set;
 
 @Document(collection = "feed_items")
@@ -24,7 +25,6 @@ public class FeedItem extends BaseDocument {
     @Field("_id")
     String id;
 
-    // content
     @Field("feed_item_type")
     FeedItemType feedItemType;
 
@@ -36,8 +36,8 @@ public class FeedItem extends BaseDocument {
     @Field("image_slide_ref")
     ImageSlide imageSlide;
 
-    @Field("caption")
-    String caption;
+    @Field("title")
+    String title;
 
     @Field("description")
     String description;
@@ -50,17 +50,16 @@ public class FeedItem extends BaseDocument {
     @Field("comments_ref")
     Set<Comment> comments;
 
-    // Metric
-    @Field("like_count")
-    long likeCount;
+    @DBRef
+    @Field("metadata_ref")
+    MetaData metaData;
 
-    @Field("comment_count")
-    long commentCount;
+    // UserDetail Id
+    @Field("loved_by")
+    Set<String> lovedBy;
 
-    @Field("share_count")
-    long shareCount;
-
-    // author
-    @Field("avatar")
-    String avatar;
+    //UserDetailId
+    @DBRef
+    @Field("uploader_ref")
+    UserDetail uploader;
 }

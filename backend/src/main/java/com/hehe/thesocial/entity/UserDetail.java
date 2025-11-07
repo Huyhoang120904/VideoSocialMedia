@@ -50,6 +50,10 @@ public class UserDetail extends BaseDocument {
     @Field("following_count")
     int followingCount;
 
+    @Field("flagged")
+    @Builder.Default
+    int violationCount = 0;
+
     @JsonIgnore
     @DBRef
     @Field("follower_ref")
