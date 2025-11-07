@@ -26,8 +26,8 @@ public class UserPreference {
     String id;
 
     @Indexed(unique = true)
-    @Field("user_id")
-    String userId;
+    @Field("user_detail_id")
+    String userDetailId;
 
     @Field("hashtag_scores")
     @Builder.Default
@@ -45,4 +45,8 @@ public class UserPreference {
 
     @Field("updated_at")
     LocalDateTime updatedAt;
+
+    //Watched Feed Item List
+    @Field("watched_list")
+    Set<String> watchedList;
 }

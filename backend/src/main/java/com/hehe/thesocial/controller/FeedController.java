@@ -2,6 +2,7 @@ package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
+import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
 import com.hehe.thesocial.service.feed.FeedService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -38,4 +39,20 @@ public class FeedController {
                 .message(feedItems.getTotalElements() == 0 ? "No feed items found" : "Feed items retrieved successfully")
                 .build());
     }
+    @GetMapping("/personal")
+    public ResponseEntity<ApiResponse<Page<FeedItemResponse>>> getPersonalizedFeed(
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+
+        log.info("Fetching personalized feed items with page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<FeedItemResponse> feedItems = feedService.getPersonalizedFeed(pageable);
+
+        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
+                .result(feedItems)
+                .build());
+    }
+
+
+
 }

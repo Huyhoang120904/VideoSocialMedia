@@ -3,7 +3,6 @@ package com.hehe.thesocial.service.conversation;
 import com.hehe.thesocial.dto.request.conversation.ConversationRequest;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.entity.Conversation;
-import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.enums.ConversationType;
 import com.hehe.thesocial.exception.AppException;
@@ -15,15 +14,13 @@ import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -47,12 +44,13 @@ public class ConversationServiceImpl implements ConversationService {
     UserRepository userRepository;
     ChatMessageRepository chatMessageRepository;
     ChatMessageMapper chatMessageMapper;
+    AuthenticationHelper authenticationHelper;
 
 
     @Transactional
     @Override
     public ConversationResponse createConversation(ConversationRequest request) {
-        UserDetail userDetail = getCurrentUserDetail();
+        UserDetail userDetail = authenticationHelper.getCurrentUserDetail();
         String currentUserId = userDetail.getId();
 
         List<String> participantIds = request.getParticipantIds();
@@ -102,7 +100,7 @@ public class ConversationServiceImpl implements ConversationService {
 
     @Override
     public ConversationResponse getConversationById(String conversationId) {
-        UserDetail currentUserDetail = getCurrentUserDetail();
+        UserDetail currentUserDetail = authenticationHelper.getCurrentUserDetail();
         Conversation conversation = findConversationById(conversationId);
 
         ConversationResponse response = conversationMapper.toConversationResponse(conversation);
@@ -170,7 +168,7 @@ public class ConversationServiceImpl implements ConversationService {
 
     @Override
     public Page<ConversationResponse> getMyConversations(Pageable pageable) {
-        UserDetail currentUserDetail = getCurrentUserDetail();
+        UserDetail currentUserDetail = authenticationHelper.getCurrentUserDetail();
 
         Page<Conversation> conversations = conversationRepository
                 .findByUserDetailsContaining(Set.of(currentUserDetail), pageable);
@@ -195,28 +193,6 @@ public class ConversationServiceImpl implements ConversationService {
 
     // Helper methods
 
-    private String getCurrentUserId() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            String userDetailId = jwt.getClaim("userDetailId");
-
-            if (userDetailId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            return userDetailId;
-        }
-
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
-    }
-
-    private UserDetail getCurrentUserDetail() {
-        String userDetailId = getCurrentUserId();
-        return userDetailRepository.findById(userDetailId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
-    }
 
     private Conversation findConversationById(String conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
@@ -343,21 +319,21 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
 
-    private void validateNoDuplicateConversation(Set<UserDetail> participants) {
-        // Only check for direct conversations (2 participants)
-        if (participants.size() == 2) {
-            List<String> participantIds = participants.stream()
-                    .map(UserDetail::getId)
-                    .sorted()
-                    .collect(Collectors.toList());
-
-            String hash = participantHash(participantIds.get(0), participantIds.get(1));
-
-            if (conversationRepository.findByParticipantHash(hash).isPresent()) {
-                throw new AppException(ErrorCode.CONVERSATION_ALREADY_EXISTS);
-            }
-        }
-    }
+//    private void validateNoDuplicateConversation(Set<UserDetail> participants) {
+//        // Only check for direct conversations (2 participants)
+//        if (participants.size() == 2) {
+//            List<String> participantIds = participants.stream()
+//                    .map(UserDetail::getId)
+//                    .sorted()
+//                    .collect(Collectors.toList());
+//
+//            String hash = participantHash(participantIds.get(0), participantIds.get(1));
+//
+//            if (conversationRepository.findByParticipantHash(hash).isPresent()) {
+//                throw new AppException(ErrorCode.CONVERSATION_ALREADY_EXISTS);
+//            }
+//        }
+//    }
 
     private ConversationResponse createNewConversation(ConversationRequest request, Set<UserDetail> participants,
                                                        String currentUserId, List<String> participantIds, String hash) {
