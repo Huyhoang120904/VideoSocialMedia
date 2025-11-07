@@ -23,6 +23,9 @@ public class FileDocument extends BaseDocument {
     @Field("file_name")
     String fileName;
 
+    @Field("original_file_name")
+    String originalFileName;
+
     @Field("size")
     Long size;
 
@@ -49,7 +52,4 @@ public class FileDocument extends BaseDocument {
 
     @Field("etag")
     String etag;
-
-    @Field("thumbnail_url")
-    String thumbnailUrl;
 }

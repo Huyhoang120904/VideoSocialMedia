@@ -49,7 +49,7 @@ public class SecuritySetting {
     };
 
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**","/ws-native/**"
+            "/auth/**","/ws-native/**", "/feed/**"
     };
 
 
@@ -87,8 +87,7 @@ public class SecuritySetting {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
-//        corsConfiguration.addAllowedOrigin(CORS_URL);
-        corsConfiguration.addAllowedOrigin("*");
+        corsConfiguration.addAllowedOriginPattern("**");
         corsConfiguration.addAllowedMethod("*");
         corsConfiguration.addAllowedHeader("*");
 

@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,14 +77,23 @@ public class UserDetailServiceImpl implements UserDetailService {
 
     @Override
     public UserDetailResponse getMyDetail() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.info("User ID: {}", userId);
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // Use the updated repository method that works with DocumentReference
-        UserDetail userDetail = userDetailRepository.findByUser(User.builder().id(userId).build())
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
 
-        return userDetailMapper.toUserDetailResponse(userDetail);
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            UserDetail userDetail = userDetailRepository.findById(userDetailId)
+                    .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+
+            return userDetailMapper.toUserDetailResponse(userDetail);
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     @Override
@@ -133,10 +144,25 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Transactional
     @Override
     public UserDetailResponse updateUserDetail(String userDetailId, UserDetailUpdateRequest request) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserDetail userDetail = userDetailRepository.findByUserId(userId)
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Jwt jwt = jwtAuth.getToken();
+        String currentUserDetailId = jwt.getClaim("userDetailId");
+
+        if (currentUserDetailId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        UserDetail userDetail = userDetailRepository.findById(currentUserDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
-        if (!userDetail.getId().equals(userDetailId)) throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        if (!userDetail.getId().equals(userDetailId)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         FileDocument fileDocument = null;
 
@@ -156,12 +182,24 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Transactional
     @Override
     public void deleteUserDetail(String userDetailId) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Jwt jwt = jwtAuth.getToken();
+        String currentUserDetailId = jwt.getClaim("userDetailId");
+
+        if (currentUserDetailId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-        // Check if the current user owns this user detail or is admin
-        if (!userDetail.getUser().getId().equals(userId)) {
+        // Check if the current user owns this user detail
+        if (!userDetail.getId().equals(currentUserDetailId)) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
@@ -188,10 +226,21 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Transactional
     @Override
     public UserDetailResponse followUser(String targetUserDetailId) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Jwt jwt = jwtAuth.getToken();
+        String currentUserDetailId = jwt.getClaim("userDetailId");
+
+        if (currentUserDetailId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         // Get current user's detail
-        UserDetail currentUserDetail = userDetailRepository.findByUserId(userId)
+        UserDetail currentUserDetail = userDetailRepository.findById(currentUserDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         // Get target user's detail
@@ -233,10 +282,21 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Transactional
     @Override
     public UserDetailResponse unfollowUser(String targetUserDetailId) {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Jwt jwt = jwtAuth.getToken();
+        String currentUserDetailId = jwt.getClaim("userDetailId");
+
+        if (currentUserDetailId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         // Get current user's detail
-        UserDetail currentUserDetail = userDetailRepository.findByUserId(userId)
+        UserDetail currentUserDetail = userDetailRepository.findById(currentUserDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         // Get target user's detail

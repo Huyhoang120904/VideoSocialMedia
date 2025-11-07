@@ -22,6 +22,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -75,7 +77,6 @@ public class MongoChatMemory implements ChatMemory {
             ChatMessage chatMessage = ChatMessage.builder()
                     .conversationId(conversationId)
                     .message(message.getText())
-                    .createdAt(java.time.LocalDateTime.now())
                     .edited(false)
                     .build();
 
@@ -85,7 +86,6 @@ public class MongoChatMemory implements ChatMemory {
             } else if (message instanceof UserMessage) {
                 chatMessage.setSenderId(currentUser.getId());
             }
-
             ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
             
             // Create response and broadcast
@@ -188,9 +188,21 @@ public class MongoChatMemory implements ChatMemory {
      * Get the current authenticated user
      */
     private UserDetail getCurrentUser() {
-        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userDetailRepository.findByUserId(currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
+
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return userDetailRepository.findById(userDetailId)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     /**

@@ -22,22 +22,9 @@ public class Video extends BaseDocument {
     String id;
 
     @DBRef
-    @Field("uploader_ref")
-    UserDetail uploader;
-
-    @DBRef
-    @Field("video_ref")
-    FileDocument video;
-
-    @Field("thumb_url")
-    String thumbUrl;
+    @Field("file_ref")
+    FileDocument file;
 
     @Field("duration")
     double duration;
-
-    @Field("title")
-    String title;
-
-    @Field("description")
-    String description;
 }

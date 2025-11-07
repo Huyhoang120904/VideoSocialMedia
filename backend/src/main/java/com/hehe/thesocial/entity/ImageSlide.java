@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.util.List;
 import java.util.Set;
 
 @Document(collection = "image_slides")
@@ -18,7 +19,6 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ImageSlide extends BaseDocument {
-
     @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
@@ -26,8 +26,5 @@ public class ImageSlide extends BaseDocument {
 
     @DBRef
     @Field("images_ref")
-    Set<FileDocument> images;
-
-    @Field("thumb_url")
-    String thumbUrl;
+    List<FileDocument> images;
 }
