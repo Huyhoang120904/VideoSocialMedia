@@ -1,5 +1,8 @@
 package com.hehe.thesocial.entity.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum InteractionType {
     VIEW(1f),
     LIKE(3f),

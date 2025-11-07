@@ -35,7 +35,7 @@ services:
       - --reserve-memory 0M
       - --node-id 0
       - --check=false
-      - --advertise-kafka-addr 192.168.100.191:9092
+      - --advertise-kafka-addr 192.168.100.46:9092
     networks:
       - thesocial-network
 

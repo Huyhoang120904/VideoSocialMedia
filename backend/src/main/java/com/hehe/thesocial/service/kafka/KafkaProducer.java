@@ -2,7 +2,6 @@ package com.hehe.thesocial.service.kafka;
 
 import com.hehe.thesocial.dto.event.ChatMessageEventDTO;
 import com.hehe.thesocial.dto.event.ReadStatusEventDTO;
-import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -24,5 +23,21 @@ public class KafkaProducer {
         kafkaTemplate.send("read_status_updates",
                 readStatusEventDTO);
     }
+
+//    public void love_comment(String userDetailId, String feedItemId) {
+//        kafkaTemplate.send("read_status_updates",...);
+//    }
+
+//    public void love_feedItem(String userDetailId, String feedItemId) {
+//        kafkaTemplate.send("read_status_updates",...);
+//    }
+
+//    public void view_feedItem(String userDetailId, String feedItemId) {
+//        kafkaTemplate.send("read_status_updates",...);
+//    }
+
+//    public void comment_feedItem(String userDetailId,Comment comment ,String feedItemId, String feedItem) {
+//        kafkaTemplate.send("read_status_updates",...);
+//    }
 
 }
