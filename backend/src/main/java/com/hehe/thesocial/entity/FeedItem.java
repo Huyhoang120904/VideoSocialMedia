@@ -19,6 +19,7 @@ import java.util.Set;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+@ToString
 public class FeedItem extends BaseDocument {
     @EqualsAndHashCode.Include
     @MongoId

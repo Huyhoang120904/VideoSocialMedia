@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { FeedItemType } from "../Types/response/FeedItemResponse";
+import { UserDetailResponse } from "../Types/response/UserDetailResponse";
 
 export interface ImageData {
     id: string;
@@ -42,6 +43,8 @@ export interface FeedItem {
     title?: string;
     description?: string;
     hashtags?: string[]; // Add hashtags
+    loved?: boolean; // Trạng thái đã yêu thích hay chưa
+    uploader?: UserDetailResponse; // Thông tin người upload
 }
 
 interface FeedState {

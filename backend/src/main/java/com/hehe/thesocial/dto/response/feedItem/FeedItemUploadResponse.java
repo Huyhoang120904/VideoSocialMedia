@@ -30,5 +30,6 @@ public class FeedItemUploadResponse {
     String thumbnailUrl;
     String title;
     String description;
+
 }
 

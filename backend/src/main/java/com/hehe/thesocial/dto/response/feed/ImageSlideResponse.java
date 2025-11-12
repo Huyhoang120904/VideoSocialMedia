@@ -4,7 +4,7 @@ import com.hehe.thesocial.dto.response.file.FileResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -15,6 +15,6 @@ import java.util.List;
 public class ImageSlideResponse {
     String id;
     List<FileResponse> images;
-    Instant createdAt;
-    Instant updatedAt;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 }
