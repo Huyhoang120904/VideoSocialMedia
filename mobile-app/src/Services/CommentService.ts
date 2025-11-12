@@ -9,6 +9,19 @@ export interface Comment {
     createdAt: string;
     updatedAt: string;
     isLikedByCurrentUser?: boolean;  // Add this field from backend
+    timeAgo?: string;  // Thời gian đã format từ backend: "vừa xong", "3 phút trước", "25/7"
+}
+
+export interface CommentCreateResponse {
+    comment: Comment;
+    totalComments: number;
+}
+
+export interface CommentActionResponse {
+    liked: boolean;
+    disliked: boolean;
+    likeCount: number;
+    dislikeCount: number;
 }
 
 export interface CommentPageResponse {
@@ -22,18 +35,11 @@ export interface CommentPageResponse {
 class CommentService {
     async addComment(
         feedItemId: string,
-        feedItemType: 'VIDEO' | 'IMAGE_SLIDE',
         content: string
-    ): Promise<{ id: string }> {
+    ): Promise<CommentCreateResponse> {
         const response = await api.post(
-            `/feed/${feedItemId}/comment`,
-            null,
-            {
-                params: {
-                    feedItemType,
-                    content,
-                },
-            }
+            `/feed-items/${feedItemId}/comments`,
+            { content }
         );
         // Backend wraps response in { code, result, message }
         return response.data.result || response.data;
@@ -41,17 +47,13 @@ class CommentService {
 
     async getComments(
         feedItemId: string,
-        feedItemType: 'VIDEO' | 'IMAGE_SLIDE',
-        currentUserId?: string,
         page: number = 0,
         size: number = 20
     ): Promise<CommentPageResponse> {
         const response = await api.get(
-            `/feed/${feedItemId}/comments`,
+            `/feed-items/${feedItemId}/comments`,
             {
                 params: {
-                    feedItemType,
-                    currentUserId,
                     page,
                     size,
                 },
@@ -61,55 +63,51 @@ class CommentService {
         return response.data.result || response.data;
     }
 
+    /**
+     * Like a comment
+     * @param commentId - ID của comment cần like
+     * @returns CommentActionResponse với trạng thái và số lượng likes mới
+     */
+    async likeComment(commentId: string): Promise<CommentActionResponse> {
+        const response = await api.post(
+            `/feed-items/comments/${commentId}/like`
+        );
+        return response.data.result || response.data;
+    }
+
+    /**
+     * Unlike a comment
+     * @param commentId - ID của comment cần unlike
+     * @returns CommentActionResponse với trạng thái và số lượng likes mới
+     */
+    async unlikeComment(commentId: string): Promise<CommentActionResponse> {
+        const response = await api.delete(
+            `/feed-items/comments/${commentId}/like`
+        );
+        return response.data.result || response.data;
+    }
+
+    /**
+     * Toggle like status of a comment (like nếu chưa like, unlike nếu đã like)
+     * @param commentId - ID của comment
+     * @param isCurrentlyLiked - Trạng thái like hiện tại
+     * @returns CommentActionResponse với trạng thái và số lượng likes mới
+     */
     async toggleCommentLike(
         commentId: string,
-        userDetailId: string
-    ): Promise<number> {
-        const response = await api.post(
-            `/feed/comment/${commentId}/like`,
-            null,
-            {
-                params: {
-                    userDetailId,
-                },
-            }
-        );
-        // Backend wraps response in { code, result, message }
-        return response.data.result || response.data;
+        isCurrentlyLiked: boolean
+    ): Promise<CommentActionResponse> {
+        if (isCurrentlyLiked) {
+            return this.unlikeComment(commentId);
+        } else {
+            return this.likeComment(commentId);
+        }
     }
 
-    async addReply(
-        commentId: string,
-        content: string
-    ): Promise<{ id: string }> {
-        const response = await api.post(
-            `/feed/comment/${commentId}/reply`,
-            null,
-            {
-                params: {
-                    content,
-                },
-            }
+    async removeComment(commentId: string): Promise<boolean> {
+        const response = await api.delete(
+            `/feed-items/comments/${commentId}`
         );
-        // Backend wraps response in { code, result, message }
-        return response.data.result || response.data;
-    }
-
-    async getReplies(
-        commentId: string,
-        page: number = 0,
-        size: number = 20
-    ): Promise<CommentPageResponse> {
-        const response = await api.get(
-            `/feed/comment/${commentId}/replies`,
-            {
-                params: {
-                    page,
-                    size,
-                },
-            }
-        );
-        // Backend wraps response in { code, result, message }
         return response.data.result || response.data;
     }
 }

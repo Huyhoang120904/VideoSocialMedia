@@ -103,10 +103,15 @@ const InteractionBar: React.FC<InteractionBarProps> = ({
         setCommentModalVisible(false);
     };
 
-    const handleCommentAdded = () => {
-        const newComments = localComments + 1;
-        setLocalComments(newComments);
-        dispatch(updateVideo({ id, updates: { comments: newComments } }));
+    const handleCommentAdded = (comment: string) => {
+        // Callback này chỉ để compatibility, số lượng thực tế sẽ update từ handleUpdateCommentCount
+        console.log('[InteractionBar] Comment added:', comment);
+    };
+
+    const handleUpdateCommentCount = (newCount: number) => {
+        console.log('[InteractionBar] Updating comment count to:', newCount);
+        setLocalComments(newCount);
+        dispatch(updateVideo({ id, updates: { comments: newCount } }));
     };
 
     const handleShare = () => {
@@ -206,9 +211,11 @@ const InteractionBar: React.FC<InteractionBarProps> = ({
             <VideoCommentModal
                 visible={commentModalVisible}
                 onClose={handleCloseComments}
-                feedItemId={id}
+                videoId={id}
                 feedItemType={feedItemType}
-                onCommentAdded={handleCommentAdded}
+                comments={[]}
+                onAddComment={handleCommentAdded}
+                onUpdateCommentCount={handleUpdateCommentCount}
             />
         </View>
     );

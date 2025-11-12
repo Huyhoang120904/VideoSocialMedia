@@ -39,6 +39,7 @@ const FollowersListScreen = () => {
   const [followers, setFollowers] = useState<UserDetailResponse[]>([]);
   const [following, setFollowing] = useState<UserDetailResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -65,6 +66,65 @@ const FollowersListScreen = () => {
       Alert.alert("Error", "Failed to load data. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Load both followers and following
+      const [followersResponse, followingResponse] = await Promise.all([
+        UserDetailService.getFollowers(params.userDetailId),
+        UserDetailService.getFollowing(params.userDetailId),
+      ]);
+
+      if (followersResponse.result) {
+        setFollowers(followersResponse.result);
+      }
+
+      if (followingResponse.result) {
+        setFollowing(followingResponse.result);
+      }
+    } catch (error) {
+      console.error("Error refreshing followers/following:", error);
+      Alert.alert("Error", "Failed to refresh data. Please try again.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleTabPress = async (tab: "followers" | "following") => {
+    console.log("🔍 handleTabPress called - tab:", tab, "activeTab:", activeTab);
+
+    if (activeTab === tab) {
+      // Nếu đang ở tab hiện tại, reload data với loading indicator
+      console.log("✅ Reloading data for current tab:", tab);
+      Alert.alert("Debug", "Starting reload..."); // Temporary debug
+      setIsLoading(true);
+      try {
+        const [followersResponse, followingResponse] = await Promise.all([
+          UserDetailService.getFollowers(params.userDetailId),
+          UserDetailService.getFollowing(params.userDetailId),
+        ]);
+
+        if (followersResponse.result) {
+          setFollowers(followersResponse.result);
+        }
+
+        if (followingResponse.result) {
+          setFollowing(followingResponse.result);
+        }
+        Alert.alert("Success", "Reload complete!"); // Temporary debug
+      } catch (error) {
+        console.error("Error refreshing followers/following:", error);
+        Alert.alert("Error", "Failed to refresh data. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Chuyển sang tab khác
+      console.log("➡️ Switching to new tab:", tab);
+      setActiveTab(tab);
     }
   };
 
@@ -163,30 +223,26 @@ const FollowersListScreen = () => {
       {/* Tabs */}
       <View className="flex-row border-b border-gray-200">
         <TouchableOpacity
-          className={`flex-1 py-4 ${
-            activeTab === "followers" ? "border-b-2 border-pink-600" : ""
-          }`}
-          onPress={() => setActiveTab("followers")}
+          className={`flex-1 py-4 ${activeTab === "followers" ? "border-b-2 border-pink-600" : ""
+            }`}
+          onPress={() => handleTabPress("followers")}
         >
           <Text
-            className={`text-center font-semibold ${
-              activeTab === "followers" ? "text-pink-600" : "text-gray-600"
-            }`}
+            className={`text-center font-semibold ${activeTab === "followers" ? "text-pink-600" : "text-gray-600"
+              }`}
           >
             {followers.length} Followers
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          className={`flex-1 py-4 ${
-            activeTab === "following" ? "border-b-2 border-pink-600" : ""
-          }`}
-          onPress={() => setActiveTab("following")}
+          className={`flex-1 py-4 ${activeTab === "following" ? "border-b-2 border-pink-600" : ""
+            }`}
+          onPress={() => handleTabPress("following")}
         >
           <Text
-            className={`text-center font-semibold ${
-              activeTab === "following" ? "text-pink-600" : "text-gray-600"
-            }`}
+            className={`text-center font-semibold ${activeTab === "following" ? "text-pink-600" : "text-gray-600"
+              }`}
           >
             {following.length} Following
           </Text>
@@ -208,6 +264,8 @@ const FollowersListScreen = () => {
           contentContainerStyle={
             currentList.length === 0 ? { flex: 1 } : undefined
           }
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
         />
       )}
     </SafeAreaView>

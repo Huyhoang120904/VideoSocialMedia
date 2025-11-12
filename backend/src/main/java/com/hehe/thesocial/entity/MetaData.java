@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString
 public class MetaData {
     @EqualsAndHashCode.Include
     @MongoId

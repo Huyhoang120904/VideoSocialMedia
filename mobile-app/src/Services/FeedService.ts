@@ -66,9 +66,11 @@ export const fetchFeedItems = async (
                             comments: feedItem.commentCount || 0,
                             shares: feedItem.shareCount || 0,
                             outstanding: 0,
-                            title: file.title || file.fileName || "Untitled Video",
-                            description: file.description || "",
+                            title: feedItem.title || file.title || file.fileName || "Untitled Video",
+                            description: feedItem.description || file.description || "",
                             hashtags: feedItem.hashTags || [],
+                            loved: feedItem.loved || false, // Thêm trạng thái loved
+                            uploader: feedItem.uploader, // Thông tin người upload
                         };
                         return item;
                     }
@@ -111,10 +113,11 @@ export const fetchFeedItems = async (
                             comments: feedItem.commentCount || 0,
                             shares: feedItem.shareCount || 0,
                             outstanding: 0,
-                            title: imageSlide.images[0]?.title || "Image Slide",
-                            description:
-                                imageSlide.images[0]?.description || "Image Collection",
+                            title: feedItem.title || imageSlide.images[0]?.title || "Image Slide",
+                            description: feedItem.description || imageSlide.images[0]?.description || "Image Collection",
                             hashtags: feedItem.hashTags || [],
+                            loved: feedItem.loved || false, // Thêm trạng thái loved
+                            uploader: feedItem.uploader, // Thông tin người upload
                         };
                         console.log('Created ImageSlide FeedItem:', item);
                         return item;
@@ -176,5 +179,54 @@ export const fetchFeedItems = async (
         }
 
         throw new Error(error.response?.data?.message || "Failed to fetch feed");
+    }
+};
+
+/**
+ * Toggle love status for a feed item
+ * @param feedItemId - ID of the feed item
+ * @param isCurrentlyLoved - Current love status
+ * @returns Promise with updated love status and count
+ */
+export const toggleLove = async (
+    feedItemId: string,
+    isCurrentlyLoved: boolean
+): Promise<{ loved: boolean; loveCount: number }> => {
+    try {
+        if (isCurrentlyLoved) {
+            // Remove love
+            const { data } = await api.delete<ApiResponse<{ loved: boolean; loveCount: number }>>(
+                `/feed-items/${feedItemId}/love`
+            );
+            return data.result || { loved: false, loveCount: 0 };
+        } else {
+            // Add love
+            const { data } = await api.post<ApiResponse<{ loved: boolean; loveCount: number }>>(
+                `/feed-items/${feedItemId}/love`
+            );
+            return data.result || { loved: true, loveCount: 1 };
+        }
+    } catch (error: any) {
+        console.error("Toggle love error:", error);
+        throw new Error(error.response?.data?.message || "Failed to toggle love");
+    }
+};
+
+/**
+ * Check love status for a feed item
+ * @param feedItemId - ID of the feed item
+ * @returns Promise with love status and count
+ */
+export const checkLoveStatus = async (
+    feedItemId: string
+): Promise<{ loved: boolean; loveCount: number }> => {
+    try {
+        const { data } = await api.get<ApiResponse<{ loved: boolean; loveCount: number }>>(
+            `/feed-items/${feedItemId}/love`
+        );
+        return data.result || { loved: false, loveCount: 0 };
+    } catch (error: any) {
+        console.error("Check love status error:", error);
+        throw new Error(error.response?.data?.message || "Failed to check love status");
     }
 };

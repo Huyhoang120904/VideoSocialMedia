@@ -17,6 +17,7 @@ import { ImageSlideData } from "../../Store/feedSlice";
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
 
 interface ImageSlidePostProps {
+    feedItemId: string; // ✅ FeedItem ID - dùng cho API love
     imageSlide: ImageSlideData;
     likes: number;
     comments: number;
@@ -27,9 +28,14 @@ interface ImageSlidePostProps {
     isActive: boolean;
     itemHeight?: number;
     hashtags?: string[];
+    loved?: boolean; // Trạng thái đã yêu thích
+    username?: string; // Username của người upload
+    avatarUrl?: string; // Avatar URL của người upload
+    uploaderUserId?: string; // UserDetail ID của người upload
 }
 
 export default function ImageSlidePost({
+    feedItemId,
     imageSlide,
     likes,
     comments,
@@ -40,6 +46,10 @@ export default function ImageSlidePost({
     isActive,
     itemHeight = screenHeight,
     hashtags,
+    loved = false,
+    username = "user1",
+    avatarUrl,
+    uploaderUserId,
 }: ImageSlidePostProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
@@ -52,12 +62,6 @@ export default function ImageSlidePost({
 
     const renderImage = ({ item, index }: { item: any; index: number }) => {
         const imageUrl = item.secureUrl || item.url;
-        console.log(`ImageSlidePost: Rendering image ${index + 1}/${imageSlide.images.length}`, {
-            id: item.id,
-            url: imageUrl,
-            hasSecureUrl: !!item.secureUrl,
-            hasUrl: !!item.url
-        });
 
         return (
             <Image
@@ -118,19 +122,21 @@ export default function ImageSlidePost({
             </View>
 
             <RightVideo
-                id={imageSlide.id}
-                feedItemType="IMAGE_SLIDE"
+                id={feedItemId}
                 likes={likes}
                 comments={comments}
                 shares={shares}
                 outstanding={outstanding}
-                bottomPosition={bottomContentBottom}
+                isLoved={loved}
+                avatarUrl={avatarUrl}
+                uploaderUserId={uploaderUserId}
             />
 
             <BottomVideo
                 title={title}
                 description={description}
-                bottomPosition={bottomContentBottom}
+                hashtags={hashtags}
+                username={username}
             />
         </View>
     );
@@ -158,16 +164,21 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     activeDot: {
-        backgroundColor: "#fff",
-        width: 20,
+        backgroundColor: "#00F5FF",
+        width: 24,
+        shadowColor: "#00F5FF",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 3,
     },
     inactiveDot: {
-        backgroundColor: "rgba(255, 255, 255, 0.5)",
+        backgroundColor: "rgba(255, 255, 255, 0.4)",
     },
     counterContainer: {
         position: "absolute",
@@ -175,14 +186,22 @@ const styles = StyleSheet.create({
         right: 16,
     },
     counterBadge: {
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: "rgba(255, 255, 255, 0.3)",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
     },
     counterText: {
         color: "#fff",
-        fontSize: 12,
-        fontWeight: "600",
+        fontSize: 14,
+        fontWeight: "700",
+        letterSpacing: 0.5,
     },
 });

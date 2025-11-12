@@ -8,28 +8,21 @@ interface FeedPostProps {
     feedItem: FeedItem;
     isActive: boolean;
     itemHeight?: number;
+    onCommentModalChange?: (isOpen: boolean) => void;
 }
 
 export default function FeedPost({
     feedItem,
     isActive,
     itemHeight,
+    onCommentModalChange,
 }: FeedPostProps) {
-    // Debug logging
-    console.log('FeedPost rendering:', {
-        id: feedItem.id,
-        type: feedItem.feedItemType,
-        hasVideo: !!feedItem.video,
-        hasImageSlide: !!feedItem.imageSlide,
-        imageCount: feedItem.imageSlide?.images?.length || 0
-    });
-
     if (feedItem.feedItemType === FeedItemType.VIDEO && feedItem.video) {
         // Render video post
         return (
             <VideoCard
                 video={{
-                    id: feedItem.id,
+                    id: feedItem.id, // ✅ Đây là FeedItem ID - ĐÚNG
                     uri: feedItem.video.uri,
                     title: feedItem.title,
                     description: feedItem.description,
@@ -37,12 +30,16 @@ export default function FeedPost({
                     comments: feedItem.comments,
                     shares: feedItem.shares,
                     outstanding: feedItem.outstanding,
-                    username: 'user1', // TODO: Add user info to FeedItem type
-                    avatarUrl: undefined,
+                    username: feedItem.uploader?.displayName || feedItem.uploader?.shownName || feedItem.uploader?.user?.username || 'user1',
+                    avatarUrl: feedItem.uploader?.avatar?.secureUrl || feedItem.uploader?.avatar?.url,
+                    uploaderUserId: feedItem.uploader?.id, // Truyền UserDetail ID
                     musicName: undefined,
+                    hashtags: feedItem.hashtags,
+                    loved: feedItem.loved, // Truyền trạng thái loved
                 }}
                 isActive={isActive}
                 itemHeight={itemHeight}
+                onCommentModalChange={onCommentModalChange}
             />
         );
     }
@@ -52,10 +49,10 @@ export default function FeedPost({
         feedItem.imageSlide
     ) {
         // Render image slide post
-        console.log('Rendering ImageSlidePost with', feedItem.imageSlide.images.length, 'images');
         return (
             <ImageSlidePost
-                imageSlide={feedItem.imageSlide}
+                feedItemId={feedItem.id} // ✅ Truyền FeedItem ID
+                imageSlide={feedItem.imageSlide} // ImageSlide data chứa images
                 likes={feedItem.likes}
                 comments={feedItem.comments}
                 shares={feedItem.shares}
@@ -65,6 +62,10 @@ export default function FeedPost({
                 isActive={isActive}
                 itemHeight={itemHeight}
                 hashtags={feedItem.hashtags}
+                loved={feedItem.loved} // Truyền trạng thái loved
+                username={feedItem.uploader?.displayName || feedItem.uploader?.shownName || feedItem.uploader?.user?.username || 'user1'}
+                avatarUrl={feedItem.uploader?.avatar?.secureUrl || feedItem.uploader?.avatar?.url}
+                uploaderUserId={feedItem.uploader?.id} // Truyền UserDetail ID
             />
         );
     }
