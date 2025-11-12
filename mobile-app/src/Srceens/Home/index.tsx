@@ -1,4 +1,4 @@
-// Home.tsx - TikTok-like scrolling behavior
+// Home.tsx - TikTok-like scrolling behavior with Feed support
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   FlatList,
@@ -10,13 +10,13 @@ import {
   StyleSheet,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { setVideos, Video } from "../../Store/videoSlice";
-import Post from "../../Components/Post";
+import { setFeedItems, FeedItem } from "../../Store/feedSlice";
+import FeedPost from "../../Components/Post/FeedPost";
 import type { RootState } from "../../Store/index";
-import { fetchFeed } from "../../Services/VideoService";
+import { fetchFeedItems } from "../../Services/FeedService";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
-import { useFocusEffect, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useRoute, useNavigation } from "@react-navigation/native";
 
 const { height, width } = Dimensions.get("window");
 
@@ -28,92 +28,160 @@ interface ScrollToIndexFailInfo {
 
 export default function Home() {
   const route = useRoute();
+  const navigation = useNavigation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTabActive, setIsTabActive] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const flatListRef = useRef<FlatList<Video>>(null);
-  const videos = useSelector((state: RootState) => state.videos.videos);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const flatListRef = useRef<FlatList<FeedItem>>(null);
+  const feedItems = useSelector((state: RootState) => state.feed.feedItems);
   const dispatch = useDispatch();
 
   const isScrolling = useRef(false);
   const scrollDirection = useRef<"up" | "down" | null>(null);
   const lastScrollY = useRef(0);
   const hasScrolledToVideo = useRef(false);
+  const isLoadingRef = useRef(false);
 
   const loadVideos = useCallback(async () => {
-    if (loading || hasLoaded) return;
+    // Prevent multiple simultaneous loads
+    if (isLoadingRef.current || hasLoaded) {
+      console.log('=== Home: Skipping load (already loading or loaded) ===');
+      return;
+    }
 
+    isLoadingRef.current = true;
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetchFeed();
+      console.log('=== Home: Fetching feed items ===');
+      const response = await fetchFeedItems();
+
+      console.log('=== Home: Feed API response ===', {
+        code: response.code,
+        hasResult: !!response.result,
+        itemCount: response.result?.length || 0
+      });
 
       if (response.code === 1000 && response.result) {
-        dispatch(setVideos(response.result));
+        console.log('=== Home: Dispatching feed items to Redux ===');
+        console.log('Feed items to dispatch:', response.result.map(item => ({
+          id: item.id,
+          type: item.feedItemType,
+          hasVideo: !!item.video,
+          hasImageSlide: !!item.imageSlide,
+          imageCount: item.imageSlide?.images?.length || 0
+        })));
+
+        dispatch(setFeedItems(response.result));
         setHasLoaded(true);
       } else {
-        setError(response.message || "Failed to load videos");
+        setError(response.message || "Failed to load feed items");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred while loading videos");
+      setError(err.message || "An error occurred while loading feed items");
       console.error("Error loading feed:", err);
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
-  }, [dispatch, loading, hasLoaded]);
+  }, [dispatch, hasLoaded]); // Removed loading from dependencies
 
   // Function to refresh videos (for pull-to-refresh)
   const refreshVideos = useCallback(async () => {
+    setRefreshing(true);
     setHasLoaded(false);
     setError(null);
-    await loadVideos();
-  }, [loadVideos]);
 
-  // Load videos lần đầu
+    // Thêm delay tối thiểu để người dùng thấy rõ indicator
+    const startTime = Date.now();
+    const minDelay = 500; // 800ms tối thiểu
+
+    try {
+      console.log('=== Home: Manual refresh triggered ===');
+      const response = await fetchFeedItems();
+
+      if (response.code === 1000 && response.result) {
+        dispatch(setFeedItems(response.result));
+        setHasLoaded(true);
+      } else {
+        setError(response.message || "Failed to load feed items");
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred while loading feed items");
+      console.error("Error refreshing feed:", err);
+    } finally {
+      // Đảm bảo indicator hiển thị ít nhất minDelay ms
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, minDelay - elapsed);
+
+      if (remaining > 0) {
+        await new Promise(resolve => setTimeout(resolve, remaining));
+      }
+
+      setRefreshing(false);
+    }
+  }, [dispatch]);
+
+  // Function to reload when clicking on active tab - scroll to top first
+  const reloadFromTabClick = useCallback(async () => {
+    // Scroll về đầu danh sách để thấy refresh indicator
+    if (flatListRef.current && feedItems.length > 0) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+      // Delay một chút để animation scroll hoàn thành
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    // Sau đó mới trigger refresh
+    await refreshVideos();
+  }, [refreshVideos, feedItems.length]);
+
+  // Load videos chỉ 1 lần khi component mount
   useEffect(() => {
-    if (!hasLoaded && !loading) {
+    if (!hasLoaded) {
+      console.log('=== Home: Initial load ===');
       loadVideos();
     }
-  }, [hasLoaded, loading, loadVideos]);
-
-  // Reload videos when videos array becomes empty (after clearVideos)
-  useEffect(() => {
-    if (videos.length === 0 && hasLoaded && !loading) {
-      console.log("Videos cleared, reloading...");
-      setHasLoaded(false);
-    }
-  }, [videos.length, hasLoaded, loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency - only run once on mount
 
   // Handle tab focus/blur to pause/resume video
   useFocusEffect(
     useCallback(() => {
+      console.log('=== Home: Tab focused ===');
       setIsTabActive(true);
 
-      // Only load if not already loaded and not currently loading
-      if (!hasLoaded && !loading) {
-        loadVideos();
-      }
-
       return () => {
+        console.log('=== Home: Tab blurred ===');
         setIsTabActive(false);
-        hasScrolledToVideo.current = false; // Reset khi rời tab
+        hasScrolledToVideo.current = false;
       };
-    }, [hasLoaded, loading, loadVideos])
+    }, []) // Empty dependencies - never reload
   );
+
+  // Listen for tab reload event (when clicking on active tab)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabLongPress' as any, () => {
+      console.log('🔄 Tab reload triggered - refreshing videos');
+      refreshVideos();
+    });
+
+    return unsubscribe;
+  }, [navigation, refreshVideos]);
 
   // Scroll to specific video if videoId is provided
   useEffect(() => {
     const params = route.params as any;
     if (
       params?.videoId &&
-      videos.length > 0 &&
+      feedItems.length > 0 &&
       !hasScrolledToVideo.current &&
       isTabActive
     ) {
-      const videoIndex = videos.findIndex((v) => v.id === params.videoId);
+      const videoIndex = feedItems.findIndex((item) => item.id === params.videoId);
       if (videoIndex !== -1) {
         hasScrolledToVideo.current = true;
         setTimeout(() => {
@@ -125,7 +193,7 @@ export default function Home() {
         }, 100);
       }
     }
-  }, [route.params, videos, isTabActive]);
+  }, [route.params, feedItems, isTabActive]);
 
   // Xử lý scroll để giới hạn 1 video mỗi lần
   const handleScrollBeginDrag = useCallback((event: any) => {
@@ -159,7 +227,7 @@ export default function Home() {
     // Tính toán index mới (chỉ cho phép +1 hoặc -1)
     let newIndex = currentIndex;
     if (scrollDirection.current === "down") {
-      newIndex = Math.min(currentIndex + 1, videos.length - 1);
+      newIndex = Math.min(currentIndex + 1, feedItems.length - 1);
     } else if (scrollDirection.current === "up") {
       newIndex = Math.max(currentIndex - 1, 0);
     }
@@ -173,7 +241,7 @@ export default function Home() {
     setCurrentIndex(newIndex);
     isScrolling.current = false;
     scrollDirection.current = null;
-  }, [currentIndex, videos.length]);
+  }, [currentIndex, feedItems.length]);
 
   // Xử lý khi item hiển thị thay đổi
   const onViewableItemsChanged = useRef(
@@ -193,7 +261,7 @@ export default function Home() {
   }).current;
 
   const getItemLayout = useCallback(
-    (_data: ArrayLike<Video> | null | undefined, index: number) => ({
+    (_data: ArrayLike<FeedItem> | null | undefined, index: number) => ({
       length: height,
       offset: height * index,
       index,
@@ -202,17 +270,18 @@ export default function Home() {
   );
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Video; index: number }) => (
-      <Post
-        video={item}
+    ({ item, index }: { item: FeedItem; index: number }) => (
+      <FeedPost
+        feedItem={item}
         isActive={index === currentIndex && isTabActive}
         itemHeight={height}
+        onCommentModalChange={setIsCommentModalOpen}
       />
     ),
     [currentIndex, isTabActive]
   );
 
-  const keyExtractor = useCallback((item: Video) => item.id, []);
+  const keyExtractor = useCallback((item: FeedItem) => item.id, []);
 
   const handleScrollToIndexFailed = useCallback(
     (info: ScrollToIndexFailInfo) => {
@@ -231,6 +300,7 @@ export default function Home() {
   const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
   type TabType = (typeof tabs)[number];
   const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
+
   const renderContent = () => {
     switch (activeTab) {
       case "Khám phá":
@@ -259,18 +329,18 @@ export default function Home() {
           );
         }
 
-        if (videos.length === 0) {
+        if (feedItems.length === 0) {
           return (
             <View style={styles.centerContainer}>
-              <Text style={styles.emptyText}>Không có video nào</Text>
+              <Text style={styles.emptyText}>Không có nội dung nào</Text>
             </View>
           );
         }
 
         return (
-          <FlatList<Video>
+          <FlatList<FeedItem>
             ref={flatListRef}
-            data={videos}
+            data={feedItems}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             showsVerticalScrollIndicator={false}
@@ -278,7 +348,7 @@ export default function Home() {
             snapToInterval={height}
             snapToAlignment="start"
             decelerationRate="fast"
-            bounces={false}
+            bounces={true}
             onScrollBeginDrag={handleScrollBeginDrag}
             onScroll={handleScroll}
             onScrollEndDrag={handleScrollEndDrag}
@@ -291,6 +361,8 @@ export default function Home() {
             removeClippedSubviews={true}
             getItemLayout={getItemLayout}
             onScrollToIndexFailed={handleScrollToIndexFailed}
+            refreshing={refreshing}
+            onRefresh={refreshVideos}
           />
         );
       default:
@@ -300,7 +372,13 @@ export default function Home() {
 
   return (
     <View style={{ flex: 1 }}>
-      <TopVideo activeTab={activeTab} setActiveTab={setActiveTab} />
+      {!isCommentModalOpen && (
+        <TopVideo
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onReloadCurrentTab={reloadFromTabClick}
+        />
+      )}
       {renderContent()}
     </View>
   );

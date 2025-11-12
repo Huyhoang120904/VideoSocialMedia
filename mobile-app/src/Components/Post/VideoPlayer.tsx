@@ -35,6 +35,8 @@ export default function VideoPlayer({ uri, isActive, videoHeight }: VideoPlayerP
                     staysActiveInBackground: false,
                     shouldDuckAndroid: true,
                     playThroughEarpieceAndroid: false,
+                    interruptionModeIOS: 1, // DoNotMix
+                    interruptionModeAndroid: 1, // DoNotMix
                 });
             } catch (error) {
                 console.error("Error setting audio mode:", error);
@@ -43,6 +45,14 @@ export default function VideoPlayer({ uri, isActive, videoHeight }: VideoPlayerP
 
         setupAudio();
     }, []);
+
+    // Ensure audio is unmuted and volume is set when player is ready
+    useEffect(() => {
+        if (player) {
+            player.muted = false;
+            player.volume = 1.0;
+        }
+    }, [player, uri]);
 
     // Listeners
     useEffect(() => {
@@ -66,6 +76,9 @@ export default function VideoPlayer({ uri, isActive, videoHeight }: VideoPlayerP
     // Control active state
     useEffect(() => {
         if (isActive) {
+            // Ensure audio is enabled when video becomes active
+            player.muted = false;
+            player.volume = 1.0;
             player.play();
         } else {
             player.pause();

@@ -23,6 +23,8 @@ public enum ErrorCode {
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1105, "Conversation not found!"),
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1106, "Message not found!"),
     REPORT_TICKET_NOT_FOUND(HttpStatus.NOT_FOUND, 1107, "Report ticket not found!"),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 1108, "Comment not found!"),
+    FEED_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, 1115, "Feed item not found!"),
 
     INVALID_KEY(HttpStatus.UNAUTHORIZED, 1108, "Invalid key"),
     USER_EXISTED(HttpStatus.BAD_REQUEST, 1109, "Already following user!"),

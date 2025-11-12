@@ -23,21 +23,28 @@ services:
       start_period: 30s
 
   kafka:
-    image: redpanda/redpanda:latest
+    image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: thesocial-redpanda
     ports:
       - "9092:9092"
+      - "8085:8082"
+      - "9644:9644"
     command:
-      - redpanda start
+      - redpanda
+      - start
       - --overprovisioned
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --node-id 0
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=0
       - --check=false
-      - --advertise-kafka-addr 192.168.100.191:9092
+      - --kafka-addr=0.0.0.0:9092
+      - --advertise-kafka-addr=localhost:9092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=localhost:8082
     networks:
       - thesocial-network
+
 
 volumes:
   mongodb_data:
