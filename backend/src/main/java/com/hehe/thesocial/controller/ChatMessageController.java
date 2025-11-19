@@ -20,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/chat-messages")
@@ -126,5 +127,18 @@ public class ChatMessageController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .message("All messages marked as read")
                 .build());
+    }
+
+    @PostMapping("/attachment")
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> sendAttachment(
+            @RequestParam String conversationId,
+            @RequestParam("file") MultipartFile file) {
+
+        ChatMessageResponse message = chatMessageService.sendAttachment(conversationId, file);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<ChatMessageResponse>builder()
+                        .result(message)
+                        .build());
     }
 }

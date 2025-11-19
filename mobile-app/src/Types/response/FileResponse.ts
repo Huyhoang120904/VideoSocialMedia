@@ -5,6 +5,7 @@ export default interface FileResponse {
   updatedBy: string | null;
   id: string;
   fileName: string;
+  originalFileName?: string;
   fileType?: string; // Added to match backend FileType enum
   size: number;
   publicId: string | null;

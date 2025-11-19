@@ -2,6 +2,7 @@ package com.hehe.thesocial.dto.response.chat;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.entity.FileDocument;
+import com.hehe.thesocial.entity.enums.ChatMessageType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -26,4 +27,6 @@ public class ChatMessageResponse {
     java.util.List<String> readParticipantsId;
     Boolean isReadByCurrentUser;
     Integer readCount;
+    ChatMessageType messageType;
+    FileDocument file;
 }

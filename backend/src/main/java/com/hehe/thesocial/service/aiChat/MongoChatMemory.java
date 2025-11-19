@@ -1,6 +1,6 @@
 package com.hehe.thesocial.service.aiChat;
 
-import com.hehe.thesocial.dto.event.ChatMessageEventDTO;
+
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import com.hehe.thesocial.entity.Conversation;
@@ -14,7 +14,9 @@ import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
-import com.hehe.thesocial.service.kafka.KafkaProducer;
+import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
+import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
+
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -41,21 +43,27 @@ public class MongoChatMemory implements ChatMemory {
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
     ChatMessageMapper chatMessageMapper;
-    KafkaProducer producer;
+    MessageDeliveryService messageDeliveryService;
+    NewestMessageBroadcastService newestMessageBroadcastService;
+
 
     public MongoChatMemory(ChatMessageRepository chatMessageRepository,
                            ConversationRepository conversationRepository,
                            UserDetailRepository userDetailRepository,
                            UserRepository userRepository,
                            ChatMessageMapper chatMessageMapper,
-                           KafkaProducer producer) {
+                           MessageDeliveryService messageDeliveryService,
+                           NewestMessageBroadcastService newestMessageBroadcastService
+) {
         this.chatMessageRepository = chatMessageRepository;
         this.conversationRepository = conversationRepository;
         this.maxMessages = 10;
         this.userDetailRepository = userDetailRepository;
         this.userRepository = userRepository;
         this.chatMessageMapper = chatMessageMapper;
-        this.producer = producer;
+        this.messageDeliveryService = messageDeliveryService;
+        this.newestMessageBroadcastService = newestMessageBroadcastService;
+
     }
 
     @Override
@@ -95,13 +103,10 @@ public class MongoChatMemory implements ChatMemory {
             UserDetail sender = getUserDetailById(savedMessage.getSenderId());
             response.setAvatar(sender.getAvatar());
 
-            ChatMessageEventDTO event = ChatMessageEventDTO.builder()
-                    .response(response)
-                    .eventType(EventType.MESSAGE_CREATE)
-                    .participantsIds(participantIds)
-                    .build();
+            messageDeliveryService.deliverMessageToConversation(savedMessage.getConversationId(), response);
+            newestMessageBroadcastService.broadcastNewestMessage(savedMessage.getConversationId(), response);
 
-            producer.sendMessage(event);
+
         }
     }
 

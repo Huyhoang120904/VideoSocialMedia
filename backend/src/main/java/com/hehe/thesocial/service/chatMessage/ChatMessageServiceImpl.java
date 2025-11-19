@@ -1,25 +1,31 @@
 package com.hehe.thesocial.service.chatMessage;
 
-import com.hehe.thesocial.dto.event.ChatMessageEventDTO;
-import com.hehe.thesocial.dto.event.ReadStatusEventDTO;
+
+
 import com.hehe.thesocial.dto.request.chat.ChatMessageUpdateRequest;
 import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
+import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import com.hehe.thesocial.entity.Conversation;
+import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.entity.enums.ChatMessageType;
 import com.hehe.thesocial.entity.enums.ConversationType;
-import com.hehe.thesocial.entity.enums.EventType;
+import com.hehe.thesocial.dto.event.ReadStatusEventDTO;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.chatMessage.ChatMessageMapper;
 import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
+import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
-import com.hehe.thesocial.service.kafka.KafkaProducer;
+
+import com.hehe.thesocial.service.file.FileService;
 import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
 import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +36,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -42,14 +49,14 @@ import java.util.stream.Collectors;
 public class ChatMessageServiceImpl implements ChatMessageService {
     ChatMessageRepository chatMessageRepository;
     ChatMessageMapper chatMessageMapper;
-    KafkaProducer producer;
     UserDetailRepository userDetailRepository;
     ConversationRepository conversationRepository;
+    FileRepository fileRepository;
+    FileService fileService;
     MessageDeliveryService messageDeliveryService;
     NewestMessageBroadcastService newestMessageBroadcastService;
     AuthenticationHelper authenticationHelper;
-
-    // ============ Public Methods ============
+    SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
     public Page<ChatMessageResponse> getAllChatMessageByConversationId(String conversationId, Pageable pageable) {
@@ -94,10 +101,18 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         Conversation conversation = findOrCreateDirectConversation(sender, receiver);
         Set<String> participantIds = getParticipantIds(conversation);
 
+        FileDocument attachment = resolveAttachment(request.getFileId());
+        validateMessagePayload(request.getMessage(), attachment);
+
+        ChatMessageType messageType = resolveMessageType(request.getMessageType(), attachment);
+        String messageContent = normalizeMessageContent(request.getMessage(), attachment);
+
         ChatMessage chatMessage = buildChatMessage(
-                request.getMessage(),
+                messageContent,
                 conversation.getConversationId(),
-                sender.getId()
+                sender.getId(),
+                messageType,
+                attachment
         );
 
         return saveAndBroadcastMessage(chatMessage, participantIds);
@@ -112,10 +127,48 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         validateGroupConversation(conversation);
         validateUserIsParticipant(conversation, sender.getId());
 
+        FileDocument attachment = resolveAttachment(request.getFileId());
+        validateMessagePayload(request.getMessage(), attachment);
+
+        ChatMessageType messageType = resolveMessageType(request.getMessageType(), attachment);
+        String messageContent = normalizeMessageContent(request.getMessage(), attachment);
+
         ChatMessage chatMessage = buildChatMessage(
-                request.getMessage(),
+                messageContent,
                 conversation.getConversationId(),
-                sender.getId()
+                sender.getId(),
+                messageType,
+                attachment
+        );
+
+        Set<String> participantIds = getParticipantIds(conversation);
+        return saveAndBroadcastMessage(chatMessage, participantIds);
+    }
+
+    @Transactional
+    @Override
+    public ChatMessageResponse sendAttachment(String conversationId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_FILE);
+        }
+
+        UserDetail sender = authenticationHelper.getCurrentUserDetail();
+        Conversation conversation = getConversation(conversationId);
+
+        validateUserIsParticipant(conversation, sender.getId());
+
+        FileResponse storedFile = fileService.storeFile(file);
+        FileDocument attachment = resolveAttachment(storedFile.getId());
+
+        ChatMessageType messageType = resolveMessageType(null, attachment);
+        String messageContent = normalizeMessageContent(null, attachment);
+
+        ChatMessage chatMessage = buildChatMessage(
+                messageContent,
+                conversation.getConversationId(),
+                sender.getId(),
+                messageType,
+                attachment
         );
 
         Set<String> participantIds = getParticipantIds(conversation);
@@ -185,18 +238,10 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         // Mark as read and save to database first
         message.getReadParticipantsId().add(currentUser.getId());
         message = chatMessageRepository.save(message);
-        
-        // Send read status update via Kafka
-        ReadStatusEventDTO readStatusEvent = ReadStatusEventDTO.builder()
-                .messageId(messageId)
-                .conversationId(message.getConversationId())
-                .readParticipantsId(message.getReadParticipantsId())
-                .readCount(message.getReadParticipantsId().size())
-                .readerId(currentUser.getId())
-                .build();
-        
-        producer.sendReadStatusUpdate(readStatusEvent);
-        
+
+        // Broadcast read status update to all participants
+        broadcastReadStatusUpdate(conversation, messageId, currentUser.getId());
+
         return chatMessageMapper.toChatMessageResponse(message);
     }
 
@@ -225,18 +270,10 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         // Save all messages to database first
         if (!unreadMessages.isEmpty()) {
             chatMessageRepository.saveAll(unreadMessages);
-            
-            // Then send read status updates for each message
+
+            // Broadcast read status for each updated message
             for (ChatMessage message : unreadMessages) {
-                ReadStatusEventDTO readStatusEvent = ReadStatusEventDTO.builder()
-                        .messageId(message.getId())
-                        .conversationId(conversationId)
-                        .readParticipantsId(message.getReadParticipantsId())
-                        .readCount(message.getReadParticipantsId().size())
-                        .readerId(currentUser.getId())
-                        .build();
-                
-                producer.sendReadStatusUpdate(readStatusEvent);
+                broadcastReadStatusUpdate(conversation, message.getId(), currentUser.getId());
             }
         }
     }
@@ -275,13 +312,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         UserDetail sender = getUserDetailById(lastMessage.getSenderId());
         response.setAvatar(sender.getAvatar());
 
-        ChatMessageEventDTO event = ChatMessageEventDTO.builder()
-                .response(response)
-                .eventType(EventType.MESSAGE_CREATE)
-                .participantsIds(participantIds)
-                .build();
 
-        producer.sendMessage(event);
 
         return response;
     }
@@ -298,7 +329,9 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         ChatMessage chatMessage = buildChatMessage(
                 message,
                 conversation.getConversationId(),
-                sender.getId()
+                sender.getId(),
+                ChatMessageType.TEXT,
+                null
         );
 
         return saveAndBroadcastMessage(chatMessage, participantIds);
@@ -315,6 +348,45 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     private UserDetail getUserDetailByUserId(String userId) {
         return userDetailRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private FileDocument resolveAttachment(String fileId) {
+        if (fileId == null || fileId.isBlank()) {
+            return null;
+        }
+        return fileRepository.findById(fileId)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+    }
+
+    private void validateMessagePayload(String message, FileDocument attachment) {
+        boolean hasMessage = message != null && !message.isBlank();
+        if (!hasMessage && attachment == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private ChatMessageType resolveMessageType(ChatMessageType requestedType, FileDocument attachment) {
+        if (requestedType != null) {
+            return requestedType;
+        }
+        if (attachment != null && attachment.getResourceType() != null) {
+            return switch (attachment.getResourceType().toLowerCase()) {
+                case "image" -> ChatMessageType.IMAGE;
+                case "video" -> ChatMessageType.VIDEO;
+                default -> ChatMessageType.TEXT;
+            };
+        }
+        return ChatMessageType.TEXT;
+    }
+
+    private String normalizeMessageContent(String message, FileDocument attachment) {
+        if (message != null && !message.isBlank()) {
+            return message;
+        }
+        if (attachment != null) {
+            return attachment.getOriginalFileName();
+        }
+        return null;
     }
 
     private Conversation getConversation(String conversationId) {
@@ -369,13 +441,19 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         return conversationRepository.save(newConversation);
     }
 
-    private ChatMessage buildChatMessage(String message, String conversationId, String senderId) {
+    private ChatMessage buildChatMessage(String message,
+                                         String conversationId,
+                                         String senderId,
+                                         ChatMessageType messageType,
+                                         FileDocument fileDocument) {
         return ChatMessage.builder()
                 .message(message)
                 .conversationId(conversationId)
                 .senderId(senderId)
                 .edited(false)
+                .fileDocument(fileDocument)
                 .readParticipantsId(new java.util.ArrayList<>())
+                .messageType(messageType)
                 .build();
     }
 
@@ -387,14 +465,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         UserDetail sender = getUserDetailById(savedMessage.getSenderId());
         response.setAvatar(sender.getAvatar());
 
-        // Send via Kafka for real-time delivery to subscribed users
-        ChatMessageEventDTO event = ChatMessageEventDTO.builder()
-                .response(response)
-                .eventType(EventType.MESSAGE_CREATE)
-                .participantsIds(participantIds)
-                .build();
 
-        producer.sendMessage(event);
 
         // Also deliver directly via WebSocket to ensure offline users get the message
         // This ensures messages reach users even if they're not actively viewing the conversation
@@ -410,5 +481,18 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         String[] participants = {participant1, participant2};
         java.util.Arrays.sort(participants);
         return participants[0] + "_" + participants[1];
+    }
+
+    private void broadcastReadStatusUpdate(Conversation conversation, String messageId, String readerId) {
+        ReadStatusEventDTO readStatusEventDTO = new ReadStatusEventDTO(messageId, conversation.getConversationId(), readerId);
+        String destination = "/queue/read-status";
+
+        for (UserDetail participant : conversation.getUserDetails()) {
+            try {
+                simpMessagingTemplate.convertAndSendToUser(participant.getId(), destination, readStatusEventDTO);
+            } catch (Exception e) {
+                // Log error or handle failed delivery
+            }
+        }
     }
 }

@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 
 
-const API_URL =
+export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.82.76:8082/api/v1";
 
 
