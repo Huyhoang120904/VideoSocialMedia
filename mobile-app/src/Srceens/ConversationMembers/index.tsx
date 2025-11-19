@@ -145,7 +145,7 @@ const ConversationMembersScreen = () => {
               source={
                 avatarUrl
                   ? { uri: avatarUrl }
-                  : require("../../../assets/avatar.png")
+                  : require("../../../assets/unknown-avatar.png")
               }
               className="w-12 h-12 rounded-full mr-4"
               resizeMode="cover"

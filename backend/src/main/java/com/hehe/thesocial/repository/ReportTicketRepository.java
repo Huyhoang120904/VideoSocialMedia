@@ -12,11 +12,11 @@ import java.util.List;
 @Repository
 public interface ReportTicketRepository extends MongoRepository<ReportTicket, String> {
     Page<ReportTicket> findByReportCategory(ReportCategory reportCategory, Pageable pageable);
-
-    Page<ReportTicket> findByAccepted(boolean accepted, Pageable pageable);
-
-    List<ReportTicket> findByVideoId(String videoId);
-
-    List<ReportTicket> findByImageSlideId(String imageSlideId);
+    
+    // Tìm reports theo feedItemId
+    List<ReportTicket> findByFeedItemId(String feedItemId);
+    
+    // Đếm số lần user đã báo cáo feedItem này
+    long countByUserDetail_IdAndFeedItemId(String userDetailId, String feedItemId);
 }
 

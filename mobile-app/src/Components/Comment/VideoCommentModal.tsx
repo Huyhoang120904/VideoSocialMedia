@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import styles from './styles';
 import commentService from '../../Services/CommentService';
 import userService from '../../Services/UserService';
+import { UNKNOWN_AVATAR } from '../../Utils/ImageUrlHelper';
 
 const { height } = Dimensions.get('window');
 
@@ -59,7 +60,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [commentsList, setCommentsList] = useState<Comment[]>([]);
-    const [currentUserAvatar, setCurrentUserAvatar] = useState<string>('https://i.pravatar.cc/150?u=default');
+    const [currentUserAvatar, setCurrentUserAvatar] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
     const inputRef = React.useRef<TextInput>(null);
     const translateY = useRef(new Animated.Value(0)).current;
@@ -111,7 +112,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                 return {
                     id: comment.id,
                     username: comment.username || 'User',
-                    avatar: comment.avatarUrl || 'https://i.pravatar.cc/150',
+                    avatar: comment.avatarUrl || '',
                     comment: comment.content,
                     timeAgo: comment.timeAgo || 'vừa xong', // Backend đã format sẵn
                     likes: comment.likeCount || 0,
@@ -193,7 +194,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
             const comment: Comment = {
                 id: response.comment.id,
                 username: response.comment.username || 'You',
-                avatar: response.comment.avatarUrl || 'https://i.pravatar.cc/150?u=user',
+                avatar: response.comment.avatarUrl || '',
                 comment: response.comment.content,
                 timeAgo: response.comment.timeAgo || 'vừa xong', // Backend trả về
                 likes: response.comment.likeCount || 0,
@@ -301,7 +302,10 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                 onPress={() => handleAvatarPress(item.username)}
                 activeOpacity={0.8}
             >
-                <Image source={{ uri: item.avatar }} style={styles.commentAvatar} />
+                <Image 
+                    source={item.avatar ? { uri: item.avatar } : UNKNOWN_AVATAR} 
+                    style={styles.commentAvatar} 
+                />
             </TouchableOpacity>
             <View style={styles.commentContent}>
                 <View style={styles.commentTopRow}>
@@ -456,7 +460,9 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 style={styles.inputContainer}
                             >
                                 <Image
-                                    source={{ uri: currentUserAvatar }}
+                                    source={currentUserAvatar && currentUserAvatar !== 'https://i.pravatar.cc/150?u=default' 
+                                        ? { uri: currentUserAvatar } 
+                                        : UNKNOWN_AVATAR}
                                     style={styles.userAvatar}
                                 />
                                 <View style={styles.inputWrapper}>

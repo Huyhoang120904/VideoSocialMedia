@@ -75,7 +75,7 @@ export default function Inbox() {
       conversationName: item.conversationName,
       avatar: avatarUrl
         ? { uri: avatarUrl }
-        : require("../../../assets/avatar.png"),
+        : require("../../../assets/unknown-avatar.png"),
     });
   };
 

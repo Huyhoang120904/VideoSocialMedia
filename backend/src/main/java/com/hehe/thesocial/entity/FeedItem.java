@@ -63,4 +63,13 @@ public class FeedItem extends BaseDocument {
     @DBRef
     @Field("uploader_ref")
     UserDetail uploader;
+
+    @Field("report_count")
+    @Builder.Default
+    int reportCount = 0;
+
+    @Field("active")
+    @Builder.Default
+    boolean active = true;
+
 }
