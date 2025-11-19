@@ -33,10 +33,10 @@ const getResponsiveFontSize = (baseFontSize: number) => {
 const getResponsiveBottomPosition = () => {
     // Tính toán dựa trên chiều cao màn hình thực tế
     const screenHeight = windowHeight;
-    
+
     // Chiều cao navigation bar thực tế (thường là 60-80px)
     let navHeight = 60; // Base height
-    
+
     // Điều chỉnh dựa trên kích thước màn hình
     if (screenHeight < 700) {
         navHeight = 50; // Màn hình nhỏ
@@ -45,15 +45,15 @@ const getResponsiveBottomPosition = () => {
     } else {
         navHeight = 60; // Màn hình trung bình
     }
-    
+
     // Khoảng cách nhỏ phía trên navigation bar - giảm để sát hơn
     const spacing = 2; // Giảm từ 4px xuống 2px
-    
+
     // Tính bottom position
     const bottomPosition = navHeight + spacing;
-    
+
     console.log(`Screen height: ${screenHeight}, Nav height: ${navHeight}, Bottom position: ${bottomPosition}`);
-    
+
     return bottomPosition;
 };
 
@@ -103,7 +103,7 @@ const AutoFontSizes = {
     },
     rightVideoContainer: {
         position: "absolute",
-        right: windowWidth > 400 ? 16 : 8, // Responsive right margin
+        right: windowWidth > 400 ? 6 : 4, // Giảm margin để sát bên phải hơn (từ 16/8 xuống 8/4)
         bottom: getResponsiveBottomPosition(), // Dynamic bottom position - same as bottomVideoContainer
         alignItems: "center",
         zIndex: 40,
@@ -152,15 +152,17 @@ const AutoFontSizes = {
     bottomVideoContainer: {
         position: "absolute",
         left: windowWidth > 400 ? 16 : 12, // Responsive left margin
-        right: 16, // Reduced right margin since music icon moved
+        right: 80, // Tăng right margin để tránh đụng RightVideo icons (từ 16 lên 80)
         bottom: getResponsiveBottomPosition(), // Dynamic bottom position based on navigation bar height
         flexDirection: "row",
         alignItems: "flex-end",
-        zIndex: 10,
+        zIndex: 100, // Tăng từ 10 lên 100 để cao hơn centerTapArea
+        elevation: 100, // For Android
     },
     contentLeft: {
         flex: 1,
         marginRight: 8, // Reduced margin to bring avatar closer
+        paddingRight: 12, // Thêm padding để text không đụng icons bên phải
     },
     username: {
         color: "#fff",
@@ -184,6 +186,22 @@ const AutoFontSizes = {
         opacity: 0.9,
         lineHeight: 16,
         marginBottom: 6,
+    },
+    seeMore: {
+        color: "#fff",
+        fontSize: AutoFontSizes.medium,
+        fontFamily: "TikTokSans-Bold",
+        opacity: 0.7,
+    },
+    hashtag: {
+        color: "#00F5FF",
+        fontSize: AutoFontSizes.medium,
+        fontFamily: "TikTokSans-Bold",
+        marginRight: 8,
+        marginBottom: 4,
+        textShadowColor: "rgba(0, 245, 255, 0.5)",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 4,
     },
     musicContainer: {
         flexDirection: "row",
@@ -288,7 +306,7 @@ const AutoFontSizes = {
         position: "relative",
     },
     progressBarBackground: {
-        height: 3,
+        height: 2,
         backgroundColor: "rgba(255,255,255,0.3)",
         borderRadius: 2,
     },

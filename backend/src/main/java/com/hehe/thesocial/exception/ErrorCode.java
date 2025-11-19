@@ -24,6 +24,8 @@ public enum ErrorCode {
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1106, "Message not found!"),
     REPORT_TICKET_NOT_FOUND(HttpStatus.NOT_FOUND, 1107, "Report ticket not found!"),
     USER_INTERACTION_NOT_FOUND(HttpStatus.NOT_FOUND, 1108, "User interaction not found!"),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 1108, "Comment not found!"),
+    FEED_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, 1115, "Feed item not found!"),
 
     INVALID_KEY(HttpStatus.UNAUTHORIZED, 1109, "Invalid key"),
     USER_EXISTED(HttpStatus.BAD_REQUEST, 1110, "Already following user!"),

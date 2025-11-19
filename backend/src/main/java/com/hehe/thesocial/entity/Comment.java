@@ -38,13 +38,12 @@ public class Comment extends BaseDocument {
     @Field("disliked_by")
     Set<String> dislikedBy;
 
-    @DBRef
-    @Field("replies_ref")
-    Set<Comment> replies;
-
     @Field("user_detail_id")
     String userDetailId;
 
     @Field("avatar_url")
     String avatarUrl;
+
+    @Field("feed_item_id")
+    String feedItemId;
 }

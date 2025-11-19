@@ -15,7 +15,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   if (images.length === 0) return null;
 
   return (
-    <View className="m-4 mb-2">
+    <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -25,7 +25,13 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
           <View key={index} className="relative mr-3">
             <Image
               source={{ uri: image.uri }}
-              className="w-30 h-40 rounded-xl border border-white/10"
+              className="rounded-xl border border-white/10"
+              resizeMode="cover"
+              style={{
+                width: 120,
+                height: 160,
+                backgroundColor: '#1a1a1a'
+              }}
             />
             <TouchableOpacity
               className="absolute top-2 right-2 bg-black/70 rounded-full p-1 shadow-lg"
