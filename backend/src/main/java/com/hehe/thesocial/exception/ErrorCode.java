@@ -33,7 +33,8 @@ public enum ErrorCode {
     CONVERSATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, 1112, "Conversation between these participants already exists!"),
     INVALID_CONVERSATION_TYPE(HttpStatus.BAD_REQUEST, 1113, "Invalid conversation type for this operation"),
     CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1114, "Access denied to this conversation"),
-    INVALID_REQUEST(HttpStatus.BAD_REQUEST, 1115, "Invalid request parameters");
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, 1115, "Invalid request parameters"),
+    REPORT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, 1116, "Bạn đã báo cáo tối đa! Admin sẽ xử lý sau.");
 
 
     private final HttpStatus httpStatus;

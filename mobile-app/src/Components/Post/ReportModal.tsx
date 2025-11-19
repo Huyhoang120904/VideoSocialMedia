@@ -29,7 +29,7 @@ const reportReasons = [
   'Hành vi lừa đảo và gửi nội dung thư rác',
   'Hàng hóa và hoạt động được kiểm soát',
   'Gian lận và lừa đảo',
-  'Chia sẻ thông tin cá nhân',
+  // "Chia sẻ thông tin cá nhân" đã xóa vì không phù hợp với báo cáo video (dành cho báo cáo user)
 ];
 
 const ReportModal: React.FC<ReportModalProps> = ({

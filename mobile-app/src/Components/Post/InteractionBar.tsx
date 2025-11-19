@@ -199,7 +199,7 @@ const InteractionBar: React.FC<InteractionBarProps> = ({
             {/* Music Icon with Rotation */}
             <View style={styles.musicContainer}>
                 <Animated.Image
-                    source={require('../../../assets/avatar.png')}
+                    source={require('../../../assets/music-icon.png')}
                     style={[
                         styles.musicIcon,
                         { transform: [{ rotate: spin }] }

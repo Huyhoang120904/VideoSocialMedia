@@ -86,23 +86,6 @@ public class ReportTicketController {
                 .build());
     }
 
-    @GetMapping("/status/{accepted}")
-    public ResponseEntity<ApiResponse<Page<ReportTicketResponse>>> getReportTicketsByAccepted(
-            @PathVariable boolean accepted,
-            @PageableDefault(size = 10, page = 0) Pageable pageable) {
-        log.info("Fetching report tickets by accepted status: {} with page: {}, size: {}",
-                accepted, pageable.getPageNumber(), pageable.getPageSize());
-
-        Page<ReportTicketResponse> response = reportTicketService.getReportTicketsByAccepted(accepted, pageable);
-
-        return ResponseEntity.ok(ApiResponse.<Page<ReportTicketResponse>>builder()
-                .result(response)
-                .message(response.getTotalElements() == 0 ?
-                        "No report tickets found with this status" :
-                        "Report tickets retrieved successfully")
-                .build());
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ReportTicketResponse>> updateReportTicket(
             @PathVariable String id,

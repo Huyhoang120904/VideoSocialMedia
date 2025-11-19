@@ -8,6 +8,7 @@ import { View, Image, StyleSheet, ImageSourcePropType } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import ActionButton from './ActionButton';
+import { UNKNOWN_AVATAR } from '../../Utils/ImageUrlHelper';
 
 interface UserAvatarProps {
     avatarUrl?: string | ImageSourcePropType;
@@ -28,7 +29,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
 }) => {
     const imageSource = typeof avatarUrl === 'string'
         ? { uri: avatarUrl }
-        : avatarUrl || require('../../../assets/avatar.png');
+        : avatarUrl || UNKNOWN_AVATAR;
 
     return (
         <View style={styles.container}>

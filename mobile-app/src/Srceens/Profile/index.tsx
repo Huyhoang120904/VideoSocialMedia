@@ -164,11 +164,11 @@ export default function Profile() {
                   style={{ resizeMode: "cover" }}
                 />
               ) : (
-                <View className="w-24 h-24 rounded-full bg-gray-300 justify-center items-center">
-                  <Text className="text-gray-700 text-2xl font-bold">
-                    {userDetails?.displayName?.charAt(0).toUpperCase() || "?"}
-                  </Text>
-                </View>
+                <Image
+                  source={require('../../../assets/unknown-avatar.png')}
+                  className="w-24 h-24 rounded-full"
+                  style={{ resizeMode: "cover" }}
+                />
               );
             })()}
           </View>

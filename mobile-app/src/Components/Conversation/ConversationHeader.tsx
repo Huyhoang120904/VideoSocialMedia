@@ -54,11 +54,11 @@ export default function ConversationHeader({
             style={{ resizeMode: "cover" }}
           />
         ) : (
-          <View className="w-10 h-10 bg-gray-300 rounded-full mr-3 items-center justify-center">
-            <Text className="text-gray-600 font-semibold">
-              {conversationName?.charAt(0).toUpperCase() || "?"}
-            </Text>
-          </View>
+          <Image
+            source={require('../../../assets/unknown-avatar.png')}
+            className="w-10 h-10 rounded-full mr-3 border-2 border-gray-100"
+            style={{ resizeMode: "cover" }}
+          />
         )}
         <View className="flex-1">
           <Text

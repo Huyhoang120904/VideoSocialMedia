@@ -142,9 +142,7 @@ public class AnalyticsService {
             // Content metrics
             long totalComments = allComments.size();
             long totalReports = allReports.size();
-            long pendingReports = allReports.stream()
-                    .filter(report -> !report.isAccepted())
-                    .count();
+            long pendingReports = totalReports; // Tất cả reports đều là pending (không còn accepted field)
 
             // Growth metrics
             long previousMonthUsers = countCreatedBetween(allUsers,
