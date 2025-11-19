@@ -1,6 +1,6 @@
 package com.hehe.thesocial.service.aiChat;
 
-import com.hehe.thesocial.dto.event.ChatMessageEventDTO;
+
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import com.hehe.thesocial.entity.Conversation;
@@ -14,7 +14,9 @@ import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
-import com.hehe.thesocial.service.kafka.KafkaProducer;
+import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
+import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
+
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -22,6 +24,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -39,21 +43,27 @@ public class MongoChatMemory implements ChatMemory {
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
     ChatMessageMapper chatMessageMapper;
-    KafkaProducer producer;
+    MessageDeliveryService messageDeliveryService;
+    NewestMessageBroadcastService newestMessageBroadcastService;
+
 
     public MongoChatMemory(ChatMessageRepository chatMessageRepository,
                            ConversationRepository conversationRepository,
                            UserDetailRepository userDetailRepository,
                            UserRepository userRepository,
                            ChatMessageMapper chatMessageMapper,
-                           KafkaProducer producer) {
+                           MessageDeliveryService messageDeliveryService,
+                           NewestMessageBroadcastService newestMessageBroadcastService
+) {
         this.chatMessageRepository = chatMessageRepository;
         this.conversationRepository = conversationRepository;
         this.maxMessages = 10;
         this.userDetailRepository = userDetailRepository;
         this.userRepository = userRepository;
         this.chatMessageMapper = chatMessageMapper;
-        this.producer = producer;
+        this.messageDeliveryService = messageDeliveryService;
+        this.newestMessageBroadcastService = newestMessageBroadcastService;
+
     }
 
     @Override
@@ -75,7 +85,6 @@ public class MongoChatMemory implements ChatMemory {
             ChatMessage chatMessage = ChatMessage.builder()
                     .conversationId(conversationId)
                     .message(message.getText())
-                    .createdAt(java.time.LocalDateTime.now())
                     .edited(false)
                     .build();
 
@@ -85,7 +94,6 @@ public class MongoChatMemory implements ChatMemory {
             } else if (message instanceof UserMessage) {
                 chatMessage.setSenderId(currentUser.getId());
             }
-
             ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
             
             // Create response and broadcast
@@ -95,13 +103,10 @@ public class MongoChatMemory implements ChatMemory {
             UserDetail sender = getUserDetailById(savedMessage.getSenderId());
             response.setAvatar(sender.getAvatar());
 
-            ChatMessageEventDTO event = ChatMessageEventDTO.builder()
-                    .response(response)
-                    .eventType(EventType.MESSAGE_CREATE)
-                    .participantsIds(participantIds)
-                    .build();
+            messageDeliveryService.deliverMessageToConversation(savedMessage.getConversationId(), response);
+            newestMessageBroadcastService.broadcastNewestMessage(savedMessage.getConversationId(), response);
 
-            producer.sendMessage(event);
+
         }
     }
 
@@ -188,9 +193,21 @@ public class MongoChatMemory implements ChatMemory {
      * Get the current authenticated user
      */
     private UserDetail getCurrentUser() {
-        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userDetailRepository.findByUserId(currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String userDetailId = jwt.getClaim("userDetailId");
+
+            if (userDetailId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return userDetailRepository.findById(userDetailId)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        }
+
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     /**

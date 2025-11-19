@@ -10,9 +10,11 @@ import com.hehe.thesocial.dto.response.auth.RefreshResponse;
 import com.hehe.thesocial.entity.InvalidToken;
 import com.hehe.thesocial.entity.Permission;
 import com.hehe.thesocial.entity.User;
+import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.repository.InvalidTokenRepository;
+import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -44,6 +46,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     UserRepository userRepository;
     PasswordEncoder passwordEncoder;
     InvalidTokenRepository invalidTokenRepository;
+    private final UserDetailRepository userDetailRepository;
 
     @NonFinal
     @Value("${jwt.expiration}")
@@ -177,6 +180,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     public String generateToken(User user) {
+        UserDetail userDetail = userDetailRepository.findByUser(user)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getId())
@@ -187,6 +193,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 ))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", buildScope(user))
+                .claim("userDetailId", userDetail.getId())
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());

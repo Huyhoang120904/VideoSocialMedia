@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,12 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import { LinearGradient } from "expo-linear-gradient";
 import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
+import { ChatMessageType } from "../../Types/common/ChatMessageType";
 import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
+import { StyleSheet } from "react-native";
 
 interface MessageBubbleProps {
   message: ChatMessageResponse;
@@ -36,6 +40,136 @@ export default function MessageBubble({
   onDeleteMessage,
   isLoading,
 }: MessageBubbleProps) {
+  const [isVideoBuffering, setIsVideoBuffering] = useState(true);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  useEffect(() => {
+    setIsVideoBuffering(true);
+    setIsVideoPlaying(false);
+    setVideoError(null);
+  }, [message.id, message.file?.url]);
+
+  const isMediaMessage =
+    (message.messageType === ChatMessageType.IMAGE ||
+      message.messageType === ChatMessageType.VIDEO) &&
+    !!message.file?.url;
+
+  const hasCustomCaption = useMemo(() => {
+    if (!message.message) return false;
+    if (!message.file) return true;
+    const autoCaption =
+      message.file.originalFileName ||
+      message.file.fileName ||
+      message.file.url;
+    return message.message.trim() !== (autoCaption?.trim() ?? "");
+  }, [message.message, message.file]);
+
+  const renderMediaPreview = () => {
+    if (!isMediaMessage || !message.file?.url) {
+      return null;
+    }
+
+    const mediaLabel =
+      message.file.format?.toUpperCase() || message.messageType || "MEDIA";
+
+    if (message.messageType === ChatMessageType.IMAGE) {
+      return (
+        <View
+          className="overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black/5"
+          style={styles.mediaWrapper}
+        >
+          <Image
+            source={{ uri: message.file.url }}
+            style={styles.mediaElement}
+            resizeMode="cover"
+          />
+        </View>
+      );
+    }
+
+    const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+      if (!status.isLoaded) {
+        if (status.error) {
+          console.warn("Video playback error", status.error);
+          setVideoError("Unable to load video");
+          setIsVideoBuffering(false);
+        }
+        return;
+      }
+
+      setIsVideoPlaying(status.isPlaying ?? false);
+      setIsVideoBuffering(status.isBuffering ?? false);
+    };
+
+    return (
+      <View
+        className="overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black"
+        style={styles.mediaWrapper}
+      >
+        <Video
+          key={`${message.id}-${message.file.url}`}
+          source={{ uri: message.file.url }}
+          style={styles.mediaElement}
+          resizeMode={ResizeMode.COVER}
+          useNativeControls
+          onLoadStart={() => {
+            setIsVideoBuffering(true);
+            setIsVideoPlaying(false);
+          }}
+          onReadyForDisplay={() => setIsVideoBuffering(false)}
+          onError={(error) => {
+            console.warn("Video playback error", error);
+            setVideoError("Unable to load video");
+            setIsVideoBuffering(false);
+          }}
+          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        />
+        <View
+          className="absolute inset-0 items-center justify-center"
+          pointerEvents="none"
+        >
+          {isVideoBuffering ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            !isVideoPlaying && (
+              <View className="w-12 h-12 bg-black/40 rounded-full items-center justify-center border border-white/40">
+                <Ionicons name="play" size={22} color="#ffffff" />
+              </View>
+            )
+          )}
+        </View>
+        {!videoError ? (
+          <View
+            pointerEvents="none"
+            className="absolute top-3 right-3 bg-black/45 rounded-full px-3 py-1 flex-row items-center"
+          >
+            <Ionicons name="videocam-outline" size={14} color="#fff" />
+            <Text className="text-white text-[10px] font-semibold uppercase ml-1">
+              Video
+            </Text>
+          </View>
+        ) : (
+          <View className="absolute inset-0 bg-black/75 items-center justify-center px-3">
+            <Ionicons name="warning-outline" size={20} color="#FCA5A5" />
+            <Text className="text-white text-xs text-center mt-2">
+              {videoError}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const bubbleGradient = isMyMessage
+    ? (["#111827", "#0F172A"] as [string, string])
+    : (["#FFFFFF", "#F1F5F9"] as [string, string]);
+
+  const bubbleStyles = [
+    styles.bubbleBase,
+    isMyMessage ? styles.myBubble : styles.otherBubble,
+  ];
+
   if (isEditing) {
     return (
       <View className="mb-2 items-end">
@@ -102,44 +236,29 @@ export default function MessageBubble({
           </View>
         )}
 
-        <View
-          className={`px-4 py-3 max-w-[85%] ${
-            isMyMessage
-              ? "bg-black rounded-2xl rounded-br-sm"
-              : "bg-gray-100 rounded-2xl rounded-bl-sm"
-          }`}
-          style={
-            isMyMessage
-              ? {
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 4,
-                  elevation: 6,
-                }
-              : {
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }
-          }
+        <LinearGradient
+          colors={bubbleGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={bubbleStyles}
         >
-          <Text
-            className={`text-sm leading-5 ${
-              isMyMessage
-                ? "text-white font-medium"
-                : "text-gray-900 font-medium"
-            }`}
-          >
-            {message.message}
-          </Text>
-          <View className="flex-row justify-between items-center mt-2">
+          {renderMediaPreview()}
+
+          {!isMediaMessage || hasCustomCaption ? (
+            <Text
+              className={`text-sm leading-5 ${
+                isMyMessage ? "text-white" : "text-gray-900"
+              }`}
+            >
+              {message.message}
+            </Text>
+          ) : null}
+
+          <View className="flex-row justify-between items-center mt-3">
             <View className="flex-row items-center space-x-2">
               <Text
-                className={`text-xs ${
-                  isMyMessage ? "text-gray-300" : "text-gray-500"
+                className={`text-[11px] ${
+                  isMyMessage ? "text-white/70" : "text-gray-500"
                 }`}
               >
                 {new Date(message.createdAt as string).toLocaleTimeString([], {
@@ -157,34 +276,34 @@ export default function MessageBubble({
                         name="checkmark-done"
                         size={12}
                         color={
-                          message.isReadByCurrentUser ? "#34D399" : "#9CA3AF"
+                          message.isReadByCurrentUser ? "#34D399" : "#F9A8D4"
                         }
                       />
                       {message.readCount > 1 && (
-                        <Text className="text-xs text-gray-400">
+                        <Text className="text-[11px] text-white/70">
                           {message.readCount}
                         </Text>
                       )}
                     </View>
                   ) : (
-                    <Ionicons name="checkmark" size={12} color="#9CA3AF" />
+                    <Ionicons name="checkmark" size={12} color="#CBD5F5" />
                   )}
                 </View>
               )}
             </View>
 
             {isMyMessage && (
-              <View className="flex-row space-x-1">
+              <View className="flex-row space-x-2">
                 <TouchableOpacity
                   onPress={() => onStartEditing(message)}
-                  className="p-1.5 bg-white/20 rounded-full"
+                  className="p-1.5 bg-white/15 rounded-full"
                   activeOpacity={0.6}
                 >
                   <Ionicons name="create-outline" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => onDeleteMessage(message.id)}
-                  className="p-1.5 bg-white/20 rounded-full"
+                  className="p-1.5 bg-white/15 rounded-full"
                   activeOpacity={0.6}
                 >
                   <Ionicons name="trash-outline" size={14} color="#FFFFFF" />
@@ -192,8 +311,46 @@ export default function MessageBubble({
               </View>
             )}
           </View>
-        </View>
+        </LinearGradient>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  bubbleBase: {
+    maxWidth: "85%",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  myBubble: {
+    borderBottomRightRadius: 10,
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  otherBubble: {
+    borderBottomLeftRadius: 10,
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  mediaWrapper: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+    alignSelf: "stretch",
+    backgroundColor: "#000",
+  },
+  mediaElement: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#000",
+  },
+});

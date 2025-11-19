@@ -22,13 +22,18 @@ public enum ErrorCode {
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 1104, "Role not found!"),
     CONVERSATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1105, "Conversation not found!"),
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 1106, "Message not found!"),
+    REPORT_TICKET_NOT_FOUND(HttpStatus.NOT_FOUND, 1107, "Report ticket not found!"),
+    USER_INTERACTION_NOT_FOUND(HttpStatus.NOT_FOUND, 1108, "User interaction not found!"),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 1108, "Comment not found!"),
+    FEED_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, 1115, "Feed item not found!"),
 
-    INVALID_KEY(HttpStatus.UNAUTHORIZED, 1107, "Invalid key"),
-    USER_EXISTED(HttpStatus.BAD_REQUEST, 1108, "Already following user!"),
-    INVALID_CONVERSATION_PARTICIPANTS(HttpStatus.BAD_REQUEST, 1109, "Conversation info not valid"),
-    CONVERSATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, 1110, "Conversation between these participants already exists!"),
-    INVALID_CONVERSATION_TYPE(HttpStatus.BAD_REQUEST, 1111, "Invalid conversation type for this operation"),
-    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1112, "Access denied to this conversation");
+    INVALID_KEY(HttpStatus.UNAUTHORIZED, 1109, "Invalid key"),
+    USER_EXISTED(HttpStatus.BAD_REQUEST, 1110, "Already following user!"),
+    INVALID_CONVERSATION_PARTICIPANTS(HttpStatus.BAD_REQUEST, 1111, "Conversation info not valid"),
+    CONVERSATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, 1112, "Conversation between these participants already exists!"),
+    INVALID_CONVERSATION_TYPE(HttpStatus.BAD_REQUEST, 1113, "Invalid conversation type for this operation"),
+    CONVERSATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1114, "Access denied to this conversation"),
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, 1115, "Invalid request parameters");
 
 
     private final HttpStatus httpStatus;

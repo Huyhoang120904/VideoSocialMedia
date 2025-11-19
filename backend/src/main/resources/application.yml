@@ -13,17 +13,7 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
       enabled: true
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOSTRAP_SERVER}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    consumer:
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      properties:
-        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
-        spring.json.trusted.packages: "*"
+
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -42,8 +32,3 @@ jwt:
 # Local file storage configuration
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads}
-
-logging:
-  level:
-    org.apache.kafka.clients.NetworkClient: ERROR
-    org.apache.kafka.clients.admin.AdminClient: ERROR

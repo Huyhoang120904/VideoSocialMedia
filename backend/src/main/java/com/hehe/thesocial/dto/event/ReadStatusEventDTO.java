@@ -1,20 +1,14 @@
 package com.hehe.thesocial.dto.event;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.List;
-
-@Getter
-@Setter
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@Builder
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReadStatusEventDTO {
-    String messageId;
-    String conversationId;
-    List<String> readParticipantsId;
-    Integer readCount;
-    String readerId;
+    private String messageId;
+    private String conversationId;
+    private String readerId;
 }

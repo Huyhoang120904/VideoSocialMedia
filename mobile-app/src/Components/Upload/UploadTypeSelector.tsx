@@ -13,13 +13,12 @@ export const UploadTypeSelector: React.FC<UploadTypeSelectorProps> = ({
   onTypeChange,
 }) => {
   return (
-    <View className="flex-row px-4 py-3 gap-2 border-b border-white/10">
+    <View className="flex-row px-4 py-4 gap-2 border-b border-white/10 bg-black" style={{ marginBottom: 0 }}>
       <TouchableOpacity
-        className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${
-          uploadType === "video"
+        className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${uploadType === "video"
             ? "bg-pink-500/20 border-pink-500"
             : "bg-white/5 border-transparent"
-        }`}
+          }`}
         onPress={() => onTypeChange("video")}
       >
         <Ionicons
@@ -35,11 +34,10 @@ export const UploadTypeSelector: React.FC<UploadTypeSelectorProps> = ({
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${
-          uploadType === "imageSlide"
+        className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${uploadType === "imageSlide"
             ? "bg-pink-500/20 border-pink-500"
             : "bg-white/5 border-transparent"
-        }`}
+          }`}
         onPress={() => onTypeChange("imageSlide")}
       >
         <Ionicons

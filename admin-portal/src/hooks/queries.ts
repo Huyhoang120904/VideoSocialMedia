@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { userService, videoService } from "@/services/api";
-import { handleApiError, ErrorContext } from "@/lib/error-handling";
+import { userService, videoService, feedItemService } from "@/services/api";
+import { handleApiError } from "@/lib/error-handling";
 import {
   ApiResponse,
   PagedResponse,
@@ -11,6 +11,10 @@ import {
   UpdateUserRequest,
   UploadVideoRequest,
   AnalyticsResponse,
+  FeedItemUploadResponse,
+  FeedItemListResponse,
+  UploadFeedItemRequest,
+  FeedItemType,
 } from "@/types";
 
 /**
@@ -21,40 +25,23 @@ export function useAnalytics() {
   return useQuery({
     queryKey: ["analytics"],
     queryFn: async (): Promise<ApiResponse<AnalyticsResponse>> => {
-      // Mock analytics data for now - replace with actual service call
-      const mockAnalytics: ApiResponse<AnalyticsResponse> = {
-        code: 1000,
-        message: "Success",
-        timeStamp: new Date().toISOString(),
-        result: {
-          totalUsers: 1250,
-          activeUsersToday: 89,
-          totalVideos: 5670,
-          videosUploadedToday: 23,
-          totalStorageUsed: 1024 * 1024 * 1024 * 2.5, // 2.5 GB
-          usersByRole: [
-            { role: "ADMIN", count: 5 },
-            { role: "MODERATOR", count: 12 },
-            { role: "USER", count: 1233 },
-          ],
-          videosByType: [
-            { type: "MP4", count: 4500 },
-            { type: "MOV", count: 800 },
-            { type: "AVI", count: 370 },
-          ],
-        },
-      };
-      return mockAnalytics;
-    },
-    onError: (error: unknown) => {
-      handleApiError(error, {
-        component: "useAnalytics",
-        action: "fetchAnalytics",
-      });
+      try {
+        const { analyticsService } = await import(
+          "@/services/admin/analyticsService"
+        );
+        return analyticsService.getDashboardAnalytics();
+      } catch (error) {
+        handleApiError(error, {
+          component: "useAnalytics",
+          action: "fetchAnalytics",
+        });
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: (failureCount, error: unknown) => {
-      if ((error as any)?.response?.status === 401) return false;
+    retry: (failureCount, error) => {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 401) return false;
       return failureCount < 2;
     },
   });
@@ -64,16 +51,19 @@ export function useUsers(page: number = 0, size: number = 12) {
   return useQuery({
     queryKey: ["users", page, size],
     queryFn: async (): Promise<ApiResponse<PagedResponse<UserResponse>>> => {
-      const response = await userService.getUsers(page, size);
-      return response;
-    },
-    onError: (error: unknown) => {
-      handleApiError(error, { component: "useUsers", action: "fetchUsers" });
+      try {
+        const response = await userService.getUsers(page, size);
+        return response;
+      } catch (error) {
+        handleApiError(error, { component: "useUsers", action: "fetchUsers" });
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: (failureCount, error: unknown) => {
+    retry: (failureCount, error) => {
       // Don't retry authentication errors
-      if ((error as any)?.response?.status === 401) return false;
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 401) return false;
       return failureCount < 2;
     },
   });
@@ -83,17 +73,19 @@ export function useUser(userId: string) {
   return useQuery({
     queryKey: ["user", userId],
     queryFn: async (): Promise<ApiResponse<UserResponse>> => {
-      const response = await userService.getUserById(userId);
-      return response;
+      try {
+        const response = await userService.getUserById(userId);
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useUser",
+          action: "fetchUser",
+          userId,
+        });
+        throw error;
+      }
     },
     enabled: !!userId,
-    onError: (error: unknown) => {
-      handleApiError(error, {
-        component: "useUser",
-        action: "fetchUser",
-        userId,
-      });
-    },
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -189,15 +181,21 @@ export function useVideos(page: number = 0, size: number = 10) {
   return useQuery({
     queryKey: ["videos", page, size],
     queryFn: async (): Promise<ApiResponse<PagedResponse<FileResponse>>> => {
-      const response = await videoService.getVideos(page, size);
-      return response;
-    },
-    onError: (error: unknown) => {
-      handleApiError(error, { component: "useVideos", action: "fetchVideos" });
+      try {
+        const response = await videoService.getVideos(page, size);
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useVideos",
+          action: "fetchVideos",
+        });
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000,
-    retry: (failureCount, error: unknown) => {
-      if ((error as any)?.response?.status === 401) return false;
+    retry: (failureCount, error) => {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 401) return false;
       return failureCount < 2;
     },
   });
@@ -211,17 +209,23 @@ export function useVideosByUser(
   return useQuery({
     queryKey: ["videos", "user", userId, page, size],
     queryFn: async (): Promise<ApiResponse<PagedResponse<FileResponse>>> => {
-      const response = await videoService.getVideosByUserId(userId, page, size);
-      return response;
+      try {
+        const response = await videoService.getVideosByUserId(
+          userId,
+          page,
+          size
+        );
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useVideosByUser",
+          action: "fetchUserVideos",
+          userId,
+        });
+        throw error;
+      }
     },
     enabled: !!userId,
-    onError: (error: unknown) => {
-      handleApiError(error, {
-        component: "useVideosByUser",
-        action: "fetchUserVideos",
-        userId,
-      });
-    },
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -272,6 +276,142 @@ export function useDeleteVideo() {
       handleApiError(error, {
         component: "useDeleteVideo",
         action: "deleteVideo",
+      });
+    },
+  });
+}
+
+/**
+ * FeedItem-related React Query hooks with proper error handling
+ */
+
+export function useFeedItems(page: number = 0, size: number = 10) {
+  return useQuery({
+    queryKey: ["feedItems", page, size],
+    queryFn: async (): Promise<ApiResponse<FeedItemListResponse>> => {
+      try {
+        const response = await feedItemService.getFeedItems(page, size);
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useFeedItems",
+          action: "fetchFeedItems",
+        });
+        throw error;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 401) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+export function useFeedItemsByUser(
+  userId: string,
+  page: number = 0,
+  size: number = 10
+) {
+  return useQuery({
+    queryKey: ["feedItems", "user", userId, page, size],
+    queryFn: async (): Promise<ApiResponse<FeedItemListResponse>> => {
+      try {
+        const response = await feedItemService.getFeedItemsByUserId(
+          userId,
+          page,
+          size
+        );
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useFeedItemsByUser",
+          action: "fetchUserFeedItems",
+          userId,
+        });
+        throw error;
+      }
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useFeedItemsByType(
+  feedItemType: FeedItemType,
+  page: number = 0,
+  size: number = 10
+) {
+  return useQuery({
+    queryKey: ["feedItems", "type", feedItemType, page, size],
+    queryFn: async (): Promise<ApiResponse<FeedItemListResponse>> => {
+      try {
+        const response = await feedItemService.getFeedItemsByType(
+          feedItemType,
+          page,
+          size
+        );
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useFeedItemsByType",
+          action: "fetchFeedItemsByType",
+          feedItemType,
+        });
+        throw error;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUploadFeedItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UploadFeedItemRequest) => {
+      const response = await feedItemService.uploadFeedItem(request);
+      return response;
+    },
+    onSuccess: (data: ApiResponse<FeedItemUploadResponse>) => {
+      if (data.code === 1000) {
+        toast.success("Feed item uploaded successfully!");
+        queryClient.invalidateQueries({ queryKey: ["feedItems"] });
+      } else {
+        toast.error(data.message || "Failed to upload feed item");
+      }
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, {
+        component: "useUploadFeedItem",
+        action: "uploadFeedItem",
+      });
+    },
+  });
+}
+
+export function useDeleteFeedItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (feedItemId: string) => {
+      const response = await feedItemService.deleteFeedItem(feedItemId);
+      return response;
+    },
+    onSuccess: (data: ApiResponse<void>, feedItemId: string) => {
+      if (data.code === 1000) {
+        toast.success("Feed item deleted successfully!");
+        queryClient.invalidateQueries({ queryKey: ["feedItems"] });
+        queryClient.removeQueries({ queryKey: ["feedItem", feedItemId] });
+      } else {
+        toast.error(data.message || "Failed to delete feed item");
+      }
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, {
+        component: "useDeleteFeedItem",
+        action: "deleteFeedItem",
       });
     },
   });

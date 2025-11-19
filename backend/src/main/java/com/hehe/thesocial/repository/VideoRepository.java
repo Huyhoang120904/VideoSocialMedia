@@ -10,9 +10,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface VideoRepository extends MongoRepository<Video, String> {
-    
-    @Query("{'uploader_ref.$id': ?0}")
-    Page<Video> findByUploaderId(String uploaderId, Pageable pageable);
-    
-    Page<Video> findByUploader(UserDetail uploader, Pageable pageable);
 }

@@ -1,5 +1,6 @@
 package com.hehe.thesocial.dto.response.user;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.dto.response.role.RoleResponse;
 import com.hehe.thesocial.entity.Role;
 import lombok.*;
@@ -13,6 +14,7 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserResponse {
     String id;
     String username;

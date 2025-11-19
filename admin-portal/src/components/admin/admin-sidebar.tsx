@@ -46,7 +46,8 @@ const menuItems = [
     title: "Content",
     icon: Video,
     submenu: [
-      { title: "All Videos", href: "/admin/videos", icon: Video },
+      { title: "Feed Items", href: "/admin/feed-items", icon: Video },
+      { title: "All Videos (Legacy)", href: "/admin/videos", icon: Video },
       { title: "Flagged Content", href: "/admin/videos/flagged", icon: Flag },
       { title: "Comments", href: "/admin/comments", icon: MessageSquare },
     ],

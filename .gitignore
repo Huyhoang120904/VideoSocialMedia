@@ -319,3 +319,4 @@ ios/build/
 
 # Uploads or other runtime generated media
 uploads/
+.next

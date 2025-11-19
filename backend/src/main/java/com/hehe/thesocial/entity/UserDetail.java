@@ -19,7 +19,6 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class UserDetail extends BaseDocument {
-
     @EqualsAndHashCode.Include
     @MongoId
     @Field("_id")
@@ -42,7 +41,6 @@ public class UserDetail extends BaseDocument {
     @Field("shown_name")
     String shownName;
 
-    @JsonIgnore
     @DBRef
     @Field("following_ref")
     Set<UserDetail> following;
@@ -50,10 +48,17 @@ public class UserDetail extends BaseDocument {
     @Field("following_count")
     int followingCount;
 
-    @JsonIgnore
+    @Field("flagged")
+    @Builder.Default
+    int violationCount = 0;
+
     @DBRef
     @Field("follower_ref")
     Set<UserDetail> follower;
+
+    @DBRef
+    @Field("user_preference_ref")
+    UserPreference userPreference;
 
     @Field("follower_count")
     int followerCount;

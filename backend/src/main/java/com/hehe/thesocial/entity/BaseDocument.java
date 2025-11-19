@@ -11,13 +11,14 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BaseDocument {
     @CreatedDate
     @Field("created_at")
-    Instant createdAt;
+    LocalDateTime createdAt;
 
     @CreatedBy
     @Field("created_by")
@@ -25,7 +26,7 @@ public class BaseDocument {
 
     @LastModifiedDate
     @Field("updated_at")
-    Instant updatedAt;
+    LocalDateTime updatedAt;
 
     @LastModifiedBy
     @Field("updated_by")

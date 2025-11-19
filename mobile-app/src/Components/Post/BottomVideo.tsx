@@ -1,52 +1,37 @@
-import React, { useEffect, useRef } from "react";
-import { View, Text, Animated, Pressable } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React from "react";
+import { View, Text, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import styles from "./styles";
 
 interface BottomVideoProps {
   title?: string;
   description?: string;
   username?: string;
+  hashtags?: string[];
 }
 
 export default function BottomVideo({
   title,
   description,
   username = "user1",
+  hashtags = [],
 }: BottomVideoProps) {
-  const scrollAnim = useRef(new Animated.Value(0)).current;
   const [showFullDescription, setShowFullDescription] = React.useState(false);
 
-  // Animated scrolling text for long descriptions
-  useEffect(() => {
-    if (description && description.length > 50 && !showFullDescription) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(2000),
-          Animated.timing(scrollAnim, {
-            toValue: -100,
-            duration: 3000,
-            useNativeDriver: true,
-          }),
-          Animated.delay(1000),
-          Animated.timing(scrollAnim, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    }
-  }, [description, showFullDescription]);
+  // Check if title is a video filename
+  const isVideoFilename = title && title.match(/\.(mp4|mov|avi|mkv|webm)$/i);
+  const displayTitle = isVideoFilename ? undefined : title;
 
-  const displayDescription =
-    description && description.length > 100 && !showFullDescription
-      ? description.substring(0, 100) + "..."
-      : description;
+  // Giới hạn 20 ký tự cho description khi thu gọn
+  const MAX_CHARS = 20;
+  const needsTruncate = description && description.length > MAX_CHARS;
+  const truncatedDescription = needsTruncate && !showFullDescription
+    ? description.substring(0, MAX_CHARS)
+    : description;
 
   return (
-    <View style={styles.bottomVideoContainer}>
-      <View style={styles.contentLeft}>
+    <View style={styles.bottomVideoContainer} pointerEvents="box-none">
+      <View style={styles.contentLeft} pointerEvents="box-none">
         {/* Username with @ symbol */}
         <View
           style={{
@@ -54,40 +39,69 @@ export default function BottomVideo({
             alignItems: "center",
             marginBottom: 6,
           }}
+          pointerEvents="box-none"
         >
           <Text style={styles.username}>@{username}</Text>
         </View>
 
         {/* Title/Caption */}
-        <Pressable onPress={() => setShowFullDescription(!showFullDescription)}>
+        {displayTitle && (
           <Text
             style={styles.title}
-            numberOfLines={showFullDescription ? undefined : 2}
+            numberOfLines={2}
           >
-            {title || "No title"}
+            {displayTitle}
           </Text>
-        </Pressable>
+        )}
 
-        {/* Description with animated scroll */}
-        {description && (
-          <Pressable
-            onPress={() => setShowFullDescription(!showFullDescription)}
+        {/* Description with "xem thêm" - use TouchableOpacity to prevent video pause */}
+        {description ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              console.log('🔥 TouchableOpacity pressed!');
+              if (needsTruncate) {
+                console.log('Toggling showFullDescription from', showFullDescription, 'to', !showFullDescription);
+                setShowFullDescription(!showFullDescription);
+              } else {
+                console.log('⚠️ needsTruncate is false, no toggle');
+              }
+            }}
+            style={{
+              paddingVertical: 4,
+              marginBottom: 6,
+              zIndex: 999,
+              elevation: 999,
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Animated.View
-              style={{
-                transform: [
-                  { translateX: showFullDescription ? 0 : scrollAnim },
-                ],
-              }}
-            >
-              <Text
-                style={styles.description}
-                numberOfLines={showFullDescription ? undefined : 2}
-              >
-                {displayDescription}
+            <Text style={styles.description}>
+              {truncatedDescription}
+              {needsTruncate && (
+                <Text style={styles.seeMore}>
+                  {showFullDescription ? ' Thu gọn' : '...xem thêm'}
+                </Text>
+              )}
+            </Text>
+          </TouchableOpacity>
+        ) : !displayTitle && (
+          <Text style={styles.description}>Không có mô tả</Text>
+        )}
+
+        {/* Hashtags */}
+        {hashtags && hashtags.length > 0 && (
+          <View style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            marginTop: 6,
+            marginBottom: 4
+          }}>
+            {hashtags.map((tag, index) => (
+              <Text key={index} style={styles.hashtag}>
+                #{tag}
               </Text>
-            </Animated.View>
-          </Pressable>
+            ))}
+          </View>
         )}
 
         {/* Music/Sound info */}

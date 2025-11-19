@@ -10,6 +10,8 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { ChatMessageType } from "../../Types/common/ChatMessageType";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -21,8 +23,7 @@ import {
 import { useConversations } from "../../Context/ConversationProvider";
 import { useChatMessages } from "../../Context/ChatMessageProvider";
 import { useAuth } from "../../Context/AuthProvider";
-// TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
-// import { useSocket } from "../../Context/SocketProvider";
+import { useSocket } from "../../Context/SocketProvider";
 import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
@@ -55,12 +56,101 @@ const ConversationScreen = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
 
-  // Add WebSocket hooks
-  // TEMPORARILY COMMENTED OUT - WebSocket causing timeout errors
-  // const { isConnected, subscribe, unsubscribe } = useSocket();
-  const isConnected = false; // Mock value
-  const subscribe = () => {}; // Mock function
-  const unsubscribe = () => {}; // Mock function
+  const handleImagePick = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Sorry, we need camera roll permissions to make this work!"
+      );
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const file = {
+        uri: asset.uri,
+        type: asset.mimeType || "image/jpeg",
+        name: asset.fileName || `image-${Date.now()}.jpg`,
+      };
+
+      try {
+        setIsLoading(true);
+        const response = await ChatMessageService.sendAttachment(
+          params.conversationId,
+          file
+        );
+        if (response.result) {
+          addMessage(response.result);
+        }
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        Alert.alert("Error", "Failed to upload image.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleVideoPick = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Sorry, we need camera roll permissions to make this work!"
+      );
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const file = {
+        uri: asset.uri,
+        type: asset.mimeType || "video/mp4",
+        name: asset.fileName || `video-${Date.now()}.mp4`,
+      };
+
+      try {
+        setIsLoading(true);
+        const response = await ChatMessageService.sendAttachment(
+          params.conversationId,
+          file
+        );
+        if (response.result) {
+          addMessage(response.result);
+        }
+      } catch (error) {
+        console.error("Error uploading video:", error);
+        Alert.alert("Error", "Failed to upload video.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // WebSocket hooks
+  const { isConnected, subscribe, unsubscribe, connect } = useSocket();
+
+  useEffect(() => {
+    if (!isConnected) {
+      connect().catch((error) =>
+        console.warn("WebSocket connection attempt failed:", error?.message)
+      );
+    }
+  }, [isConnected, connect]);
 
   // Get params from navigation - safely handle them in case they're missing
   const params =
@@ -406,7 +496,7 @@ const ConversationScreen = () => {
   // Start editing a message
   const startEditing = (message: ChatMessageResponse) => {
     setEditingMessage(message);
-    setEditText(message.message);
+    setEditText(message.message || "");
   };
 
   // Cancel editing
@@ -607,6 +697,8 @@ const ConversationScreen = () => {
             message={message}
             onMessageChange={setMessage}
             onSend={handleSend}
+            onImagePick={handleImagePick}
+            onVideoPick={handleVideoPick}
             editingMessage={editingMessage}
             editText={editText}
             onEditTextChange={setEditText}
