@@ -1,8 +1,11 @@
+import { ChatMessageType } from "../common/ChatMessageType";
 import FileResponse from "./FileResponse";
 
 export interface ChatMessageResponse {
   id: string;
-  message: string;
+  message?: string;
+  messageType: ChatMessageType;
+  file?: FileResponse;
   sender: string;
   senderId: string;
   conversationId: string;

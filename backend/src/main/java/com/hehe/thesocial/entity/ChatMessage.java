@@ -1,6 +1,7 @@
 package com.hehe.thesocial.entity;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hehe.thesocial.entity.enums.ChatMessageType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
@@ -41,6 +42,8 @@ public class ChatMessage extends BaseDocument{
 
     @Field("read_participants_id")
     List<String> readParticipantsId;
+
+    ChatMessageType messageType;
 
     //AI chat fields
     String role;

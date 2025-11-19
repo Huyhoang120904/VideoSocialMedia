@@ -16,32 +16,23 @@ services:
     networks:
       - thesocial-network
     healthcheck:
-      test: [ "CMD", "mongosh", "--username=superadmin", "--password=123456", "--eval", "db.adminCommand('ping')", "--authenticationDatabase=admin" ]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--username=superadmin",
+          "--password=123456",
+          "--eval",
+          "db.adminCommand('ping')",
+          "--authenticationDatabase=admin",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
 
-  kafka:
-    image: redpanda/redpanda:latest
-    container_name: thesocial-redpanda
-    ports:
-      - "9092:9092"
-    command:
-      - redpanda start
-      - --overprovisioned
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --node-id 0
-      - --check=false
-      - --advertise-kafka-addr 192.168.100.46:9092
-    networks:
-      - thesocial-network
-
 volumes:
   mongodb_data:
-  kafka_data:
 
 networks:
   thesocial-network:
