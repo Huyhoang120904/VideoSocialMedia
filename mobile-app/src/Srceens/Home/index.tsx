@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Text,
   StyleSheet,
+  PanResponder,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { setFeedItems, FeedItem } from "../../Store/feedSlice";
@@ -17,6 +18,7 @@ import { fetchFeedItems } from "../../Services/FeedService";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
 import { useFocusEffect, useRoute, useNavigation } from "@react-navigation/native";
+// import { useAppDimensions } from "../../Utils/getDimensions";
 
 const { height, width } = Dimensions.get("window");
 
@@ -36,9 +38,15 @@ export default function Home() {
   const [isTabActive, setIsTabActive] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
+  const [imageSlideInfo, setImageSlideInfo] = useState<{ currentIndex: number; totalImages: number } | null>(null);
   const flatListRef = useRef<FlatList<FeedItem>>(null);
   const feedItems = useSelector((state: RootState) => state.feed.feedItems);
   const dispatch = useDispatch();
+
+  // Log dimensions
+  // const dimensions = useAppDimensions();
+
 
   const isScrolling = useRef(false);
   const scrollDirection = useRef<"up" | "down" | null>(null);
@@ -58,24 +66,9 @@ export default function Home() {
     setError(null);
 
     try {
-      console.log('=== Home: Fetching feed items ===');
       const response = await fetchFeedItems();
 
-      console.log('=== Home: Feed API response ===', {
-        code: response.code,
-        hasResult: !!response.result,
-        itemCount: response.result?.length || 0
-      });
-
       if (response.code === 1000 && response.result) {
-        console.log('=== Home: Dispatching feed items to Redux ===');
-        console.log('Feed items to dispatch:', response.result.map(item => ({
-          id: item.id,
-          type: item.feedItemType,
-          hasVideo: !!item.video,
-          hasImageSlide: !!item.imageSlide,
-          imageCount: item.imageSlide?.images?.length || 0
-        })));
 
         dispatch(setFeedItems(response.result));
         setHasLoaded(true);
@@ -269,6 +262,14 @@ export default function Home() {
     []
   );
 
+  const handleImageSlideChange = useCallback((currentIndex: number, totalImages: number) => {
+    if (currentIndex >= 0 && totalImages > 0) {
+      setImageSlideInfo({ currentIndex, totalImages });
+    } else {
+      setImageSlideInfo(null);
+    }
+  }, []);
+
   const renderItem = useCallback(
     ({ item, index }: { item: FeedItem; index: number }) => (
       <FeedPost
@@ -276,9 +277,11 @@ export default function Home() {
         isActive={index === currentIndex && isTabActive}
         itemHeight={height}
         onCommentModalChange={setIsCommentModalOpen}
+        onOptionsModalChange={setIsOptionsModalOpen}
+        onImageSlideChange={handleImageSlideChange}
       />
     ),
-    [currentIndex, isTabActive]
+    [currentIndex, isTabActive, handleImageSlideChange]
   );
 
   const keyExtractor = useCallback((item: FeedItem) => item.id, []);
@@ -300,6 +303,56 @@ export default function Home() {
   const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
   type TabType = (typeof tabs)[number];
   const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
+
+  // PanResponder để xử lý swipe ngang giữa các tab
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Chỉ kích hoạt khi swipe ngang mạnh hơn swipe dọc và đủ xa
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5;
+        const isSignificant = Math.abs(gestureState.dx) > 30;
+        
+        if (isHorizontal && isSignificant) {
+          console.log('Detecting horizontal swipe:', gestureState.dx);
+          return true;
+        }
+        return false;
+      },
+      onPanResponderGrant: () => {
+        console.log('Pan responder granted');
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const currentIndex = tabs.indexOf(activeTab);
+        const swipeThreshold = 40;
+
+        console.log('Pan responder release, dx:', gestureState.dx);
+
+        if (gestureState.dx > swipeThreshold) {
+          // Swipe right - chuyển sang tab bên trái (previous)
+          if (currentIndex > 0) {
+            const newTab = tabs[currentIndex - 1];
+            console.log('✅ Home swipe right: switching to', newTab);
+            setActiveTab(newTab);
+          } else {
+            console.log('❌ Already at first tab');
+          }
+        } else if (gestureState.dx < -swipeThreshold) {
+          // Swipe left - chuyển sang tab bên phải (next)
+          if (currentIndex < tabs.length - 1) {
+            const newTab = tabs[currentIndex + 1];
+            console.log('✅ Home swipe left: switching to', newTab);
+            setActiveTab(newTab);
+          } else {
+            console.log('❌ Already at last tab');
+          }
+        }
+      },
+      onPanResponderTerminate: () => {
+        console.log('Pan responder terminated');
+      },
+    })
+  ).current;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -371,15 +424,19 @@ export default function Home() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      {!isCommentModalOpen && (
+    <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+      {!isCommentModalOpen && !isOptionsModalOpen && (
         <TopVideo
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onReloadCurrentTab={reloadFromTabClick}
+          imageSlideInfo={imageSlideInfo}
         />
       )}
       {renderContent()}
+
+      {/* Debug overlays (only shown in development). Hidden in production so
+          they don't reserve layout space or interfere with bottomVideo */}
     </View>
   );
 }
@@ -417,5 +474,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     textAlign: "center",
+  },
+  debugOverlay: {
+    position: "absolute",
+    top: 100,
+    right: 16,
+    zIndex: 1000,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    padding: 12,
+    borderRadius: 8,
+    minWidth: 200,
+  },
+  debugItem: {
+    padding: 8,
+    marginBottom: 8,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
+  debugLabel: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  debugValue: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

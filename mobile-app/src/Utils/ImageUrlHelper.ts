@@ -1,5 +1,5 @@
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.239.147:8082/api/v1";
+  process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.100.57:8082/api/v1";
 
 /**
  * Constructs the avatar URL using the new endpoint pattern:
@@ -24,21 +24,24 @@ export const getAvatarUrl = (
 export const getVideoUrl = (originalUrl: string): string => {
   if (!originalUrl) return '';
 
-  console.log('Original URL:', originalUrl);
 
   try {
     // If it's already a proper URL, check if it needs host replacement
     if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
       // Replace old host with configured API host
-      if (originalUrl.includes('172.20.82.76:8082')) {
-        const newUrl = originalUrl.replace('172.20.82.76:8082', '192.168.239.147:8082');
-        console.log('Replaced URL:', newUrl);
-        return newUrl;
-      }
-      if (originalUrl.includes('localhost:8082')) {
-        const newUrl = originalUrl.replace('localhost:8082', '192.168.239.147:8082');
-        console.log('Replaced URL:', newUrl);
-        return newUrl;
+      const currentHost = API_URL.replace('/api/v1', '').replace('http://', '').replace('https://', '');
+      
+      if (originalUrl.includes('172.20.82.76:8082') || 
+          originalUrl.includes('192.168.239.147:8082') ||
+          originalUrl.includes('localhost:8082')) {
+        // Extract the protocol and the rest of the URL
+        const protocol = originalUrl.startsWith('https://') ? 'https://' : 'http://';
+        const oldHost = originalUrl.match(/(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/)?.[0];
+        if (oldHost) {
+          const newUrl = originalUrl.replace(oldHost, currentHost);
+          console.log('Replaced URL:', newUrl);
+          return newUrl;
+        }
       }
       return originalUrl;
     }
@@ -64,15 +67,17 @@ export const getThumbnailUrl = (originalUrl: string): string => {
     // If it's already a proper URL, check if it needs host replacement
     if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
       // Replace old host with configured API host
-      if (originalUrl.includes('172.20.82.76:8082')) {
-        const newUrl = originalUrl.replace('172.20.82.76:8082', '192.168.239.147:8082');
-        console.log('Replaced Thumbnail URL:', newUrl);
-        return newUrl;
-      }
-      if (originalUrl.includes('localhost:8082')) {
-        const newUrl = originalUrl.replace('localhost:8082', '192.168.239.147:8082');
-        console.log('Replaced Thumbnail URL:', newUrl);
-        return newUrl;
+      const currentHost = API_URL.replace('/api/v1', '').replace('http://', '').replace('https://', '');
+      
+      if (originalUrl.includes('172.20.82.76:8082') || 
+          originalUrl.includes('192.168.239.147:8082') ||
+          originalUrl.includes('localhost:8082')) {
+        const oldHost = originalUrl.match(/(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/)?.[0];
+        if (oldHost) {
+          const newUrl = originalUrl.replace(oldHost, currentHost);
+          console.log('Replaced Thumbnail URL:', newUrl);
+          return newUrl;
+        }
       }
       return originalUrl;
     }
@@ -98,15 +103,17 @@ export const getImageUrl = (originalUrl: string): string => {
     // If it's already a proper URL, check if it needs host replacement
     if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
       // Replace old host with configured API host
-      if (originalUrl.includes('172.20.82.76:8082')) {
-        const newUrl = originalUrl.replace('172.20.82.76:8082', '192.168.239.147:8082');
-        console.log('Replaced Image URL:', newUrl);
-        return newUrl;
-      }
-      if (originalUrl.includes('localhost:8082')) {
-        const newUrl = originalUrl.replace('localhost:8082', '192.168.239.147:8082');
-        console.log('Replaced Image URL:', newUrl);
-        return newUrl;
+      const currentHost = API_URL.replace('/api/v1', '').replace('http://', '').replace('https://', '');
+      
+      if (originalUrl.includes('172.20.82.76:8082') || 
+          originalUrl.includes('192.168.239.147:8082') ||
+          originalUrl.includes('localhost:8082')) {
+        const oldHost = originalUrl.match(/(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/)?.[0];
+        if (oldHost) {
+          const newUrl = originalUrl.replace(oldHost, currentHost);
+          console.log('Replaced Image URL:', newUrl);
+          return newUrl;
+        }
       }
       return originalUrl;
     }

@@ -35,12 +35,6 @@ public class FileDocument extends BaseDocument {
     @Field("url")
     String url;
 
-    @Field("secure_url")
-    String secureUrl;
-
-    @Field("format")
-    String format;
-
     @Field("resource_type")
     String resourceType;
 

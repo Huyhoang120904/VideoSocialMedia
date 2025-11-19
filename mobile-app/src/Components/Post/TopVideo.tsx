@@ -12,10 +12,11 @@ interface TopVideoProps {
     activeTab: typeof tabs[number];
     setActiveTab: (tab: typeof tabs[number]) => void;
     onReloadCurrentTab?: () => void; // Callback khi click vào tab đang active
+    imageSlideInfo?: { currentIndex: number; totalImages: number } | null; // Thông tin image slide hiện tại
 }
 
 
-export default function TopVideo({ activeTab, setActiveTab, onReloadCurrentTab }: TopVideoProps) {
+export default function TopVideo({ activeTab, setActiveTab, onReloadCurrentTab, imageSlideInfo }: TopVideoProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [underlineWidth, setUnderlineWidth] = useState(20);
     const translateX = useRef(new Animated.Value(0)).current;
@@ -37,8 +38,8 @@ export default function TopVideo({ activeTab, setActiveTab, onReloadCurrentTab }
             Animated.spring(translateX, {
                 toValue: centerX,
                 useNativeDriver: true,
-                tension: 100,
-                friction: 8,
+                tension: 110,
+                friction: 7,
             }).start();
 
             setUnderlineWidth(newWidth);
@@ -100,33 +101,35 @@ export default function TopVideo({ activeTab, setActiveTab, onReloadCurrentTab }
         <View style={styles.topVideoContainer}>
             {/* Gradient overlay for better readability */}
             <LinearGradient
-                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
+                colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.2)', 'transparent']}
                 style={styles.topGradient}
             />
 
-            {/* Search icon */}
-            {/* <Pressable style={styles.searchIcon}>
-                <Ionicons name="search" size={24} color="#fff" />
-            </Pressable> */}
+            {/* Live icon - Left side */}
+            <Pressable 
+                style={styles.liveButton}
+                onPress={() => {
+                    console.log('Navigate to Live streams');
+                    // navigation.navigate('Live');
+                }}
+            >
+                <Ionicons name="tv-outline" size={24} color="#fff" />
+            </Pressable>
 
             {/* Tabs container */}
             <View style={styles.tabsWrapper} {...panResponder.panHandlers}>
-                <View ref={containerRef} style={{ flexDirection: 'row', alignSelf: 'center' }}>
+                <View ref={containerRef} style={styles.tabsContainer}>
                     {tabs.map((item, index) => (
                         <Pressable
                             key={index}
                             onPress={() => handlePress(index)}
-                            style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                            style={styles.tabButton}
                         >
                             <View ref={el => { tabRefs.current[index] = el }}>
                                 <Text
                                     style={[
                                         styles.titleTop,
-                                        activeTab === item && {
-                                            fontWeight: "800",
-                                            color: "#fff",
-                                            fontSize: 12, // Giảm từ 14 xuống 12 để nhỏ hơn
-                                        },
+                                        activeTab === item && styles.titleTopActive,
                                     ]}
                                 >
                                     {item}
@@ -135,24 +138,38 @@ export default function TopVideo({ activeTab, setActiveTab, onReloadCurrentTab }
                         </Pressable>
                     ))}
 
-                    {/* Underline with shadow */}
+                    {/* Underline with smooth animation */}
                     <Animated.View
-                        style={{
-                            position: "absolute",
-                            bottom: 0,
-                            width: underlineWidth,
-                            height: 4,
-                            backgroundColor: "#fff",
-                            borderRadius: 2,
-                            transform: [{ translateX }],
-                            shadowColor: "#fff",
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 0.8,
-                            shadowRadius: 4,
-                            elevation: 5,
-                        }}
+                        style={[
+                            styles.underline,
+                            {
+                                width: underlineWidth,
+                                transform: [{ translateX }],
+                            }
+                        ]}
                     />
                 </View>
+            </View>
+
+            {/* Search icon - Right side */}
+            <View style={styles.searchButtonContainer}>
+                <Pressable 
+                    style={styles.searchButton}
+                    onPress={() => {
+                        console.log('Navigate to Search');
+                        navigation.navigate('Search' as never);
+                    }}
+                >
+                    <Ionicons name="search-outline" size={24} color="#fff" />
+                </Pressable>
+                {/* Image slide counter - hiển thị dưới nút search */}
+                {imageSlideInfo && imageSlideInfo.totalImages > 0 && (
+                    <View style={styles.imageCounter}>
+                        <Text style={styles.imageCounterText}>
+                            {imageSlideInfo.currentIndex + 1}/{imageSlideInfo.totalImages}
+                        </Text>
+                    </View>
+                )}
             </View>
         </View>
     );

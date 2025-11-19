@@ -122,7 +122,6 @@ public class FileServiceImpl implements FileService {
                     .originalFileName(originalFilename)
                     .size(multipartFile.getSize())
                     .url(fileUrl)
-                    .format(fileExtension.substring(1)) // Remove the dot
                     .resourceType(resourceType)
                     .build();
 

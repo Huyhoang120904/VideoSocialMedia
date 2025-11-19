@@ -55,6 +55,7 @@ const ConversationScreen = () => {
     useState<UserDetailResponse | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const handleImagePick = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -652,7 +653,19 @@ const ConversationScreen = () => {
       <View className="absolute bottom-32 left-6 w-12 h-12 bg-blue-100 rounded-full opacity-15" />
 
       {/* Header - Fixed at top */}
-      <SafeAreaView edges={["top"]}>
+      <SafeAreaView
+        edges={["top"]}
+        onLayout={(event) => {
+          setHeaderHeight(event.nativeEvent.layout.height);
+        }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+        }}
+      >
         <ConversationHeader
           conversationName={conversationName}
           avatarUrl={avatarUrl}
@@ -665,11 +678,17 @@ const ConversationScreen = () => {
         />
       </SafeAreaView>
 
+      <View style={{ height: headerHeight }} />
+
       {/* KeyboardAvoidingView wrapping only messages and input */}
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        behavior={Platform.select({ ios: "padding", android: "height" })}
+        keyboardVerticalOffset={Platform.select({
+          ios: headerHeight || insets.top + 60,
+          android: (headerHeight || insets.top + 60) + insets.bottom,
+        })}
+        enabled
       >
         {/* Messages List */}
         <View className="flex-1">

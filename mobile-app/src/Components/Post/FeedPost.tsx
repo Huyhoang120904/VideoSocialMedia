@@ -9,6 +9,8 @@ interface FeedPostProps {
     isActive: boolean;
     itemHeight?: number;
     onCommentModalChange?: (isOpen: boolean) => void;
+    onOptionsModalChange?: (isOpen: boolean) => void;
+    onImageSlideChange?: (currentIndex: number, totalImages: number) => void;
 }
 
 export default function FeedPost({
@@ -16,6 +18,8 @@ export default function FeedPost({
     isActive,
     itemHeight,
     onCommentModalChange,
+    onOptionsModalChange,
+    onImageSlideChange,
 }: FeedPostProps) {
     if (feedItem.feedItemType === FeedItemType.VIDEO && feedItem.video) {
         // Render video post
@@ -40,6 +44,7 @@ export default function FeedPost({
                 isActive={isActive}
                 itemHeight={itemHeight}
                 onCommentModalChange={onCommentModalChange}
+                onOptionsModalChange={onOptionsModalChange}
             />
         );
     }
@@ -66,6 +71,7 @@ export default function FeedPost({
                 username={feedItem.uploader?.displayName || feedItem.uploader?.shownName || feedItem.uploader?.user?.username || 'user1'}
                 avatarUrl={feedItem.uploader?.avatar?.secureUrl || feedItem.uploader?.avatar?.url}
                 uploaderUserId={feedItem.uploader?.id} // Truyền UserDetail ID
+                onImageSlideChange={onImageSlideChange}
             />
         );
     }

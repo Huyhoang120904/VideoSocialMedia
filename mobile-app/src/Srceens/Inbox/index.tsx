@@ -133,7 +133,7 @@ export default function Inbox() {
       />
 
       {/* Newest Message Indicator for testing */}
-      <NewestMessageIndicator />
+      {/* <NewestMessageIndicator /> */}
 
       {activeTab === "Messages" && (
         <MessagesList

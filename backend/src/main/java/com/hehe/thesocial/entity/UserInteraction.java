@@ -23,7 +23,7 @@ public class UserInteraction {
     @Field("_id")
     String id;
 
-    @Indexed(unique = true)
+    @Indexed
     @Field("user_detail_id")
     String userDetailId;
 
