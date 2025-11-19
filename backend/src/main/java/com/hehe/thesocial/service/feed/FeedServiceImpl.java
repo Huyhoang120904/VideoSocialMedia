@@ -114,7 +114,6 @@ public class FeedServiceImpl implements FeedService {
                    .commentCount(0L)
                    .shareCount(0L);
         }
-
         return builder.build();
     }
 }

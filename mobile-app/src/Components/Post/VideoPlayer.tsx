@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, Pressable, Dimensions, Text, StyleSheet } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
+import { Audio } from "expo-av";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
@@ -21,7 +22,37 @@ export default function VideoPlayer({ uri, isActive, videoHeight }: VideoPlayerP
     const player = useVideoPlayer(uri, (p) => {
         p.loop = true;
         p.muted = false;
+        p.volume = 1.0;
     });
+
+    // Set audio mode when component mounts
+    useEffect(() => {
+        const setupAudio = async () => {
+            try {
+                await Audio.setAudioModeAsync({
+                    playsInSilentModeIOS: true,
+                    allowsRecordingIOS: false,
+                    staysActiveInBackground: false,
+                    shouldDuckAndroid: true,
+                    playThroughEarpieceAndroid: false,
+                    interruptionModeIOS: 1, // DoNotMix
+                    interruptionModeAndroid: 1, // DoNotMix
+                });
+            } catch (error) {
+                console.error("Error setting audio mode:", error);
+            }
+        };
+
+        setupAudio();
+    }, []);
+
+    // Ensure audio is unmuted and volume is set when player is ready
+    useEffect(() => {
+        if (player) {
+            player.muted = false;
+            player.volume = 1.0;
+        }
+    }, [player, uri]);
 
     // Listeners
     useEffect(() => {
@@ -45,6 +76,9 @@ export default function VideoPlayer({ uri, isActive, videoHeight }: VideoPlayerP
     // Control active state
     useEffect(() => {
         if (isActive) {
+            // Ensure audio is enabled when video becomes active
+            player.muted = false;
+            player.volume = 1.0;
             player.play();
         } else {
             player.pause();

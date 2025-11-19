@@ -11,10 +11,11 @@ const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const
 interface TopVideoProps {
     activeTab: typeof tabs[number];
     setActiveTab: (tab: typeof tabs[number]) => void;
+    onReloadCurrentTab?: () => void; // Callback khi click vào tab đang active
 }
 
 
-export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
+export default function TopVideo({ activeTab, setActiveTab, onReloadCurrentTab }: TopVideoProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [underlineWidth, setUnderlineWidth] = useState(20);
     const translateX = useRef(new Animated.Value(0)).current;
@@ -44,8 +45,21 @@ export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
         }, () => { });
     };
     const handlePress = (index: number) => {
-        setActiveTab(tabs[index]); // thay đổi tab
-        moveUnderline(index);
+        const selectedTab = tabs[index];
+
+        // Kiểm tra nếu click vào tab đang active
+        if (selectedTab === activeTab) {
+            console.log('🔄 Reloading current tab:', selectedTab);
+            // Gọi callback để reload
+            if (onReloadCurrentTab) {
+                onReloadCurrentTab();
+            }
+        } else {
+            // Chuyển sang tab khác
+            console.log('➡️ Switching to tab:', selectedTab);
+            setActiveTab(selectedTab);
+            moveUnderline(index);
+        }
     };
     useEffect(() => {
         // Cập nhật underline khi activeTab thay đổi
@@ -89,11 +103,11 @@ export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
                 colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.3)', 'transparent']}
                 style={styles.topGradient}
             />
-            
+
             {/* Search icon */}
-            <Pressable style={styles.searchIcon}>
+            {/* <Pressable style={styles.searchIcon}>
                 <Ionicons name="search" size={24} color="#fff" />
-            </Pressable>
+            </Pressable> */}
 
             {/* Tabs container */}
             <View style={styles.tabsWrapper} {...panResponder.panHandlers}>
@@ -108,8 +122,8 @@ export default function TopVideo({ activeTab, setActiveTab }: TopVideoProps) {
                                 <Text
                                     style={[
                                         styles.titleTop,
-                                        activeTab === item && { 
-                                            fontWeight: "800", 
+                                        activeTab === item && {
+                                            fontWeight: "800",
                                             color: "#fff",
                                             fontSize: 12, // Giảm từ 14 xuống 12 để nhỏ hơn
                                         },

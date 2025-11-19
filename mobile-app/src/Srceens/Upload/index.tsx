@@ -1,13 +1,15 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dimensions,
   Alert,
   ScrollView,
-  SafeAreaView,
   StatusBar,
+  View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { Video } from "expo-av";
+import { Video, Audio } from "expo-av";
+import { useNavigation } from "@react-navigation/native";
 import { uploadFeedItem } from "../../Services/FeedItemService";
 import { useDispatch } from "react-redux";
 import { clearVideos } from "../../Store/videoSlice";
@@ -29,6 +31,7 @@ import {
 const { height } = Dimensions.get("window");
 
 export default function Upload() {
+  const navigation = useNavigation();
   const [uploadType, setUploadType] = useState<UploadType>("video");
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
   const [selectedImages, setSelectedImages] = useState<ImageData[]>([]);
@@ -40,6 +43,25 @@ export default function Upload() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const videoRef = useRef<Video | null>(null);
   const dispatch = useDispatch();
+
+  // Set audio mode để bật âm thanh cho video
+  useEffect(() => {
+    const setAudioMode = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+      } catch (error) {
+        console.error("Error setting audio mode:", error);
+      }
+    };
+
+    setAudioMode();
+  }, []);
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -67,6 +89,20 @@ export default function Upload() {
 
       if (!result.canceled && result.assets[0]) {
         const video = result.assets[0];
+
+        // Ensure audio mode is set before loading video
+        try {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            allowsRecordingIOS: false,
+            staysActiveInBackground: false,
+            shouldDuckAndroid: true,
+            playThroughEarpieceAndroid: false,
+          });
+        } catch (error) {
+          console.error("Error setting audio mode:", error);
+        }
+
         setSelectedVideo({
           uri: video.uri,
           fileName: video.fileName || `video_${Date.now()}.mp4`,
@@ -207,8 +243,9 @@ export default function Upload() {
         }
 
         await uploadFeedItem(formData, (progressEvent: any) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+          const progress = Math.min(
+            100,
+            Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
           );
           setUploadProgress(progress);
         });
@@ -274,8 +311,9 @@ export default function Upload() {
         }
 
         await uploadFeedItem(formData, (progressEvent: any) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+          const progress = Math.min(
+            100,
+            Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
           );
           setUploadProgress(progress);
         });
@@ -317,15 +355,29 @@ export default function Upload() {
     return true;
   };
 
+  const handleGoBack = () => {
+    navigation.goBack();
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-black">
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
-      <UploadHeader />
-      <UploadTypeSelector
-        uploadType={uploadType}
-        onTypeChange={handleTypeChange}
-      />
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      {/* <StatusBar barStyle="light-content" backgroundColor="#000" translucent={false} /> */}
+
+      {/* Header cố định - KHÔNG scroll */}
+      <View style={{ backgroundColor: '#000', elevation: 5 }}>
+        <UploadHeader onBack={handleGoBack} />
+        <UploadTypeSelector
+          uploadType={uploadType}
+          onTypeChange={handleTypeChange}
+        />
+      </View>
+
+      {/* Content scroll - CHỈ phần này scroll */}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 30 }}
+      >
         {showEmptyState() ? (
           <EmptyState
             type={uploadType}

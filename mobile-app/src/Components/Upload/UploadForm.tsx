@@ -50,7 +50,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   const isVideo = uploadType === "video";
 
   return (
-    <View className="p-4">
+    <View style={{ padding: 16 }}>
       <Text
         className="text-xl font-semibold text-white mb-5"
         style={{ fontFamily: "TikTokSans-SemiBold" }}
@@ -124,10 +124,11 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         </Text>
         <View className="mt-2">
           {thumbnail ? (
-            <View className="relative w-40 h-22.5 rounded-xl overflow-hidden bg-white/10 border border-white/20">
+            <View className="rounded-xl overflow-hidden bg-white/10 border border-white/20" style={{ width: 128, height: 192 }}>
               <Image
                 source={{ uri: thumbnail.uri }}
-                className="w-full h-full"
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
               />
               <TouchableOpacity
                 className="absolute top-2 right-2 bg-black/70 rounded-xl p-1"
@@ -202,9 +203,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       )}
 
       <TouchableOpacity
-        className={`bg-pink-500 rounded-xl py-4 items-center mt-5 shadow-lg ${
-          (isVideo && !title.trim()) || isUploading ? "opacity-50" : ""
-        }`}
+        className={`bg-pink-500 rounded-xl py-4 items-center mt-5 shadow-lg ${(isVideo && !title.trim()) || isUploading ? "opacity-50" : ""
+          }`}
         onPress={onUpload}
         disabled={(isVideo && !title.trim()) || isUploading}
       >
@@ -233,7 +233,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           <View className="h-1 bg-white/20 rounded-sm overflow-hidden">
             <View
               className="h-full bg-pink-500 rounded-sm"
-              style={{ width: `${uploadProgress}%` }}
+              style={{ width: `${Math.min(100, uploadProgress)}%` }}
             />
           </View>
         </View>
