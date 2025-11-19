@@ -132,3 +132,6 @@ class VideoService {
 export const authService = new AuthService();
 export const userService = new UserService();
 export const videoService = new VideoService();
+
+// Export feedItemService
+export { feedItemService } from "./admin/feedItemService";

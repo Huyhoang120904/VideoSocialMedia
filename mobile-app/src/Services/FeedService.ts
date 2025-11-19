@@ -44,7 +44,6 @@ export const fetchFeedItems = async (
                         const file = feedItem.video;
                         const videoUrl = getVideoUrl(file.url || file.secureUrl || "");
 
-                        console.log('Video feedItem hashtags from API:', feedItem.hashTags);
 
                         const item: FeedItem = {
                             id: feedItem.id,
@@ -127,18 +126,6 @@ export const fetchFeedItems = async (
                 })
                 .filter((item): item is FeedItem => item !== null) || [];
 
-        console.log('=== FeedService: Final transformed feed items ===');
-        console.log('Total items:', feedItems.length);
-        console.log('Video count:', feedItems.filter(item => item.feedItemType === FeedItemType.VIDEO).length);
-        console.log('ImageSlide count:', feedItems.filter(item => item.feedItemType === FeedItemType.IMAGE_SLIDE).length);
-        feedItems.forEach((item, index) => {
-            console.log(`Feed item ${index + 1}:`, {
-                id: item.id,
-                type: item.feedItemType,
-                title: item.title,
-                hasImages: item.imageSlide?.images?.length || 0
-            });
-        });
 
         return {
             ...data,

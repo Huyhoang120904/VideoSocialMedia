@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import HomeScreen from "../Srceens/Home";
-import SearchScreen from "../Srceens/Search/index";
+import ShopScreen from "../Srceens/Shop/index";
 import UploadScreen from "../Srceens/Upload";
 import InboxStackNavigation from "./inboxStackNavigation";
 import ProfileScreen from "../Srceens/Profile";
@@ -66,7 +66,7 @@ const CreateButton = () => {
         }}
       />
 
-      {/* Icon dấu cộng */}
+      {/* Icon dấu cộng */} 
       <MaterialCommunityIcons
         name="plus"
         size={28}
@@ -112,13 +112,17 @@ export default function HomeBottomTabNavigation() {
       />
 
       <Tab.Screen
-        name="Search"
-        component={SearchScreen}
+        name="Shop"
+        component={ShopScreen}
         options={{
-          tabBarLabel: "Tìm kiếm",
+          tabBarLabel: "Cửa hàng",
           headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="search" size={25} color={color} />
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons 
+              name={focused ? "storefront" : "storefront-outline"} 
+              size={25} 
+              color={color} 
+            />
           ),
         }}
       />

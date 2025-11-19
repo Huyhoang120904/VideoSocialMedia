@@ -74,7 +74,6 @@ export default function RootNavigation() {
         </SocketProvider>
 
       </AuthProvider>
-
     </SafeAreaProvider >
   );
 }

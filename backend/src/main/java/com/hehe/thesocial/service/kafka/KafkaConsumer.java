@@ -24,9 +24,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 public class KafkaConsumer {
-    ObjectMapper objectMapper;
     SimpMessagingTemplate simpMessagingTemplate;
-    UserDetailRepository userDetailRepository;
     ConversationRepository conversationRepository;
     MessageDeliveryService messageDeliveryService;
 

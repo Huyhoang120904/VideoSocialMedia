@@ -25,6 +25,45 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
+export interface AuthenticateRequest {
+  username: string;
+  password: string;
+}
+
+export interface AuthenticateResponse {
+  token: string;
+  refreshToken: string;
+  authenticated: boolean;
+}
+
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+export interface RefreshResponse {
+  token: string;
+  refreshToken: string;
+  authenticated: boolean;
+}
+
+export interface IntrospectRequest {
+  token: string;
+}
+
+export interface IntrospectResponse {
+  valid: boolean;
+  userId?: string;
+  username?: string;
+  roles?: string[];
+}
+
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  mail: string;
+  phoneNumber: string;
+}
+
 // ============================================================================
 // API RESPONSE TYPES
 // ============================================================================
@@ -102,7 +141,7 @@ export interface UpdateUserRequest {
 }
 
 // ============================================================================
-// VIDEO MANAGEMENT TYPES
+// VIDEO MANAGEMENT TYPES (Legacy - kept for compatibility)
 // ============================================================================
 
 export interface VideoResponse {
@@ -123,10 +162,80 @@ export interface VideoResponse {
   updatedAt?: string;
 }
 
+export interface FileResponse {
+  id: string;
+  fileName: string;
+  fileType: string;
+  resourceType: string;
+  format: string;
+  size: number;
+  url: string;
+  secureUrl: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  uploaderId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface UploadVideoRequest {
   file: File;
   title?: string;
   description?: string;
+}
+
+// ============================================================================
+// FEED ITEM MANAGEMENT TYPES
+// ============================================================================
+
+export enum FeedItemType {
+  VIDEO = "VIDEO",
+  IMAGE_SLIDE = "IMAGE_SLIDE",
+  USER_DETAIL = "USER_DETAIL",
+}
+
+export interface FeedItemUploadResponse {
+  feedItemId: string;
+  feedItemType: FeedItemType;
+  message?: string;
+
+  // Video fields
+  video?: FileResponse;
+
+  // ImageSlide fields
+  images?: FileResponse[];
+  captions?: string;
+
+  // Common fields
+  thumbnailUrl?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface FeedItemListResponse {
+  feedItems: PagedResponse<FeedItemUploadResponse>;
+  message: string;
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
+export interface UploadFeedItemRequest {
+  feedItemType: FeedItemType;
+  title?: string;
+  description?: string;
+  thumbnail?: File;
+  hashTags?: string[];
+
+  // Video-specific
+  videoFile?: File;
+  duration?: number;
+
+  // ImageSlide-specific
+  images?: File[];
+  captions?: string;
 }
 
 // ============================================================================
@@ -136,14 +245,33 @@ export interface UploadVideoRequest {
 export interface AnalyticsResponse {
   totalUsers: number;
   activeUsersToday: number;
+  newUsersThisWeek: number;
+  newUsersThisMonth: number;
   totalVideos: number;
   videosUploadedToday: number;
+  videosUploadedThisWeek: number;
+  videosUploadedThisMonth: number;
   totalStorageUsed: number;
+  storageUsedThisMonth: number;
+  formattedStorageUsed: string;
+  totalInteractions: number;
+  interactionsToday: number;
+  totalComments: number;
+  totalReports: number;
+  pendingReports: number;
+  userGrowthRate: number;
+  videoGrowthRate: number;
+  engagementRate: number;
   usersByRole: Array<{
     role: string;
     count: number;
   }>;
   videosByType: Array<{
+    type: string;
+    count: number;
+    totalSize: number;
+  }>;
+  interactionsByType: Array<{
     type: string;
     count: number;
   }>;
@@ -166,7 +294,7 @@ export interface ModalProps extends BaseComponentProps {
 export interface TableColumn<T> {
   key: keyof T | string;
   title: string;
-  render?: (value: any, record: T) => React.ReactNode;
+  render?: (value: unknown, record: T) => React.ReactNode;
   sortable?: boolean;
   width?: string | number;
 }
@@ -195,9 +323,9 @@ export interface FormFieldProps {
 }
 
 export interface FormProps extends BaseComponentProps {
-  onSubmit: (data: any) => void | Promise<void>;
+  onSubmit: (data: Record<string, unknown>) => void | Promise<void>;
   loading?: boolean;
-  initialValues?: Record<string, any>;
+  initialValues?: Record<string, unknown>;
 }
 
 // ============================================================================
