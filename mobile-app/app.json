@@ -2,41 +2,59 @@
   "expo": {
     "name": "TiktokClone",
     "slug": "TiktokClone",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "assets": [
-      "./src/fonts"
-    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+
+    "assetBundlePatterns": ["**/*"],
+    "assets": ["./src/fonts"],
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
+
     "ios": {
       "supportsTablet": true
     },
+
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "softwareKeyboardLayoutMode": "pan",
-      "package": "com.anonymous.TiktokClone"
+      "package": "com.anonymous.TiktokClone",
+
+      // 👇 phần mới thêm cho status bar và navigation bar
+      "statusBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "light-content",
+        "translucent": false
+      },
+      "navigationBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "dark"
+        // 'dark' = icon sáng (hợp nền tối)
+      }
     },
+
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#000000"
     },
+
     "plugins": [
       "expo-video",
       "expo-font",
       "expo-secure-store"
-    ]
+    ],
+
+    // 👇 màu nền toàn app (root background)
+    "backgroundColor": "#000000"
   }
 }

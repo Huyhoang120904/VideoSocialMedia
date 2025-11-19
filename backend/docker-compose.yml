@@ -8,8 +8,8 @@ services:
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=rootpassword123
+      - MONGO_INITDB_ROOT_USERNAME=superadmin
+      - MONGO_INITDB_ROOT_PASSWORD=123456
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init:/docker-entrypoint-initdb.d
@@ -23,7 +23,7 @@ services:
       start_period: 30s
 
   kafka:
-    image: docker.redpanda.com/redpandadata/redpanda:latest
+    image: redpanda/redpanda:latest
     container_name: thesocial-redpanda
     ports:
       - "9092:9092"
@@ -41,7 +41,7 @@ services:
       - --kafka-addr=0.0.0.0:9092
       - --advertise-kafka-addr=localhost:9092
       - --pandaproxy-addr=0.0.0.0:8082
-      - --advertise-pandaproxy-addr=localhost:8082
+      - --advertise-pandaproxy-addr=localhost:8081
     networks:
       - thesocial-network
 

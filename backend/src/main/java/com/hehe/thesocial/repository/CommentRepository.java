@@ -8,5 +8,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CommentRepository extends MongoRepository<Comment, String> {
-    Page<Comment> findByFeedItemIdOrderByCreatedAtDesc(String feedItemId, Pageable pageable);
+    Page<Comment> findByFeedItemIdOrderByCreatedAtDesc(String feedItemId, Pageable
+            pageable);
 }

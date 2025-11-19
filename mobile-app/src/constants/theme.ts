@@ -187,7 +187,7 @@ export const componentSizes = {
     // Progress bar
     progressBar: {
         height: 3,
-        thumbSize: 12,
+        thumbSize: 8, // Giảm từ 12 xuống 8 để nhỏ gọn và đẹp hơn
         touchableHeight: 30,
     },
 

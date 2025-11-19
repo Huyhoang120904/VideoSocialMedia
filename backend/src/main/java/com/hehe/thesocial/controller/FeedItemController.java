@@ -26,7 +26,6 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class FeedItemController {
-
     FeedItemService feedItemService;
 
     @GetMapping
@@ -48,7 +47,6 @@ public class FeedItemController {
 
         return ResponseEntity.ok(ApiResponse.<FeedItemListResponse>builder()
                 .result(response)
-                .message(response.getMessage())
                 .build());
     }
 
@@ -141,7 +139,6 @@ public class FeedItemController {
 
         return ResponseEntity.ok(ApiResponse.<FeedItemUploadResponse>builder()
                 .result(response)
-                .message(response.getMessage())
                 .build());
     }
 }

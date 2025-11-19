@@ -20,6 +20,7 @@ import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.service.kafka.KafkaProducer;
 import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
 import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -27,9 +28,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,12 +47,13 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     ConversationRepository conversationRepository;
     MessageDeliveryService messageDeliveryService;
     NewestMessageBroadcastService newestMessageBroadcastService;
+    AuthenticationHelper authenticationHelper;
 
     // ============ Public Methods ============
 
     @Override
     public Page<ChatMessageResponse> getAllChatMessageByConversationId(String conversationId, Pageable pageable) {
-        UserDetail currentUser = getCurrentUser();
+        UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         Conversation conversation = getConversation(conversationId);
 
         validateUserIsParticipant(conversation, currentUser.getId());
@@ -89,7 +88,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public ChatMessageResponse createDirectChatMessage(DirectChatMessageRequest request) {
-        UserDetail sender = getCurrentUser();
+        UserDetail sender = authenticationHelper.getCurrentUserDetail();
         UserDetail receiver = getUserDetailById(request.getReceiverId());
 
         Conversation conversation = findOrCreateDirectConversation(sender, receiver);
@@ -107,7 +106,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public ChatMessageResponse createGroupChatMessage(GroupChatMessageRequest request) {
-        UserDetail sender = getCurrentUser();
+        UserDetail sender = authenticationHelper.getCurrentUserDetail();
         Conversation conversation = getConversation(request.getGroupId());
 
         validateGroupConversation(conversation);
@@ -126,7 +125,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public ChatMessageResponse updateChatMessage(String chatMessageId, ChatMessageUpdateRequest request) {
-        UserDetail currentUser = getCurrentUser();
+        UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         ChatMessage existingMessage = getChatMessage(chatMessageId);
 
         validateMessageOwnership(existingMessage, currentUser.getId());
@@ -145,7 +144,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public void deleteChatMessage(String chatMessageId) {
-        UserDetail currentUser = getCurrentUser();
+        UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         ChatMessage chatMessage = getChatMessage(chatMessageId);
 
         validateMessageOwnership(chatMessage, currentUser.getId());
@@ -159,7 +158,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public ChatMessageResponse markMessageAsRead(String messageId) {
-        UserDetail currentUser = getCurrentUser();
+        UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         ChatMessage message = getChatMessage(messageId);
         
         Conversation conversation = getConversation(message.getConversationId());
@@ -204,7 +203,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public void markConversationMessagesAsRead(String conversationId) {
-        UserDetail currentUser = getCurrentUser();
+        UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         Conversation conversation = getConversation(conversationId);
         validateUserIsParticipant(conversation, currentUser.getId());
         
@@ -290,7 +289,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     @Override
     public ChatMessageResponse sendMessageToCurrentUser(String senderId, String message) {
-        UserDetail receiver = getCurrentUser();
+        UserDetail receiver = authenticationHelper.getCurrentUserDetail();
         UserDetail sender = getUserDetailByUserId(senderId);
 
         Conversation conversation = findOrCreateDirectConversation(sender, receiver);
@@ -307,23 +306,6 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
     // ============ Private Helper Methods ============
 
-    private UserDetail getCurrentUser() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            String userDetailId = jwt.getClaim("userDetailId");
-
-            if (userDetailId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            return userDetailRepository.findById(userDetailId)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        }
-
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
-    }
 
     private UserDetail getUserDetailById(String userDetailId) {
         return userDetailRepository.findById(userDetailId)

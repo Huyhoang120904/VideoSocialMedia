@@ -76,7 +76,6 @@ export const NewestMessageProvider: React.FC<React.PropsWithChildren> = ({
     }
 
     const destination = `/user/${userDetailId}/queue/newest-message`;
-    console.log("📢 Subscribing to newest message broadcasts:", destination);
 
     subscribe(destination, (broadcast: NewestMessageBroadcast) => {
       console.log("📢 Newest message broadcast received:", broadcast);
@@ -103,7 +102,6 @@ export const NewestMessageProvider: React.FC<React.PropsWithChildren> = ({
 
     isSubscribed.current = true;
     setIsConnected(true);
-    console.log("✅ Newest message broadcasting enabled");
   }
 
   // Unsubscribe from newest message broadcasts

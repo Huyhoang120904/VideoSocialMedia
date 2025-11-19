@@ -12,6 +12,8 @@ import {
 } from "@expo/vector-icons";
 import img from "../../../assets/avatar.png";
 import styles from "./styles";
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ICON_SIZE = 32; // Increased for better visibility
 
@@ -99,6 +101,23 @@ export default function RightVideo({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
+
+  // Compute bottom position dynamically so RightVideo aligns with BottomVideo
+  // and the tab bar icons across devices (mirrors BottomVideo logic).
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const EXTRA_SPACING = 0; // tuned down after runtime logs
+  const visualTabIconsHeight = Math.max(tabBarHeight - insets.bottom, 0);
+  const bottomPosition = visualTabIconsHeight + EXTRA_SPACING;
+
+  // Log runtime values to debug bottom alignment
+  useEffect(() => {
+    try {
+      console.log('[RightVideo] tabBarHeight:', tabBarHeight, 'insets.bottom:', insets.bottom, 'visualTabIconsHeight:', visualTabIconsHeight, 'bottomPosition:', bottomPosition);
+    } catch (e) {
+      // ignore
+    }
+  }, [tabBarHeight, insets.bottom, visualTabIconsHeight, bottomPosition]);
 
   const handleLike = async () => {
     console.log("[RightVideo] ========== handleLike called ==========");
@@ -231,7 +250,7 @@ export default function RightVideo({
   };
 
   return (
-    <View style={styles.rightVideoContainer}>
+    <View style={[styles.rightVideoContainer, { bottom: bottomPosition }]}>
       {/* Avatar với dấu cộng - hiển thị avatar của người upload */}
       <TouchableOpacity
         style={styles.avatarContainer}

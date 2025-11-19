@@ -16,6 +16,10 @@ import { dimensions } from '../../Utils/responsive';
 import RightVideo from './RightVideo';
 import BottomVideo from './BottomVideo';
 import VideoCommentModal from '../Comment/VideoCommentModal';
+import VideoOptionsModal from './VideoOptionsModal';
+import UserInteractionService from '../../Services/UserInteractionService';
+import UserDetailService from '../../Services/UserDetailService';
+import { useAuth } from '../../Context/AuthProvider';
 
 interface VideoData {
     id: string;
@@ -42,6 +46,7 @@ interface VideoCardProps {
     isFollowing?: boolean;
     isCommentModalOpen?: boolean; // Trạng thái modal comment
     onCommentModalChange?: (isOpen: boolean) => void; // Callback khi modal thay đổi
+    onOptionsModalChange?: (isOpen: boolean) => void; // Callback khi options modal thay đổi
 }
 
 // Format seconds to MM:SS
@@ -60,6 +65,7 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
     isFollowing = false,
     isCommentModalOpen = false,
     onCommentModalChange,
+    onOptionsModalChange,
 }) => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -68,17 +74,29 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
     const [isDragging, setIsDragging] = useState(false);
     const [progressBarWidth, setProgressBarWidth] = useState(dimensions.screenWidth);
     const [commentModalVisible, setCommentModalVisible] = useState(false);
+    const [optionsModalVisible, setOptionsModalVisible] = useState(false);
     const [currentComments, setCurrentComments] = useState(video.comments || 0);
+
+    // Watch time tracking
+    const watchStartTime = useRef<number | null>(null);
+    const accumulatedWatchTime = useRef<number>(0);
+    const userDetailIdRef = useRef<string | null>(null);
+    const { isAuthenticated } = useAuth();
 
     const insets = useSafeAreaInsets();
     const tabBarHeight = useBottomTabBarHeight();
-    const videoHeight = itemHeight + insets.top;
+    // Remove adding top safe-area to video height — it was increasing the
+    // total item height and effectively pushing BottomVideo/RightVideo up.
+    const videoHeight = itemHeight;
 
-    // Calculate dynamic positions
-    // Progress bar: Chỉ cách bottom safe area 52px (chiều cao thực tế của tab bar ~48-50px + 2-4px spacing)
-    const progressBarBottom = insets.bottom;
-    // Bottom video: Nằm phía trên progress bar (30px là height của progress bar + 8px spacing)
-    const bottomContentBottom = progressBarBottom;
+    // Calculate dynamic positions for progress bar (nằm vừa trên tab bar)
+    // Progress bar bao gồm: timeIndicatorContainer (~20px) + progressBarTouchable (30px) + padding
+    // Tổng chiều cao progress bar: ~50-55px
+    const progressBarTotalHeight = 55; // Approximate total height của progress bar
+    const spacingAboveTabBar = -101; // Khoảng cách nhỏ giữa progress bar và tab bar
+    const visualTabIconsHeight = Math.max(tabBarHeight - insets.bottom, 0);
+    // Progress bar nằm ngay phía trên tab bar
+    const progressBarBottom = visualTabIconsHeight + insets.bottom + spacingAboveTabBar;
 
     // Animation refs
     const controlsOpacity = useRef(new Animated.Value(0)).current;
@@ -145,6 +163,21 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
         };
     }, [player, isDragging, duration]);
 
+    // Load userDetailId when component mounts
+    useEffect(() => {
+        if (isAuthenticated && !userDetailIdRef.current) {
+            UserDetailService.getMyDetails()
+                .then((response) => {
+                    if (response.result?.id) {
+                        userDetailIdRef.current = response.result.id;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error loading user detail ID:', error);
+                });
+        }
+    }, [isAuthenticated]);
+
     // Handle video playback based on active state
     useEffect(() => {
         if (isActive) {
@@ -152,10 +185,44 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
             player.muted = false;
             player.volume = 1.0;
             player.play();
+            // Start tracking watch time
+            watchStartTime.current = Date.now();
         } else {
             player.pause();
+            // Save watch time when video becomes inactive
+            if (watchStartTime.current !== null) {
+                const watchDuration = (Date.now() - watchStartTime.current) / 1000; // Convert to seconds
+                accumulatedWatchTime.current += watchDuration;
+                watchStartTime.current = null;
+
+                // Send UserInteraction to backend
+                if (userDetailIdRef.current && accumulatedWatchTime.current > 0) {
+                    UserInteractionService.saveInteraction({
+                        feedItemId: video.id,
+                        userDetailId: userDetailIdRef.current,
+                        watchDuration: accumulatedWatchTime.current,
+                    })
+                        .then(() => {
+                            console.log('✅ UserInteraction saved:', {
+                                feedItemId: video.id,
+                                watchDuration: accumulatedWatchTime.current,
+                            });
+                            // Reset accumulated time after saving
+                            accumulatedWatchTime.current = 0;
+                        })
+                        .catch((error) => {
+                            console.error('❌ Error saving UserInteraction:', error);
+                        });
+                }
+            }
         }
-    }, [isActive, player, video.uri]);
+    }, [isActive, player, video.uri, video.id]);
+
+    // Reset watch time when video changes
+    useEffect(() => {
+        watchStartTime.current = null;
+        accumulatedWatchTime.current = 0;
+    }, [video.id]);
 
     // Time sync when not dragging
     useEffect(() => {
@@ -179,6 +246,13 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
             onCommentModalChange(commentModalVisible);
         }
     }, [commentModalVisible, onCommentModalChange]);
+
+    // Notify parent when options modal changes
+    useEffect(() => {
+        if (onOptionsModalChange) {
+            onOptionsModalChange(optionsModalVisible);
+        }
+    }, [optionsModalVisible, onOptionsModalChange]);
 
     // Animate controls visibility
     const showControlsAnimated = () => {
@@ -290,9 +364,10 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
 
     const progressRatio = duration > 0 ? currentTime / duration : 0;
 
-    // Tính toán height của video khi comment modal mở
-    // Khi modal mở, video cần chiếm ~45% màn hình và nằm ở vị trí top: 0 (absolute)
-    const videoContainerHeight = commentModalVisible ? dimensions.screenHeight * 0.50 : videoHeight;
+    // Tính toán height của video khi comment modal hoặc options modal mở
+    // Khi modal mở, video cần chiếm ~50% màn hình và nằm ở vị trí top: 0 (absolute)
+    const isAnyModalOpen = commentModalVisible || optionsModalVisible;
+    const videoContainerHeight = isAnyModalOpen ? dimensions.screenHeight * 0.50 : videoHeight;
 
     return (
         <View style={[styles.container, { height: itemHeight }]}>
@@ -305,7 +380,7 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
                     alignItems: 'center',
                 },
                 // Khi modal mở, video nằm absolute ở top để không có khoảng đen
-                commentModalVisible && {
+                isAnyModalOpen && {
                     position: 'absolute',
                     top: 0,
                     left: 0,
@@ -322,7 +397,7 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
                         }
                     ]}
                     player={player}
-                    contentFit={commentModalVisible ? "contain" : "cover"}
+                    contentFit={isAnyModalOpen ? "contain" : "cover"}
                     nativeControls={false}
                     fullscreenOptions={{ enable: false }}
                     allowsPictureInPicture={false}
@@ -332,6 +407,9 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
                 <Pressable
                     style={styles.centerTapArea}
                     onPress={handlePlayPause}
+                    onLongPress={() => {
+                        setOptionsModalVisible(true);
+                    }}
                 />
 
                 {/* Play/Pause icon overlay */}
@@ -358,10 +436,19 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
                     </Animated.View>
                 )}
 
-                {/* Progress Bar */}
-                {!commentModalVisible && (
-                    <View style={[styles.progressBarWrapper, { bottom: progressBarBottom }]}>
-                        {(!isPlaying || isDragging) && (
+                {/* Progress Bar - chỉ hiển thị khi tap vào video, nằm dưới searchBarContainer */}
+                {!isAnyModalOpen && showControls && (
+                    <Animated.View
+                        style={[
+                            styles.progressBarWrapper,
+                            {
+                                bottom: progressBarBottom,
+                                opacity: controlsOpacity
+                            }
+                        ]}
+                    >
+                        {/* Chỉ hiển thị time indicator khi đang tua (isDragging) */}
+                        {isDragging && (
                             <View style={styles.timeIndicatorContainer}>
                                 <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
                                 <Text style={styles.timeText}>{formatTime(duration)}</Text>
@@ -399,12 +486,12 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
                                 />
                             </View>
                         </View>
-                    </View>
+                    </Animated.View>
                 )}
             </View>
 
             {/* Interaction Bar (right side) */}
-            {!commentModalVisible && (
+            {!isAnyModalOpen && (
                 <RightVideo
                     id={video.id}
                     likes={video.likes || 0}
@@ -419,7 +506,7 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
             )}
 
             {/* User Info Section (bottom left) */}
-            {!commentModalVisible && (
+            {!isAnyModalOpen && (
                 <BottomVideo
                     title={video.title}
                     description={video.description}
@@ -435,6 +522,34 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
                 videoId={video.id}
                 onAddComment={handleAddComment}
                 onUpdateCommentCount={handleUpdateCommentCount}
+            />
+
+            {/* Video Options Modal */}
+            <VideoOptionsModal
+                visible={optionsModalVisible}
+                onClose={() => setOptionsModalVisible(false)}
+                onDownload={() => {
+                    console.log('Download video');
+                }}
+                onNotInterested={() => {
+                    console.log('Not interested');
+                }}
+                onReport={() => {
+                    console.log('Report video');
+                }}
+                onSpeedChange={(speed) => {
+                    console.log('Speed changed to:', speed);
+                    player.playbackRate = speed;
+                }}
+                onSimplifiedScreen={() => {
+                    console.log('Simplified screen');
+                }}
+                onSubtitles={() => {
+                    console.log('Subtitles');
+                }}
+                onPictureInPicture={() => {
+                    console.log('Picture in picture');
+                }}
             />
         </View>
     );
@@ -485,10 +600,11 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 0,
         right: 0,
-        height: theme.componentSizes.progressBar.touchableHeight,
-        justifyContent: 'flex-end',
-        paddingBottom: theme.layout.spacing.tiny,
-        zIndex: theme.layout.zIndex.controls,
+        width: '100%', // Đảm bảo full width
+        paddingHorizontal: 0, // Bỏ padding để full width
+        paddingBottom: theme.layout.spacing.small,
+        paddingTop: theme.layout.spacing.tiny * 0.4,
+        zIndex: 110, // Cao hơn searchBarContainer (101) để hiển thị trên cùng
     },
     progressBarTouchable: {
         height: theme.componentSizes.progressBar.touchableHeight,
@@ -500,6 +616,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.progressBar.background,
         width: '100%',
         position: 'relative',
+        marginHorizontal: 0, // Đảm bảo full width
     },
     progressBarFill: {
         height: theme.componentSizes.progressBar.height,
@@ -517,18 +634,18 @@ const styles = StyleSheet.create({
     timeIndicatorContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingHorizontal: theme.layout.spacing.small,
-        marginBottom: -12, // Giảm từ theme.layout.spacing.tiny xuống 2 để sát thanh progress hơn
-        height: 16,
+        alignItems: 'center',
+        marginBottom: theme.layout.spacing.tiny * 0.6,
+        paddingHorizontal: theme.layout.spacing.small, // Padding cho time text
     },
     timeText: {
-        color: theme.colors.text.primary,
-        fontSize: theme.typography.fontSize.tiny,
+        color: '#fff',
+        fontSize: theme.typography.fontSize.small,
         fontFamily: theme.typography.fontFamily.medium,
         fontWeight: theme.typography.fontWeight.medium,
-        textShadowColor: theme.colors.background.overlayDark,
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     },
 });
 

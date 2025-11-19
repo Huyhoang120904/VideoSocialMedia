@@ -5,10 +5,15 @@ import com.hehe.thesocial.dto.response.feed.ImageSlideResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FeedItem;
 import com.hehe.thesocial.entity.HashTag;
+import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
+import com.hehe.thesocial.entity.FeedItem;
+import com.hehe.thesocial.entity.Video;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.FeedItemRepository;
+import com.hehe.thesocial.repository.VideoRepository;
+import com.hehe.thesocial.service.recommendation.RecommendationServiceImpl;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,6 +28,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,6 +40,7 @@ import java.util.stream.Collectors;
 public class FeedServiceImpl implements FeedService {
     FeedItemRepository feedItemRepository;
     FileMapper fileMapper;
+    RecommendationServiceImpl recommendationService;
     UserDetailMapper userDetailMapper;
 
     @Override
@@ -49,16 +56,23 @@ public class FeedServiceImpl implements FeedService {
         List<FeedItemResponse> content = feedItemsSlice.getContent().stream()
                 .map(this::convertFeedItemToResponse)
                 .collect(Collectors.toList());
-        
+
         // Get total count for Page
         long total = feedItemRepository.count();
-        
+
         return new PageImpl<>(content, pageable, total);
+    }
+
+    @Override
+    public Page<FeedItemResponse> getPersonalizedFeed(Pageable pageable) {
+        log.info("Getting personalized feed items for page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+        return recommendationService.personalRecommendation(pageable);
     }
 
     private FeedItemResponse convertFeedItemToResponse(FeedItem feedItem) {
         log.debug("Converting FeedItem: {}", feedItem.getId());
-        
+
         FeedItemResponse.FeedItemResponseBuilder builder = FeedItemResponse.builder()
                 .id(feedItem.getId())
                 .feedItemType(feedItem.getFeedItemType())
@@ -87,19 +101,19 @@ public class FeedServiceImpl implements FeedService {
 
         // Get current user's userDetailId from JWT token
         String currentUserDetailId = getCurrentUserDetailId();
-        
+
         // Check if current user has loved this feed item
         boolean isLoved = false;
         if (currentUserDetailId != null && feedItem.getLovedBy() != null) {
             isLoved = feedItem.getLovedBy().contains(currentUserDetailId);
         }
-        
+
         // Set counts from metadata (NOW METADATA SHOULD BE POPULATED!)
         long likeCount = 0;
         long commentCount = 0;
         if (feedItem.getMetaData() != null) {
-            log.debug("FeedItem {} has metadata: loveCount={}, commentsCount={}", 
-                feedItem.getId(), 
+            log.debug("FeedItem {} has metadata: loveCount={}, commentsCount={}",
+                feedItem.getId(),
                 feedItem.getMetaData().getLoveCount(),
                 feedItem.getMetaData().getCommentsCount());
             if (feedItem.getMetaData().getLoveCount() != null) {
@@ -111,7 +125,7 @@ public class FeedServiceImpl implements FeedService {
         } else {
             log.warn("FeedItem {} has NO metadata!", feedItem.getId());
         }
-        
+
         builder.likeCount(likeCount)
                .commentCount(commentCount)
                .shareCount(0L) // Share count not yet implemented
@@ -132,7 +146,7 @@ public class FeedServiceImpl implements FeedService {
 
         return builder.build();
     }
-    
+
     /**
      * Get current user's userDetailId from JWT token in Spring Security context
      * Returns null if user is not authenticated
@@ -140,12 +154,12 @@ public class FeedServiceImpl implements FeedService {
     private String getCurrentUserDetailId() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            
+
             if (authentication instanceof JwtAuthenticationToken jwtAuth) {
                 Jwt jwt = jwtAuth.getToken();
                 return jwt.getClaim("userDetailId");
             }
-            
+
             return null;
         } catch (Exception e) {
             log.warn("Failed to get userDetailId from security context", e);

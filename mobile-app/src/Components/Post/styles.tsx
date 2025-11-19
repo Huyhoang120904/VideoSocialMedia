@@ -104,27 +104,30 @@ const AutoFontSizes = {
     rightVideoContainer: {
         position: "absolute",
         right: windowWidth > 400 ? 6 : 4, // Giảm margin để sát bên phải hơn (từ 16/8 xuống 8/4)
-        bottom: getResponsiveBottomPosition(), // Dynamic bottom position - same as bottomVideoContainer
+        // bottom is calculated dynamically in the component to use the
+        // actual tab bar height + safe area insets. Do not set a static
+        // bottom here (it was computed at import time and caused mismatches).
         alignItems: "center",
-        zIndex: 40,
+        zIndex: 50, // Tăng zIndex để đảm bảo luôn ở trên contentLeft
         justifyContent: "flex-end",
     },
     avatarContainer: {
         alignItems: "center",
-        marginBottom: 8, // 8px spacing between avatar and heart icon
+        marginBottom: 20, // Tăng từ 8px lên 16px (thêm 8px khoảng cách với heart icon)
+        marginTop: -8, // Nhích avatar lên trên 8px
     },
     avatar: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        borderWidth: 2,
-        borderColor: "#fff",
+        borderWidth: 0, // Xóa outline của avatar
+        borderColor: "transparent",
     },
     plusIcon: {
         position: "absolute",
         backgroundColor: "#fff",
         borderRadius: 12,
-        bottom: -8,
+        bottom: -12, // Di chuyển xuống dưới hơn (từ -8 xuống -12)
         alignSelf: "center",
     },
     iconContainer: {
@@ -149,20 +152,23 @@ const AutoFontSizes = {
     },
 
     // BottomVideo styles - TikTok-like positioning with responsive adjustments
+    // Note: bottom position được tính động trong component bằng useBottomTabBarHeight() + safeAreaBottom
     bottomVideoContainer: {
         position: "absolute",
-        left: windowWidth > 400 ? 16 : 12, // Responsive left margin
-        right: 80, // Tăng right margin để tránh đụng RightVideo icons (từ 16 lên 80)
-        bottom: getResponsiveBottomPosition(), // Dynamic bottom position based on navigation bar height
-        flexDirection: "row",
-        alignItems: "flex-end",
-        zIndex: 100, // Tăng từ 10 lên 100 để cao hơn centerTapArea
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        padding: 8,
         elevation: 100, // For Android
+        backgroundColor: "transparent",
     },
     contentLeft: {
-        flex: 1,
-        marginRight: 8, // Reduced margin to bring avatar closer
-        paddingRight: 12, // Thêm padding để text không đụng icons bên phải
+        marginBottom: 20, // Khoảng cách giữa content và search bar
+        paddingBottom: 8, // Remove large internal padding; search bar is absolutely positioned
+        paddingRight: 70, // Tránh đè lên RightVideo (khoảng 60-70px cho icons bên phải)
+        backgroundColor: "transparent",
+        borderRadius: 4,
+        maxWidth: "100%", // Giới hạn width tối đa để tránh đè lên RightVideo
     },
     username: {
         color: "#fff",
@@ -185,7 +191,7 @@ const AutoFontSizes = {
         fontFamily: "TikTokSans-Regular",
         opacity: 0.9,
         lineHeight: 16,
-        marginBottom: 6,
+        flexWrap: "wrap", // Đảm bảo text wrap đúng cách
     },
     seeMore: {
         color: "#fff",
@@ -203,29 +209,62 @@ const AutoFontSizes = {
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 4,
     },
+    searchBarContainer: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 101,
+        backgroundColor: "transparent",
+        paddingTop: 8, // Khoảng cách phía trên search bar
+    },
+    searchBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(32,32,32,0.85)",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 0,
+        width: "100%",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    searchText: {
+        color: "#fff",
+        fontSize: AutoFontSizes.medium,
+        fontFamily: "TikTokSans-Regular",
+        flex: 1,
+        opacity: 0.9,
+    },
     musicContainer: {
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 4,
-        backgroundColor: "rgba(0,0,0,0.3)",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
+        marginTop: 10,
+        backgroundColor: "rgba(24,24,24,0.9)",
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 999,
         alignSelf: "flex-start",
-        maxWidth: "80%",
+        maxWidth: "90%",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.12)",
     },
     musicText: {
         color: "#fff",
         fontSize: AutoFontSizes.small,
-        fontFamily: "TikTokSans-Regular",
-        marginLeft: 4,
-        opacity: 0.9,
+        fontFamily: "TikTokSans-Medium",
+        marginLeft: 2,
+        marginRight: 6,
+        opacity: 0.92,
         flex: 1,
     },
     musicIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 100,
         borderWidth: 2,
         borderColor: "#fff",
     },
@@ -238,15 +277,48 @@ const AutoFontSizes = {
         right: 0,
         zIndex: 100,
         paddingTop: 50, // Safe area for status bar
-        paddingBottom: 10,
+        paddingBottom: 12,
     },
     topGradient: {
         position: "absolute",
         top: 0,
         left: 0,
         right: 0,
-        height: 120,
+        height: 140,
         zIndex: -1,
+    },
+    liveButton: {
+        position: "absolute",
+        left: 8,
+        top: 50,
+        padding: 8,
+        zIndex: 101,
+    },
+    searchButtonContainer: {
+        position: "absolute",
+        right: 8,
+        top: 50,
+        alignItems: "center",
+        zIndex: 101,
+    },
+    searchButton: {
+        padding: 8,
+    },
+    imageCounter: {
+        marginTop: 4,
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        minWidth: 40,
+        alignItems: "center",
+    },
+    imageCounterText: {
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: "600",
+        fontFamily: "TikTokSans-Medium",
+        letterSpacing: 0.3,
     },
     searchIcon: {
         position: "absolute",
@@ -259,14 +331,42 @@ const AutoFontSizes = {
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        paddingHorizontal: 16,
+        paddingHorizontal: 12,
+    },
+    tabsContainer: {
+        flexDirection: 'row',
+        alignSelf: 'center',
+        alignItems: 'center',
+    },
+    tabButton: {
+        paddingHorizontal: 6,
+        paddingVertical: 6,
     },
     titleTop: {
-        color: "rgba(255,255,255,0.7)",
-        fontSize: 10, // Giảm xuống 10px để nhỏ hơn
-        fontFamily: "TikTokSans-SemiBold",
+        color: "rgba(255,255,255,0.65)",
+        fontSize: 10,
+        fontFamily: "TikTokSans-Medium",
         paddingHorizontal: 0,
-        paddingVertical: 6,
+        paddingVertical: 4,
+        letterSpacing: -0.5,
+    },
+    titleTopActive: {
+        fontWeight: "700",
+        color: "#fff",
+        fontSize: 10,
+        fontFamily: "TikTokSans-Bold",
+    },
+    underline: {
+        position: "absolute",
+        bottom: 4,
+        height: 3,
+        backgroundColor: "#fff",
+        borderRadius: 100,
+        shadowColor: "#fff",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.9,
+        shadowRadius: 3,
+        elevation: 4,
     },
     underlineTopVideo: {
         position: "absolute",

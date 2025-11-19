@@ -24,8 +24,8 @@ public class UserInteraction {
     String id;
 
     @Indexed
-    @Field("user_id")
-    String userId;
+    @Field("user_detail_id")
+    String userDetailId;
 
     @Indexed
     @Field("feed_item_id")
@@ -39,9 +39,6 @@ public class UserInteraction {
 
     @Field("watch_percentage")
     Double watchPercentage;
-
-    @Field("interaction_weight")
-    Double interactionWeight;
 
     @Field("created_at")
     LocalDateTime createdAt;

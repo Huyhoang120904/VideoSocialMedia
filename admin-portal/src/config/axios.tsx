@@ -12,11 +12,62 @@ const apiClient = axios.create({
   withCredentials: true, // Include cookies in requests
 });
 
-// Request interceptor - tokens are now handled via HttpOnly cookies
+// Cache for the authentication token
+let cachedToken: string | null = null;
+let tokenFetchPromise: Promise<string | null> | null = null;
+
+// Function to get token from server-side cookie
+async function getAuthToken(): Promise<string | null> {
+  // Return cached token if available
+  if (cachedToken) {
+    return cachedToken;
+  }
+
+  // If a fetch is already in progress, wait for it
+  if (tokenFetchPromise) {
+    return tokenFetchPromise;
+  }
+
+  // Start fetching token
+  tokenFetchPromise = fetch("/api/auth/token", {
+    method: "GET",
+    credentials: "include",
+  })
+    .then(async (response) => {
+      if (response.ok) {
+        const data = await response.json();
+        cachedToken = data.token || null;
+        return cachedToken;
+      }
+      return null;
+    })
+    .catch((error) => {
+      console.error("Failed to get auth token:", error);
+      return null;
+    })
+    .finally(() => {
+      tokenFetchPromise = null;
+    });
+
+  return tokenFetchPromise;
+}
+
+// Function to clear cached token
+export function clearAuthToken() {
+  cachedToken = null;
+}
+
+// Request interceptor to add Authorization header
 apiClient.interceptors.request.use(
-  (config) => {
-    // Cookies are automatically included with withCredentials: true
-    // No need to manually add Authorization header
+  async (config) => {
+    // For server-side requests, cookies are handled automatically
+    // For client-side requests, we need to get the token via an API route
+    if (typeof window !== "undefined") {
+      const token = await getAuthToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
     return config;
   },
   (error) => {
@@ -34,6 +85,9 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
+        // Clear cached token
+        clearAuthToken();
+        
         // Attempt to refresh token via API route
         const refreshResponse = await fetch("/api/auth/refresh", {
           method: "POST",
