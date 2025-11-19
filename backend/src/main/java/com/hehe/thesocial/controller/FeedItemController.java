@@ -57,7 +57,7 @@ public class FeedItemController {
 
         log.info("Fetching feed items for user ID: {} with page: {}, size: {}", userId, pageable.getPageNumber(), pageable.getPageSize());
 
-        Page<FeedItemUploadResponse> feedItems = feedItemService.getFeedItemsByUserId(userId, pageable);
+        Page<FeedItemUploadResponse> feedItems = feedItemService.getFeedItemsByUserDetailId(userId, pageable);
 
         FeedItemListResponse response = FeedItemListResponse.builder()
                 .feedItems(feedItems)

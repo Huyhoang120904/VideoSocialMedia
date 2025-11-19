@@ -27,7 +27,7 @@ const { height } = Dimensions.get("window");
 interface Comment {
   id: string;
   username: string;
-  avatar: string;
+  avatar?: string | null;
   comment: string;
   timeAgo: string;
   likes: number;
@@ -61,9 +61,10 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [commentsList, setCommentsList] = useState<Comment[]>([]);
-  const [currentUserAvatar, setCurrentUserAvatar] = useState<string>(
-    "https://i.pravatar.cc/150?u=default"
+  const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(
+    null
   );
+  const [currentUserName, setCurrentUserName] = useState<string>("You");
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = React.useRef<TextInput>(null);
   const translateY = useRef(new Animated.Value(0)).current;
@@ -73,9 +74,13 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     const loadCurrentUserAvatar = async () => {
       try {
         const userDetail = await userService.getMyDetail();
-        if (userDetail.avatarUrl) {
-          setCurrentUserAvatar(userDetail.avatarUrl);
-        }
+        setCurrentUserAvatar(userDetail.avatarUrl || null);
+        setCurrentUserName(
+          userDetail.displayName ||
+            userDetail.shownName ||
+            userDetail.id ||
+            "You"
+        );
       } catch (error) {
         console.error("Error loading current user avatar:", error);
         // Giữ placeholder nếu lỗi
@@ -120,7 +125,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         return {
           id: comment.id,
           username: comment.username || "User",
-          avatar: comment.avatarUrl || "https://i.pravatar.cc/150",
+          avatar: comment.avatarUrl || null,
           comment: comment.content,
           timeAgo: comment.timeAgo || "vừa xong", // Backend đã format sẵn
           likes: comment.likeCount || 0,
@@ -231,8 +236,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
       const comment: Comment = {
         id: response.comment.id,
         username: response.comment.username || "You",
-        avatar:
-          response.comment.avatarUrl || "https://i.pravatar.cc/150?u=user",
+        avatar: response.comment.avatarUrl || null,
         comment: response.comment.content,
         timeAgo: response.comment.timeAgo || "vừa xong", // Backend trả về
         likes: response.comment.likeCount || 0,
@@ -242,9 +246,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
       onAddComment(newComment.trim());
 
       // Lưu avatar của user để hiển thị ở input box
-      if (response.comment.avatarUrl) {
-        setCurrentUserAvatar(response.comment.avatarUrl);
-      }
+      setCurrentUserAvatar(response.comment.avatarUrl || null);
 
       // Cập nhật số lượng comment về component cha
       if (onUpdateCommentCount) {
@@ -335,13 +337,24 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     // TODO: Navigate to user profile
   };
 
+  const getAvatarInitial = (name?: string) =>
+    name?.charAt(0).toUpperCase() || "?";
+
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={styles.commentItem}>
       <TouchableOpacity
         onPress={() => handleAvatarPress(item.username)}
         activeOpacity={0.8}
       >
-        <Image source={{ uri: item.avatar }} style={styles.commentAvatar} />
+        {item.avatar ? (
+          <Image source={{ uri: item.avatar }} style={styles.commentAvatar} />
+        ) : (
+          <View style={[styles.commentAvatar, styles.initialAvatar]}>
+            <Text style={styles.initialAvatarText}>
+              {getAvatarInitial(item.username)}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
       <View style={styles.commentContent}>
         <View style={styles.commentTopRow}>
@@ -510,10 +523,18 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.inputContainer}
               >
-                <Image
-                  source={{ uri: currentUserAvatar }}
-                  style={styles.userAvatar}
-                />
+                {currentUserAvatar ? (
+                  <Image
+                    source={{ uri: currentUserAvatar }}
+                    style={styles.userAvatar}
+                  />
+                ) : (
+                  <View style={[styles.userAvatar, styles.initialAvatar]}>
+                    <Text style={styles.initialAvatarText}>
+                      {getAvatarInitial(currentUserName)}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.inputWrapper}>
                   <TextInput
                     ref={inputRef}

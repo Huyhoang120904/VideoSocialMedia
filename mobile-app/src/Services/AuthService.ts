@@ -1,9 +1,11 @@
-import api from "./HttpClient";
+import axios from "axios";
+import api, { API_URL } from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
 import { LoginResponse } from "../Types/response/LoginResponse";
-import { LoginPayload } from "../Types/request/AuthRequest";
+import { IntrospectPayload, LoginPayload } from "../Types/request/AuthRequest";
+import { IntrospectResponse } from "../Types/response/IntrospectResponse";
 
-export type { LoginPayload };
+export type { LoginPayload, IntrospectPayload };
 
 export const LoginRequest = async (
   payload: LoginPayload
@@ -51,6 +53,21 @@ export const LoginRequest = async (
     if (error.response?.data?.message) {
       throw new Error(error.response.data.message);
     }
+    throw error;
+  }
+};
+
+export const IntrospectTokenRequest = async (
+  payload: IntrospectPayload
+): Promise<ApiResponse<IntrospectResponse>> => {
+  try {
+    const { data } = await axios.post<ApiResponse<IntrospectResponse>>(
+      `${API_URL}/auth/introspect`,
+      payload
+    );
+    return data;
+  } catch (error) {
+    console.error("API Introspect Error:", error);
     throw error;
   }
 };

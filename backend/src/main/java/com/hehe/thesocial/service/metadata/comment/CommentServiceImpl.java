@@ -4,29 +4,24 @@ import com.hehe.thesocial.dto.request.comment.CommentCreateRequest;
 import com.hehe.thesocial.dto.response.comment.CommentCreateResponse;
 import com.hehe.thesocial.dto.response.comment.CommentResponse;
 import com.hehe.thesocial.dto.response.metadata.CommentActionResponse;
-import com.hehe.thesocial.entity.Comment;
-import com.hehe.thesocial.entity.FeedItem;
-import com.hehe.thesocial.entity.MetaData;
-import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.entity.*;
+import com.hehe.thesocial.entity.enums.InteractionType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
-import com.hehe.thesocial.repository.CommentRepository;
-import com.hehe.thesocial.repository.FeedItemRepository;
-import com.hehe.thesocial.repository.MetaDataRepository;
-import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.repository.*;
 import com.hehe.thesocial.util.TimeFormatter;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.Set;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 @Slf4j
 @Service
@@ -38,6 +33,8 @@ public class CommentServiceImpl implements CommentService {
     FeedItemRepository feedItemRepository;
     MetaDataRepository metaDataRepository;
     UserDetailRepository userDetailRepository;
+    UserInteractionRepository userInteractionRepository;
+
 
     @Override
     public CommentCreateResponse addComment(String feedItemId, CommentCreateRequest request) {
@@ -65,6 +62,11 @@ public class CommentServiceImpl implements CommentService {
                 .build();
 
         comment = commentRepository.save(comment);
+        userInteractionRepository.save(UserInteraction.builder()
+                .interactionType(InteractionType.COMMENT)
+                .feedItemId(feedItemId)
+                .userDetailId(request.getUserDetailId())
+                .build());
 
         // Tăng commentCount trong metadata và lấy số lượng mới
         long totalComments = 0;
@@ -76,7 +78,7 @@ public class CommentServiceImpl implements CommentService {
         }
 
         log.info("Added new comment with id {} to feed item {}", comment.getId(), feedItemId);
-        
+
         return CommentCreateResponse.builder()
                 .comment(mapToCommentResponse(comment, request.getUserDetailId()))
                 .totalComments(totalComments)
@@ -139,6 +141,12 @@ public class CommentServiceImpl implements CommentService {
         comment.setLoveCount(comment.getLoveCount() + 1);
         commentRepository.save(comment);
 
+        userInteractionRepository.save(UserInteraction.builder()
+                .interactionType(InteractionType.COMMENT)
+                .feedItemId(comment.getFeedItemId())
+                .userDetailId(comment.getUserDetailId())
+                .build());
+
         return CommentActionResponse.builder()
                 .liked(true)
                 .disliked(false)
@@ -153,7 +161,7 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
         Set<String> lovedBy = comment.getLovedBy();
-        
+
         // Nếu chưa like thì return trạng thái hiện tại
         if (lovedBy == null || !lovedBy.contains(userDetailId)) {
             return CommentActionResponse.builder()
@@ -223,7 +231,7 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
         Set<String> dislikedBy = comment.getDislikedBy();
-        
+
         // Nếu chưa dislike thì return trạng thái hiện tại
         if (dislikedBy == null || !dislikedBy.contains(userDetailId)) {
             return CommentActionResponse.builder()
@@ -258,14 +266,14 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public Page<CommentResponse> getCommentsByFeedItem(
-            String feedItemId, 
-            String currentUserDetailId, 
-            int page, 
+            String feedItemId,
+            String currentUserDetailId,
+            int page,
             int size) {
-        
+
         Pageable pageable = PageRequest.of(page, size);
         Page<Comment> commentsPage = commentRepository.findByFeedItemIdOrderByCreatedAtDesc(feedItemId, pageable);
-        
+
         return commentsPage.map(comment -> mapToCommentResponse(comment, currentUserDetailId));
     }
 

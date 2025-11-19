@@ -11,7 +11,7 @@ public interface FeedItemService {
 
     Page<FeedItemUploadResponse> getAllFeedItems(Pageable pageable);
 
-    Page<FeedItemUploadResponse> getFeedItemsByUserId(String userId, Pageable pageable);
+    Page<FeedItemUploadResponse> getFeedItemsByUserDetailId(String userDetailId, Pageable pageable);
 
     Page<FeedItemUploadResponse> getFeedItemsByType(FeedItemType feedItemType, Pageable pageable);
 }

@@ -24,7 +24,7 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 export const SocketProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -44,10 +44,14 @@ export const SocketProvider: React.FC<React.PropsWithChildren> = ({
         error instanceof Error ? error.message : "Connection failed";
       console.error("❌ WebSocket connection failed:", errorMessage);
       setConnectionError(errorMessage);
+
+      if (errorMessage === "No auth token available") {
+        logout().catch(() => {});
+      }
     } finally {
       setIsConnecting(false);
     }
-  }, [isAuthenticated, isConnected, isConnecting]);
+  }, [isAuthenticated, isConnected, isConnecting, logout]);
 
   const disconnect = useCallback(() => {
     socketService.disconnect();

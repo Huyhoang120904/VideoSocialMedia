@@ -5,8 +5,7 @@ import {
   getAuthToken,
   setAuthToken,
 } from "../Services/HttpClient";
-import { LoginRequest } from "../Services/AuthService";
-import { useConversations } from "./ConversationProvider";
+import { IntrospectTokenRequest, LoginRequest } from "../Services/AuthService";
 
 type AuthContextType = {
   isLoading: boolean;
@@ -36,13 +35,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       try {
         const raw = await SecureStore.getItemAsync(TOKEN_KEY);
         if (raw) {
-          const token = raw; // Token is already a string, no need to parse
+          const token = raw;
           setAuthToken(token);
-          setHasSession(true);
-          setIsAuthenticated(true); // Set authenticated if we have a valid token
+
+          const response = await IntrospectTokenRequest({ token });
+          if (response.result?.valid) {
+            setHasSession(true);
+            setIsAuthenticated(true);
+          } else {
+            await SecureStore.deleteItemAsync(TOKEN_KEY);
+            clearAuthToken();
+          }
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        console.warn("Failed to restore session:", error);
+        clearAuthToken();
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
       } finally {
         setIsLoading(false);
       }

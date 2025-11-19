@@ -93,10 +93,10 @@ public class FeedItemServiceImpl implements FeedItemService {
     }
 
     @Override
-    public Page<FeedItemUploadResponse> getFeedItemsByUserId(String userId, Pageable pageable) {
-        log.info("Getting feed items for user ID: {} with page: {}, size: {}", userId, pageable.getPageNumber(), pageable.getPageSize());
+    public Page<FeedItemUploadResponse> getFeedItemsByUserDetailId(String userDetailId, Pageable pageable) {
+        log.info("Getting feed items for user detail ID: {} with page: {}, size: {}", userDetailId, pageable.getPageNumber(), pageable.getPageSize());
 
-        UserDetail userDetail = userDetailRepository.findById(userId)
+        UserDetail userDetail = userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Page<FeedItem> feedItems = feedItemRepository.findByUploader(userDetail, pageable);
@@ -321,7 +321,6 @@ public class FeedItemServiceImpl implements FeedItemService {
                     .fileName(thumbnail.getOriginalFilename())
                     .size(thumbnail.getSize())
                     .url(thumbnailUrl)
-                    .format(fileExtension.substring(1))
                     .resourceType("image")
                     .build();
 

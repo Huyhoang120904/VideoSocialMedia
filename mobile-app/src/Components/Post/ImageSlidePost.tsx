@@ -176,6 +176,7 @@ export default function ImageSlidePost({
                 isLoved={loved}
                 avatarUrl={avatarUrl}
                 uploaderUserId={uploaderUserId}
+                username={username}
                 onCommentPress={handleOpenComments}
             />
 

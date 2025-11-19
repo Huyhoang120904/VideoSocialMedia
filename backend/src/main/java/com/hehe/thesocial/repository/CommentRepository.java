@@ -10,8 +10,6 @@ import java.util.List;
 
 @Repository
 public interface CommentRepository extends MongoRepository<Comment, String> {
-    Page<Comment> findByFeedItemIdOrderByCreatedAtDesc(String feedItemId, Pageable
-            pageable);
     List<Comment> findByUserDetailId(String userDetailId);
     Page<Comment> findByFeedItemIdOrderByCreatedAtDesc(String feedItemId, Pageable pageable);
 }

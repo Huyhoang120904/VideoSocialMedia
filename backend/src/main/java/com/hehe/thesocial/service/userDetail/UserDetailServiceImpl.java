@@ -7,13 +7,17 @@ import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
 import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.entity.UserInteraction;
+import com.hehe.thesocial.entity.enums.InteractionType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.repository.UserInteractionRepository;
 import com.hehe.thesocial.repository.UserRepository;
 import com.hehe.thesocial.service.file.FileService;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -40,6 +44,8 @@ public class UserDetailServiceImpl implements UserDetailService {
     FileService fileService;
     FileRepository fileRepository;
     UserRepository userRepository;
+    UserInteractionRepository userInteractionRepository;
+    AuthenticationHelper authenticationHelper;
 
     @Transactional
     public UserDetailResponse createUserDetail(UserDetailCreateRequest request) {
@@ -226,14 +232,8 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Transactional
     @Override
     public UserDetailResponse followUser(String targetUserDetailId) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        Jwt jwt = jwtAuth.getToken();
-        String currentUserDetailId = jwt.getClaim("userDetailId");
+        String currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
 
         if (currentUserDetailId == null) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -276,20 +276,19 @@ public class UserDetailServiceImpl implements UserDetailService {
         userDetailRepository.save(currentUserDetail);
         userDetailRepository.save(targetUserDetail);
 
+        userInteractionRepository.save(UserInteraction.builder()
+                .interactionType(InteractionType.FOLLOW_CREATOR)
+                .userDetailId(currentUserDetailId)
+                .creatorId(targetUserDetailId)
+                .build());
+
         return userDetailMapper.toUserDetailResponse(currentUserDetail);
     }
 
     @Transactional
     @Override
     public UserDetailResponse unfollowUser(String targetUserDetailId) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        Jwt jwt = jwtAuth.getToken();
-        String currentUserDetailId = jwt.getClaim("userDetailId");
+        String currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
 
         if (currentUserDetailId == null) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
