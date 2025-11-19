@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Image, Text, Pressable, Animated, Alert, TouchableOpacity } from "react-native";
+import {
+  View,
+  Image,
+  Text,
+  Pressable,
+  Animated,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
 import { useDispatch } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
 import { updateFeedItem } from "../../Store/feedSlice";
@@ -12,8 +20,8 @@ import {
 } from "@expo/vector-icons";
 import img from "../../../assets/avatar.png";
 import styles from "./styles";
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ICON_SIZE = 32; // Increased for better visibility
 
@@ -26,6 +34,7 @@ interface RightVideoProps {
   isLoved?: boolean; // Trạng thái đã yêu thích
   avatarUrl?: string; // Avatar URL của người upload
   uploaderUserId?: string; // UserDetail ID của người upload
+  username?: string;
   onCommentPress?: () => void; // Callback khi nhấn nút comment
 }
 
@@ -57,6 +66,7 @@ export default function RightVideo({
   isLoved = false,
   avatarUrl,
   uploaderUserId,
+  username,
   onCommentPress,
 }: RightVideoProps) {
   const dispatch = useDispatch();
@@ -99,7 +109,7 @@ export default function RightVideo({
 
   const spin = musicRotation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: ["0deg", "360deg"],
   });
 
   // Compute bottom position dynamically so RightVideo aligns with BottomVideo
@@ -113,7 +123,16 @@ export default function RightVideo({
   // Log runtime values to debug bottom alignment
   useEffect(() => {
     try {
-      console.log('[RightVideo] tabBarHeight:', tabBarHeight, 'insets.bottom:', insets.bottom, 'visualTabIconsHeight:', visualTabIconsHeight, 'bottomPosition:', bottomPosition);
+      console.log(
+        "[RightVideo] tabBarHeight:",
+        tabBarHeight,
+        "insets.bottom:",
+        insets.bottom,
+        "visualTabIconsHeight:",
+        visualTabIconsHeight,
+        "bottomPosition:",
+        bottomPosition
+      );
     } catch (e) {
       // ignore
     }
@@ -127,7 +146,7 @@ export default function RightVideo({
     console.log("[RightVideo] ID length:", id?.length);
 
     // Validate ID before proceeding
-    if (!id || id === 'undefined' || id === 'null') {
+    if (!id || id === "undefined" || id === "null") {
       console.error("[RightVideo] ❌ Invalid feedItem ID:", id);
       Alert.alert("Lỗi", "ID không hợp lệ. Không thể thực hiện thao tác.");
       return;
@@ -154,7 +173,7 @@ export default function RightVideo({
     console.log("[RightVideo] Optimistic update", {
       newLikedState,
       previousLikes,
-      optimisticLikes
+      optimisticLikes,
     });
 
     // Bước 1: Cập nhật UI ngay lập tức (optimistic update)
@@ -165,14 +184,17 @@ export default function RightVideo({
         id,
         updates: {
           loved: newLikedState,
-          likes: optimisticLikes
-        }
+          likes: optimisticLikes,
+        },
       })
     );
 
     // Bước 2: Gọi API backend
     try {
-      console.log("[RightVideo] Calling API...", newLikedState ? "addLove" : "removeLove");
+      console.log(
+        "[RightVideo] Calling API...",
+        newLikedState ? "addLove" : "removeLove"
+      );
       if (newLikedState) {
         const response = await LikeService.addLove(id);
         console.log("[RightVideo] Love added, new count:", response.loveCount);
@@ -184,13 +206,16 @@ export default function RightVideo({
             id,
             updates: {
               loved: response.loved,
-              likes: response.loveCount
-            }
+              likes: response.loveCount,
+            },
           })
         );
       } else {
         const response = await LikeService.removeLove(id);
-        console.log("[RightVideo] Love removed, new count:", response.loveCount);
+        console.log(
+          "[RightVideo] Love removed, new count:",
+          response.loveCount
+        );
 
         // Cập nhật lại count chính xác từ server
         setCurrentLikes(response.loveCount);
@@ -199,8 +224,8 @@ export default function RightVideo({
             id,
             updates: {
               loved: response.loved,
-              likes: response.loveCount
-            }
+              likes: response.loveCount,
+            },
           })
         );
       }
@@ -210,7 +235,7 @@ export default function RightVideo({
       console.error("[RightVideo] ❌ Failed to update love status:", {
         message: error.message,
         response: error.response?.data,
-        status: error.response?.status
+        status: error.response?.status,
       });
       setLiked(!newLikedState);
       setCurrentLikes(previousLikes);
@@ -219,11 +244,14 @@ export default function RightVideo({
           id,
           updates: {
             loved: !newLikedState,
-            likes: previousLikes
-          }
+            likes: previousLikes,
+          },
         })
       );
-      Alert.alert("Lỗi", "Không thể cập nhật trạng thái yêu thích. Vui lòng thử lại.");
+      Alert.alert(
+        "Lỗi",
+        "Không thể cập nhật trạng thái yêu thích. Vui lòng thử lại."
+      );
     }
   };
 
@@ -242,12 +270,18 @@ export default function RightVideo({
 
   const handleAvatarPress = () => {
     if (uploaderUserId) {
-      console.log("[RightVideo] Navigating to UserProfile with ID:", uploaderUserId);
+      console.log(
+        "[RightVideo] Navigating to UserProfile with ID:",
+        uploaderUserId
+      );
       navigation.navigate("UserProfile", { userDetailId: uploaderUserId });
     } else {
       console.warn("[RightVideo] No uploaderUserId provided");
     }
   };
+
+  const getAvatarInitial = (name?: string) =>
+    name?.charAt(0).toUpperCase() || "?";
 
   return (
     <View style={[styles.rightVideoContainer, { bottom: bottomPosition }]}>
@@ -257,10 +291,15 @@ export default function RightVideo({
         onPress={handleAvatarPress}
         activeOpacity={0.7}
       >
-        <Image
-          style={styles.avatar}
-          source={avatarUrl ? { uri: avatarUrl } : img}
-        />
+        {avatarUrl ? (
+          <Image style={styles.avatar} source={{ uri: avatarUrl }} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarInitial]}>
+            <Text style={styles.avatarInitialText}>
+              {getAvatarInitial(username)}
+            </Text>
+          </View>
+        )}
         <MaterialCommunityIcons
           name="plus-circle"
           size={26}
@@ -319,10 +358,7 @@ export default function RightVideo({
       <View style={styles.iconContainer}>
         <Animated.Image
           source={img}
-          style={[
-            styles.musicIcon,
-            { transform: [{ rotate: spin }] }
-          ]}
+          style={[styles.musicIcon, { transform: [{ rotate: spin }] }]}
         />
       </View>
     </View>

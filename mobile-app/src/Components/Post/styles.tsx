@@ -123,6 +123,17 @@ const AutoFontSizes = {
         borderWidth: 0, // Xóa outline của avatar
         borderColor: "transparent",
     },
+    avatarInitial: {
+        backgroundColor: "#E5E7EB",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    avatarInitialText: {
+        color: "#111827",
+        fontSize: AutoFontSizes.large,
+        fontFamily: "TikTokSans-Bold",
+        fontWeight: "700",
+    },
     plusIcon: {
         position: "absolute",
         backgroundColor: "#fff",

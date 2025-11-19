@@ -127,6 +127,16 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 12,
     },
+    initialAvatar: {
+        backgroundColor: "#E5E7EB",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    initialAvatarText: {
+        color: "#374151",
+        fontSize: 18,
+        fontWeight: "700",
+    },
     commentContent: {
         flex: 1,
     },
