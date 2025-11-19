@@ -23,17 +23,6 @@ public class ReportTicket {
     @Field("_id")
     String id;
 
-    @Field("feed_item_type")
-    FeedItemType feedItemType;
-
-    @DBRef
-    @Field("video_ref")
-    Video video;
-
-    @DBRef
-    @Field("image_slide_ref")
-    ImageSlide imageSlide;
-
     @DBRef
     @Field("user_detail_ref")
     UserDetail userDetail;
@@ -44,6 +33,6 @@ public class ReportTicket {
     @Field("violation_content")
     String violationContent;
 
-    @Field("accepted")
-    boolean accepted;
+    @Field("feed_item_id")
+    String feedItemId;
 }

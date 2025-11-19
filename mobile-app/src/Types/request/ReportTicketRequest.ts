@@ -30,8 +30,9 @@ export enum ReportCategory {
 }
 
 export interface ReportTicketRequest {
+  feedItemId?: string; // ID của FeedItem (cho VIDEO và IMAGE_SLIDE)
   feedItemType: FeedItemType;
-  targetId: string;
+  targetId: string; // ID của đối tượng bị báo cáo (video/imageSlide/userDetail)
   reportCategory: ReportCategory;
   violationContent?: string;
 }

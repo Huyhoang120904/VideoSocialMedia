@@ -25,7 +25,5 @@ public class ReportTicketResponse {
     ReportCategory reportCategory;
 
     String violationContent;
-
-    boolean accepted;
 }
 

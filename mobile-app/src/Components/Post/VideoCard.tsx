@@ -528,14 +528,13 @@ const VideoCard: React.FC<VideoCardProps> = memo(({
             <VideoOptionsModal
                 visible={optionsModalVisible}
                 onClose={() => setOptionsModalVisible(false)}
+                feedItemId={video.id} // ✅ Truyền feedItemId
+                videoId={video.id} // Video ID (có thể lấy từ video object nếu có)
                 onDownload={() => {
                     console.log('Download video');
                 }}
                 onNotInterested={() => {
                     console.log('Not interested');
-                }}
-                onReport={() => {
-                    console.log('Report video');
                 }}
                 onSpeedChange={(speed) => {
                     console.log('Speed changed to:', speed);

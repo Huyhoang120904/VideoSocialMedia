@@ -12,21 +12,17 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 public interface ReportTicketMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "video", ignore = true)
-    @Mapping(target = "imageSlide", ignore = true)
-    @Mapping(target = "accepted", ignore = true)
+    @Mapping(target = "userDetail", ignore = true) // Set manually in service
     ReportTicket toReportTicket(ReportTicketRequest request);
 
-    @Mapping(target = "videoId", source = "video.id")
-    @Mapping(target = "imageSlideId", source = "imageSlide.id")
+    @Mapping(target = "videoId", ignore = true) // ReportTicket không có video nữa
+    @Mapping(target = "imageSlideId", ignore = true) // ReportTicket không có imageSlide nữa
+    @Mapping(target = "feedItemType", ignore = true) // Không có trong ReportTicket entity
     ReportTicketResponse toReportTicketResponse(ReportTicket reportTicket);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "video", ignore = true)
-    @Mapping(target = "imageSlide", ignore = true)
-    @Mapping(target = "feedItemType", ignore = true)
-    @Mapping(target = "reportCategory", ignore = true)
-    @Mapping(target = "violationContent", ignore = true)
+    @Mapping(target = "userDetail", ignore = true)
+    @Mapping(target = "feedItemId", ignore = true)
     void updateReportTicket(@MappingTarget ReportTicket reportTicket, ReportTicketRequest request);
 }
 

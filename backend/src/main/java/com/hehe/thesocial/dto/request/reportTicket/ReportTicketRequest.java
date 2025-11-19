@@ -11,6 +11,7 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReportTicketRequest {
+    String feedItemId;
     FeedItemType feedItemType;
     String targetId;
     ReportCategory reportCategory;

@@ -137,7 +137,7 @@ const CallScreen = () => {
               source={
                 userAvatar
                   ? { uri: userAvatar }
-                  : require("../../../assets/avatar.png")
+                  : require("../../../assets/unknown-avatar.png")
               }
               className={`w-32 h-32 rounded-full mb-4 ${
                 callStatus === "connected" ? "border-4 border-green-500" : ""

@@ -10,7 +10,7 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import img from "../../../assets/avatar.png";
+import { UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 import styles from "./styles";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -259,7 +259,7 @@ export default function RightVideo({
       >
         <Image
           style={styles.avatar}
-          source={avatarUrl ? { uri: avatarUrl } : img}
+          source={avatarUrl ? { uri: avatarUrl } : UNKNOWN_AVATAR}
         />
         <MaterialCommunityIcons
           name="plus-circle"
@@ -318,7 +318,7 @@ export default function RightVideo({
       {/* Music Icon with rotation animation */}
       <View style={styles.iconContainer}>
         <Animated.Image
-          source={img}
+          source={require('../../../assets/music-icon.png')}
           style={[
             styles.musicIcon,
             { transform: [{ rotate: spin }] }
