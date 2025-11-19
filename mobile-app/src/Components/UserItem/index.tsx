@@ -37,9 +37,10 @@ const UserItem: React.FC<UserItemProps> = ({
             className="w-12 h-12 rounded-full"
           />
         ) : (
-          <View className="w-12 h-12 rounded-full bg-gray-300 items-center justify-center">
-            <Ionicons name="person" size={24} color="#9CA3AF" />
-          </View>
+          <Image
+            source={require('../../../assets/unknown-avatar.png')}
+            className="w-12 h-12 rounded-full"
+          />
         )}
         {user.isOnline && (
           <View className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />

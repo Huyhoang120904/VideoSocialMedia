@@ -2,6 +2,11 @@ const API_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.100.57:8082/api/v1";
 
 /**
+ * Default unknown avatar image
+ */
+export const UNKNOWN_AVATAR = require('../../assets/unknown-avatar.png');
+
+/**
  * Constructs the avatar URL using the new endpoint pattern:
  * /api/v1/files/{userDetailId}/{filename}
  */

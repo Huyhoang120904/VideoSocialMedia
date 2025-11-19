@@ -5,11 +5,9 @@ import lombok.experimental.FieldDefaults;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReportTicketUpdateRequest {
-
-    Boolean accepted;
+    // Empty - không có field nào để update
+    // Có thể thêm các field khác nếu cần trong tương lai
 }
 

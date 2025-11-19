@@ -12,10 +12,13 @@ import com.hehe.thesocial.entity.enums.ReportCategory;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.reportTicket.ReportTicketMapper;
+import com.hehe.thesocial.entity.FeedItem;
+import com.hehe.thesocial.repository.FeedItemRepository;
 import com.hehe.thesocial.repository.ImageSlideRepository;
 import com.hehe.thesocial.repository.ReportTicketRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.VideoRepository;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -36,6 +39,8 @@ public class ReportTicketServiceImpl implements ReportTicketService {
     VideoRepository videoRepository;
     ImageSlideRepository imageSlideRepository;
     UserDetailRepository userDetailRepository;
+    FeedItemRepository feedItemRepository;
+    AuthenticationHelper authenticationHelper;
 
     @Override
     @Transactional
@@ -45,28 +50,54 @@ public class ReportTicketServiceImpl implements ReportTicketService {
 
         validateFeedItemReference(request);
 
+        // Lấy người gửi báo cáo từ JWT token
+        UserDetail reporter = authenticationHelper.getCurrentUserDetail();
+        
+        // Validate: Kiểm tra số lần đã báo cáo (giới hạn 5 lần)
+        if (request.getFeedItemId() != null && !request.getFeedItemId().isEmpty()) {
+            long existingReportCount = reportTicketRepository.countByUserDetail_IdAndFeedItemId(
+                    reporter.getId(),
+                    request.getFeedItemId()
+            );
+            
+            if (existingReportCount >= 5) {
+                log.warn("User {} đã báo cáo feedItem {} {} lần, vượt quá giới hạn 5 lần",
+                        reporter.getId(), request.getFeedItemId(), existingReportCount);
+                throw new AppException(ErrorCode.REPORT_LIMIT_EXCEEDED);
+            }
+            
+            log.info("User {} đã báo cáo feedItem {} {} lần (giới hạn: 5)",
+                    reporter.getId(), request.getFeedItemId(), existingReportCount);
+        }
+        
         ReportTicket reportTicket = reportTicketMapper.toReportTicket(request);
-        reportTicket.setAccepted(false);
+        reportTicket.setUserDetail(reporter); // Set người gửi báo cáo
 
-        // Set the appropriate reference based on feed item type
-        if (request.getFeedItemType() == FeedItemType.VIDEO ) {
-            Video video = videoRepository.findById(request.getTargetId())
-                    .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
-            reportTicket.setVideo(video);
-        } else if (request.getFeedItemType() == FeedItemType.IMAGE_SLIDE) {
-            ImageSlide imageSlide = imageSlideRepository.findById(request.getTargetId())
-                    .orElseThrow(() -> new AppException(ErrorCode.IMAGE_SLIDE_NOT_FOUND));
-            reportTicket.setImageSlide(imageSlide);
-        } else if (request.getFeedItemType() == FeedItemType.USER_DETAIL) {
-            UserDetail userDetail = userDetailRepository.findById(request.getTargetId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-            reportTicket.setUserDetail(userDetail);
+        if (request.getFeedItemId() == null || request.getFeedItemId().isEmpty()) {
+            if (request.getFeedItemType() != FeedItemType.USER_DETAIL) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+        } else {
+            // Tìm FeedItem và tăng reportCount
+            FeedItem feedItem = feedItemRepository.findById(request.getFeedItemId())
+                    .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
+            
+            reportTicket.setFeedItemId(feedItem.getId());
+            
+            // Increment reportCount in FeedItem
+            feedItem.setReportCount(feedItem.getReportCount() + 1);
+            feedItemRepository.save(feedItem);
+            
+            log.info("FeedItem {} reportCount incremented to {}", feedItem.getId(), feedItem.getReportCount());
         }
 
         reportTicket = reportTicketRepository.save(reportTicket);
-        log.info("Report ticket created with ID: {}", reportTicket.getId());
+        log.info("Report ticket created with ID: {} for feedItem: {}", reportTicket.getId(), reportTicket.getFeedItemId());
 
-        return reportTicketMapper.toReportTicketResponse(reportTicket);
+        ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(reportTicket);
+        // Set feedItemType từ request vì ReportTicket entity không có field này
+        response.setFeedItemType(request.getFeedItemType());
+        return response;
     }
 
     @Override
@@ -102,17 +133,6 @@ public class ReportTicketServiceImpl implements ReportTicketService {
     }
 
     @Override
-    public Page<ReportTicketResponse> getReportTicketsByAccepted(boolean accepted, Pageable pageable) {
-        log.info("Fetching report tickets by accepted status: {} with page: {}, size: {}",
-                accepted, pageable.getPageNumber(), pageable.getPageSize());
-
-        Page<ReportTicket> reportTickets = reportTicketRepository.findByAccepted(accepted, pageable);
-        log.info("Found {} report tickets with accepted status: {}", reportTickets.getTotalElements(), accepted);
-
-        return reportTickets.map(reportTicketMapper::toReportTicketResponse);
-    }
-
-    @Override
     @Transactional
     public ReportTicketResponse updateReportTicket(String id, ReportTicketUpdateRequest request) {
         log.info("Updating report ticket with ID: {}", id);
@@ -120,9 +140,8 @@ public class ReportTicketServiceImpl implements ReportTicketService {
         ReportTicket reportTicket = reportTicketRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.REPORT_TICKET_NOT_FOUND));
 
-        if (request.getAccepted() != null) {
-            reportTicket.setAccepted(request.getAccepted());
-        }
+        // ReportTicketUpdateRequest hiện tại không có field nào để update
+        // Có thể thêm các field khác nếu cần trong tương lai
 
         reportTicket = reportTicketRepository.save(reportTicket);
         log.info("Report ticket updated with ID: {}", id);
@@ -143,6 +162,11 @@ public class ReportTicketServiceImpl implements ReportTicketService {
     }
 
     private void validateFeedItemReference(ReportTicketRequest request) {
+        // Validate feedItemType + targetId (chỉ để validate, không dùng để tìm FeedItem)
+        if (request.getFeedItemType() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
         if (request.getFeedItemType() == FeedItemType.VIDEO && request.getTargetId() == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }

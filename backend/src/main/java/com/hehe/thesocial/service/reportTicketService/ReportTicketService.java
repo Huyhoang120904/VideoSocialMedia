@@ -17,8 +17,6 @@ public interface ReportTicketService {
 
     Page<ReportTicketResponse> getReportTicketsByCategory(ReportCategory category, Pageable pageable);
 
-    Page<ReportTicketResponse> getReportTicketsByAccepted(boolean accepted, Pageable pageable);
-
     ReportTicketResponse updateReportTicket(String id, ReportTicketUpdateRequest request);
 
     void deleteReportTicket(String id);

@@ -233,11 +233,11 @@ export default function MessageBubble({
                   }}
                 />
               ) : (
-                <View className="w-8 h-8 rounded-full bg-gray-300 items-center justify-center">
-                  <Text className="text-gray-700 text-sm font-bold">
-                    {message.sender?.charAt(0).toUpperCase() || "?"}
-                  </Text>
-                </View>
+                <Image
+                  source={require('../../../assets/unknown-avatar.png')}
+                  className="w-8 h-8 rounded-full"
+                  style={{ resizeMode: "cover" }}
+                />
               );
             })()}
           </View>
