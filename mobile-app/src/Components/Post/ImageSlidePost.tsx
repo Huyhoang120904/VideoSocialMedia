@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
     View,
     Image,
@@ -7,11 +7,14 @@ import {
     StyleSheet,
     TouchableOpacity,
     Text,
+    Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import RightVideo from "./RightVideo";
 import BottomVideo from "./BottomVideo";
+import VideoCommentModal from "../Comment/VideoCommentModal";
+import VideoOptionsModal from "./VideoOptionsModal";
 import { ImageSlideData } from "../../Store/feedSlice";
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
@@ -32,6 +35,7 @@ interface ImageSlidePostProps {
     username?: string; // Username của người upload
     avatarUrl?: string; // Avatar URL của người upload
     uploaderUserId?: string; // UserDetail ID của người upload
+    onImageSlideChange?: (currentIndex: number, totalImages: number) => void; // Callback để truyền thông tin lên
 }
 
 export default function ImageSlidePost({
@@ -50,25 +54,44 @@ export default function ImageSlidePost({
     username = "user1",
     avatarUrl,
     uploaderUserId,
+    onImageSlideChange,
 }: ImageSlidePostProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [commentModalVisible, setCommentModalVisible] = useState(false);
+    const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+    const [currentComments, setCurrentComments] = useState(comments);
     const flatListRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
     const tabBarHeight = useBottomTabBarHeight();
-    const imageHeight = itemHeight || screenHeight + insets.top;
+    // Don't add insets.top to image height — adding the top safe-area was
+    // increasing the overall item height (~35px) and pushing BottomVideo/RightVideo up.
+    const imageHeight = itemHeight || screenHeight;
+
+    // Sync comments count with prop
+    useEffect(() => {
+        setCurrentComments(comments);
+    }, [comments]);
 
     // Calculate dynamic bottom position (same logic as VideoCard)
-    const bottomContentBottom = tabBarHeight + 4 + 30 + 8;
+    // Keep a small extra spacing above the tab bar
+    const bottomContentBottom = tabBarHeight + 12;
 
     const renderImage = ({ item, index }: { item: any; index: number }) => {
         const imageUrl = item.secureUrl || item.url;
 
         return (
-            <Image
-                source={{ uri: imageUrl }}
-                style={[styles.image, { width: screenWidth, height: imageHeight }]}
-                resizeMode="contain"
-            />
+            <Pressable
+                onLongPress={() => {
+                    setOptionsModalVisible(true);
+                }}
+                delayLongPress={500}
+            >
+                <Image
+                    source={{ uri: imageUrl }}
+                    style={[styles.image, { width: screenWidth, height: imageHeight }]}
+                    resizeMode="contain"
+                />
+            </Pressable>
         );
     };
 
@@ -76,6 +99,37 @@ export default function ImageSlidePost({
         const contentOffsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(contentOffsetX / screenWidth);
         setCurrentImageIndex(index);
+        // Gọi callback để truyền thông tin lên
+        if (onImageSlideChange && isActive) {
+            onImageSlideChange(index, imageSlide.images.length);
+        }
+    };
+
+    // Cập nhật khi isActive thay đổi
+    useEffect(() => {
+        if (isActive && onImageSlideChange) {
+            onImageSlideChange(currentImageIndex, imageSlide.images.length);
+        } else if (!isActive && onImageSlideChange) {
+            // Reset khi không active
+            onImageSlideChange(-1, 0);
+        }
+    }, [isActive, currentImageIndex, imageSlide.images.length, onImageSlideChange]);
+
+    // Comment modal handlers
+    const handleOpenComments = () => {
+        setCommentModalVisible(true);
+    };
+
+    const handleCloseComments = () => {
+        setCommentModalVisible(false);
+    };
+
+    const handleAddComment = (comment: string) => {
+        console.log('New comment:', comment);
+    };
+
+    const handleUpdateCommentCount = (newCount: number) => {
+        setCurrentComments(newCount);
     };
 
     return (
@@ -111,25 +165,18 @@ export default function ImageSlidePost({
                     </View>
                 )}
 
-                {/* Image counter */}
-                <View style={styles.counterContainer}>
-                    <View style={styles.counterBadge}>
-                        <Text style={styles.counterText}>
-                            {currentImageIndex + 1}/{imageSlide.images.length}
-                        </Text>
-                    </View>
-                </View>
             </View>
 
             <RightVideo
                 id={feedItemId}
                 likes={likes}
-                comments={comments}
+                comments={currentComments}
                 shares={shares}
                 outstanding={outstanding}
                 isLoved={loved}
                 avatarUrl={avatarUrl}
                 uploaderUserId={uploaderUserId}
+                onCommentPress={handleOpenComments}
             />
 
             <BottomVideo
@@ -137,6 +184,43 @@ export default function ImageSlidePost({
                 description={description}
                 hashtags={hashtags}
                 username={username}
+            />
+
+            {/* Comment Modal */}
+            <VideoCommentModal
+                visible={commentModalVisible}
+                onClose={handleCloseComments}
+                videoId={feedItemId}
+                feedItemType="IMAGE_SLIDE"
+                onAddComment={handleAddComment}
+                onUpdateCommentCount={handleUpdateCommentCount}
+            />
+
+            {/* Video Options Modal */}
+            <VideoOptionsModal
+                visible={optionsModalVisible}
+                onClose={() => setOptionsModalVisible(false)}
+                onDownload={() => {
+                    console.log('Download image');
+                }}
+                onNotInterested={() => {
+                    console.log('Not interested');
+                }}
+                onReport={() => {
+                    console.log('Report image');
+                }}
+                onSpeedChange={(speed) => {
+                    console.log('Speed change not applicable for images');
+                }}
+                onSimplifiedScreen={() => {
+                    console.log('Simplified screen');
+                }}
+                onSubtitles={() => {
+                    console.log('Subtitles not applicable for images');
+                }}
+                onPictureInPicture={() => {
+                    console.log('Picture in picture not applicable for images');
+                }}
             />
         </View>
     );
@@ -169,39 +253,15 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     activeDot: {
-        backgroundColor: "#00F5FF",
+        backgroundColor: "#fff",
         width: 24,
-        shadowColor: "#00F5FF",
+        shadowColor: "#fff",
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 4,
         elevation: 3,
     },
     inactiveDot: {
-        backgroundColor: "rgba(255, 255, 255, 0.4)",
-    },
-    counterContainer: {
-        position: "absolute",
-        top: 50,
-        right: 16,
-    },
-    counterBadge: {
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.3)",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    counterText: {
-        color: "#fff",
-        fontSize: 14,
-        fontWeight: "700",
-        letterSpacing: 0.5,
+        backgroundColor: "#ccc",
     },
 });

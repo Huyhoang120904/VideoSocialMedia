@@ -6,6 +6,7 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
@@ -43,11 +44,15 @@ export default function MessageBubble({
   const [isVideoBuffering, setIsVideoBuffering] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [fullScreenImageUrl, setFullScreenImageUrl] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     setIsVideoBuffering(true);
     setIsVideoPlaying(false);
     setVideoError(null);
+    setFullScreenImageUrl(null);
   }, [message.id, message.file?.url]);
 
   const isMediaMessage =
@@ -70,21 +75,23 @@ export default function MessageBubble({
       return null;
     }
 
-    const mediaLabel =
-      message.file.format?.toUpperCase() || message.messageType || "MEDIA";
-
     if (message.messageType === ChatMessageType.IMAGE) {
       return (
-        <View
-          className="overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black/5"
-          style={styles.mediaWrapper}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setFullScreenImageUrl(message.file!.url)}
         >
-          <Image
-            source={{ uri: message.file.url }}
-            style={styles.mediaElement}
-            resizeMode="cover"
-          />
-        </View>
+          <View
+            className="overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black/5"
+            style={styles.mediaWrapper}
+          >
+            <Image
+              source={{ uri: message.file.url }}
+              style={styles.mediaElement}
+              resizeMode="cover"
+            />
+          </View>
+        </TouchableOpacity>
       );
     }
 
@@ -313,6 +320,37 @@ export default function MessageBubble({
           </View>
         </LinearGradient>
       </View>
+      <Modal
+        visible={!!fullScreenImageUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullScreenImageUrl(null)}
+      >
+        <View className="flex-1 bg-black/95">
+          <TouchableOpacity
+            className="absolute top-14 right-6 w-10 h-10 rounded-full bg-white/15 items-center justify-center z-10"
+            onPress={() => setFullScreenImageUrl(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setFullScreenImageUrl(null)}
+          >
+            <View className="flex-1 items-center justify-center px-4">
+              {fullScreenImageUrl && (
+                <Image
+                  source={{ uri: fullScreenImageUrl }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -352,5 +390,9 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: "#000",
+  },
+  fullScreenImage: {
+    width: "100%",
+    height: "100%",
   },
 });

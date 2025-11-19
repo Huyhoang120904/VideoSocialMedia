@@ -181,19 +181,6 @@ export default function MessageInput({
                 )}
               </TouchableOpacity>
             </View>
-
-            <View className="flex-row space-x-2 mt-3">
-              <QuickAttachmentButton
-                label="Photo"
-                icon="image-outline"
-                onPress={onImagePick}
-              />
-              <QuickAttachmentButton
-                label="Video"
-                icon="videocam-outline"
-                onPress={onVideoPick}
-              />
-            </View>
           </View>
         )}
       </Animated.View>
