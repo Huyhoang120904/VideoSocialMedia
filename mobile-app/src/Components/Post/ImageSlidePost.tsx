@@ -10,12 +10,12 @@ import {
     Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import RightVideo from "./RightVideo";
 import BottomVideo from "./BottomVideo";
 import VideoCommentModal from "../Comment/VideoCommentModal";
 import VideoOptionsModal from "./VideoOptionsModal";
 import { ImageSlideData } from "../../Store/feedSlice";
+import { useSafeBottomTabBarHeight } from "../../Hooks/useSafeBottomTabBarHeight";
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
 
@@ -62,7 +62,7 @@ export default function ImageSlidePost({
     const [currentComments, setCurrentComments] = useState(comments);
     const flatListRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
-    const tabBarHeight = useBottomTabBarHeight();
+    const tabBarHeight = useSafeBottomTabBarHeight();
     // Don't add insets.top to image height — adding the top safe-area was
     // increasing the overall item height (~35px) and pushing BottomVideo/RightVideo up.
     const imageHeight = itemHeight || screenHeight;

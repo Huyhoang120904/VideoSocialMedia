@@ -4,6 +4,14 @@ import { FeedItemType } from "../../Types/response/FeedItemResponse";
 import VideoCard from "./VideoCard";
 import ImageSlidePost from "./ImageSlidePost";
 
+// Helper function to get valid avatar URL (matching CommentModal logic)
+const getValidAvatarUrl = (avatarUrl?: string): string | undefined => {
+  if (avatarUrl && avatarUrl !== "https://i.pravatar.cc/150?u=default") {
+    return avatarUrl;
+  }
+  return undefined;
+};
+
 interface FeedPostProps {
   feedItem: FeedItem;
   isActive: boolean;
@@ -40,9 +48,10 @@ export default function FeedPost({
             feedItem.uploader?.shownName ||
             feedItem.uploader?.user?.username ||
             "user1",
-          avatarUrl:
+          avatarUrl: getValidAvatarUrl(
             feedItem.uploader?.avatar?.secureUrl ||
-            feedItem.uploader?.avatar?.url,
+              feedItem.uploader?.avatar?.url
+          ),
           uploaderUserId: feedItem.uploader?.id, // Truyền UserDetail ID
           musicName: undefined,
           hashtags: feedItem.hashtags,
@@ -81,9 +90,9 @@ export default function FeedPost({
           feedItem.uploader?.user?.username ||
           "user1"
         }
-        avatarUrl={
+        avatarUrl={getValidAvatarUrl(
           feedItem.uploader?.avatar?.secureUrl || feedItem.uploader?.avatar?.url
-        }
+        )}
         uploaderUserId={feedItem.uploader?.id} // Truyền UserDetail ID
         onImageSlideChange={onImageSlideChange}
       />

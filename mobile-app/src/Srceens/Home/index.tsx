@@ -14,7 +14,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { setFeedItems, FeedItem } from "../../Store/feedSlice";
 import FeedPost from "../../Components/Post/FeedPost";
 import type { RootState } from "../../Store/index";
-import { fetchFeedItems } from "../../Services/FeedService";
+import {
+  fetchFeedItems,
+  fetchExploreFeedItems,
+  fetchFollowingFeedItems,
+  recordFeedItemView,
+} from "../../Services/FeedService";
 import TopVideo from "../../Components/Post/TopVideo";
 import ExploreScreen from "./ExploreScreen";
 import { useFocusEffect, useRoute, useNavigation } from "@react-navigation/native";
@@ -43,6 +48,19 @@ export default function Home() {
   const flatListRef = useRef<FlatList<FeedItem>>(null);
   const feedItems = useSelector((state: RootState) => state.feed.feedItems);
   const dispatch = useDispatch();
+  const [exploreFeedItems, setExploreFeedItems] = useState<FeedItem[]>([]);
+  const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreRefreshing, setExploreRefreshing] = useState(false);
+  const [exploreError, setExploreError] = useState<string | null>(null);
+  const [exploreHasLoaded, setExploreHasLoaded] = useState(false);
+  const exploreLoadingRef = useRef(false);
+  const [followingFeed, setFollowingFeed] = useState<FeedItem[]>([]);
+  const [followingLoading, setFollowingLoading] = useState(false);
+  const [followingRefreshing, setFollowingRefreshing] = useState(false);
+  const [followingError, setFollowingError] = useState<string | null>(null);
+  const [followingHasLoaded, setFollowingHasLoaded] = useState(false);
+  const followingLoadingRef = useRef(false);
+  const watchedFeedItemsRef = useRef<Set<string>>(new Set());
 
   // Log dimensions
   // const dimensions = useAppDimensions();
@@ -84,6 +102,81 @@ export default function Home() {
     }
   }, [dispatch, hasLoaded]); // Removed loading from dependencies
 
+  const loadExploreFeed = useCallback(
+    async (force = false) => {
+      if (exploreLoadingRef.current || (exploreHasLoaded && !force)) {
+        return;
+      }
+
+      exploreLoadingRef.current = true;
+      setExploreLoading(true);
+      setExploreError(null);
+
+      try {
+        const response = await fetchExploreFeedItems({ size: 40 });
+        if (response.code === 1000 && response.result) {
+          setExploreFeedItems(response.result);
+          setExploreHasLoaded(true);
+        } else {
+          setExploreError(response.message || "Không thể tải nội dung khám phá");
+        }
+      } catch (err: any) {
+        setExploreError(err.message || "Không thể tải nội dung khám phá");
+      } finally {
+        setExploreLoading(false);
+        exploreLoadingRef.current = false;
+      }
+    },
+    [exploreHasLoaded]
+  );
+
+  const loadFollowingFeed = useCallback(
+    async (force = false) => {
+      if (followingLoadingRef.current || (followingHasLoaded && !force)) {
+        return;
+      }
+
+      followingLoadingRef.current = true;
+      setFollowingLoading(true);
+      setFollowingError(null);
+
+      try {
+        const response = await fetchFollowingFeedItems();
+        if (response.code === 1000 && response.result) {
+          setFollowingFeed(response.result);
+          setFollowingHasLoaded(true);
+        } else {
+          setFollowingError(response.message || "Không thể tải feed đã follow");
+        }
+      } catch (err: any) {
+        setFollowingError(err.message || "Không thể tải feed đã follow");
+      } finally {
+        setFollowingLoading(false);
+        followingLoadingRef.current = false;
+      }
+    },
+    [followingHasLoaded]
+  );
+
+  const recordViewForFeedItem = useCallback(async (feedItemId: string) => {
+    if (!feedItemId) {
+      return;
+    }
+
+    if (watchedFeedItemsRef.current.has(feedItemId)) {
+      return;
+    }
+
+    watchedFeedItemsRef.current.add(feedItemId);
+
+    try {
+      await recordFeedItemView(feedItemId);
+    } catch (error) {
+      console.warn("Failed to record view for feed item:", feedItemId, error);
+      watchedFeedItemsRef.current.delete(feedItemId);
+    }
+  }, []);
+
   // Function to refresh videos (for pull-to-refresh)
   const refreshVideos = useCallback(async () => {
     setRefreshing(true);
@@ -120,17 +213,61 @@ export default function Home() {
     }
   }, [dispatch]);
 
+  const refreshExploreFeed = useCallback(async () => {
+    setExploreRefreshing(true);
+    setExploreHasLoaded(false);
+    try {
+      await loadExploreFeed(true);
+    } finally {
+      setExploreRefreshing(false);
+    }
+  }, [loadExploreFeed]);
+
+  const refreshFollowingFeed = useCallback(async () => {
+    setFollowingRefreshing(true);
+    setFollowingHasLoaded(false);
+    try {
+      await loadFollowingFeed(true);
+    } finally {
+      setFollowingRefreshing(false);
+    }
+  }, [loadFollowingFeed]);
+
   // Function to reload when clicking on active tab - scroll to top first
   const reloadFromTabClick = useCallback(async () => {
-    // Scroll về đầu danh sách để thấy refresh indicator
-    if (flatListRef.current && feedItems.length > 0) {
-      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
-      // Delay một chút để animation scroll hoàn thành
-      await new Promise(resolve => setTimeout(resolve, 300));
+    if (activeTab === "Khám phá") {
+      await refreshExploreFeed();
+      return;
     }
-    // Sau đó mới trigger refresh
-    await refreshVideos();
-  }, [refreshVideos, feedItems.length]);
+
+    const currentListLength =
+      activeTab === "Đã follow" ? followingFeed.length : feedItems.length;
+
+    if (
+      (activeTab === "Đề xuất" || activeTab === "Đã follow") &&
+      flatListRef.current &&
+      currentListLength > 0
+    ) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+
+    if (activeTab === "Đã follow") {
+      await refreshFollowingFeed();
+      return;
+    }
+
+    if (activeTab === "Đề xuất") {
+      await refreshVideos();
+    }
+  }, [
+    activeTab,
+    feedItems.length,
+    followingFeed.length,
+    refreshExploreFeed,
+    refreshFollowingFeed,
+    refreshVideos,
+  ]);
 
   // Load videos chỉ 1 lần khi component mount
   useEffect(() => {
@@ -140,6 +277,18 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency - only run once on mount
+
+  useEffect(() => {
+    if (activeTab === "Khám phá" && !exploreHasLoaded) {
+      loadExploreFeed();
+    }
+  }, [activeTab, exploreHasLoaded, loadExploreFeed]);
+
+  useEffect(() => {
+    if (activeTab === "Đã follow" && !followingHasLoaded) {
+      loadFollowingFeed();
+    }
+  }, [activeTab, followingHasLoaded, loadFollowingFeed]);
 
   // Handle tab focus/blur to pause/resume video
   useFocusEffect(
@@ -187,6 +336,36 @@ export default function Home() {
       }
     }
   }, [route.params, feedItems, isTabActive]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    setImageSlideInfo(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    let items: FeedItem[] | null = null;
+
+    if (activeTab === "Đề xuất") {
+      items = feedItems;
+    } else if (activeTab === "Đã follow") {
+      items = followingFeed;
+    } else {
+      return;
+    }
+
+    if (!items || items.length === 0) {
+      return;
+    }
+
+    const safeIndex = Math.min(currentIndex, items.length - 1);
+    const activeItem = items[safeIndex];
+
+    if (!activeItem) {
+      return;
+    }
+
+    recordViewForFeedItem(activeItem.id);
+  }, [activeTab, currentIndex, feedItems, followingFeed, recordViewForFeedItem]);
 
   // Xử lý scroll để giới hạn 1 video mỗi lần
   const handleScrollBeginDrag = useCallback((event: any) => {
@@ -354,70 +533,125 @@ export default function Home() {
     })
   ).current;
 
+  const renderVerticalFeedBlock = ({
+    items,
+    loadingState,
+    errorState,
+    emptyMessage,
+    refreshingState,
+    onRefresh,
+    onRetry,
+  }: {
+    items: FeedItem[];
+    loadingState: boolean;
+    errorState: string | null;
+    emptyMessage: string;
+    refreshingState: boolean;
+    onRefresh: () => Promise<void>;
+    onRetry: () => void;
+  }) => {
+    if (loadingState) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Đang tải video...</Text>
+        </View>
+      );
+    }
+
+    if (errorState) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>❌ {errorState}</Text>
+          <Text style={styles.retryText} onPress={onRetry}>
+            Thử lại
+          </Text>
+        </View>
+      );
+    }
+
+    if (items.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>{emptyMessage}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList<FeedItem>
+        ref={flatListRef}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        showsVerticalScrollIndicator={false}
+        pagingEnabled
+        snapToInterval={height}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        bounces={true}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScroll={handleScroll}
+        onScrollEndDrag={handleScrollEndDrag}
+        scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews={true}
+        getItemLayout={getItemLayout}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
+        refreshing={refreshingState}
+        onRefresh={() => {
+          onRefresh();
+        }}
+      />
+    );
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case "Khám phá":
-        return <ExploreScreen />;
-      case "Bạn bè":
-      case "Đã follow":
-        return <ExploreScreen />;
-      case "Đề xuất":
-        if (loading) {
-          return (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-              <Text style={styles.loadingText}>Đang tải video...</Text>
-            </View>
-          );
-        }
-
-        if (error) {
-          return (
-            <View style={styles.centerContainer}>
-              <Text style={styles.errorText}>❌ {error}</Text>
-              <Text style={styles.retryText} onPress={loadVideos}>
-                Thử lại
-              </Text>
-            </View>
-          );
-        }
-
-        if (feedItems.length === 0) {
-          return (
-            <View style={styles.centerContainer}>
-              <Text style={styles.emptyText}>Không có nội dung nào</Text>
-            </View>
-          );
-        }
-
         return (
-          <FlatList<FeedItem>
-            ref={flatListRef}
-            data={feedItems}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            showsVerticalScrollIndicator={false}
-            pagingEnabled
-            snapToInterval={height}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            bounces={true}
-            onScrollBeginDrag={handleScrollBeginDrag}
-            onScroll={handleScroll}
-            onScrollEndDrag={handleScrollEndDrag}
-            scrollEventThrottle={16}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            initialNumToRender={3}
-            maxToRenderPerBatch={3}
-            windowSize={5}
-            removeClippedSubviews={true}
-            getItemLayout={getItemLayout}
-            onScrollToIndexFailed={handleScrollToIndexFailed}
-            refreshing={refreshing}
-            onRefresh={refreshVideos}
+          <ExploreScreen
+            data={exploreFeedItems}
+            loading={exploreLoading}
+            error={exploreError}
+            refreshing={exploreRefreshing}
+            onRefresh={refreshExploreFeed}
+            onRetry={() => loadExploreFeed(true)}
           />
         );
+      case "Bạn bè":
+        return (
+          <View style={styles.centerContainer}>
+            <Text style={styles.emptyText}>
+              Tính năng bạn bè đang được phát triển.
+            </Text>
+          </View>
+        );
+      case "Đã follow":
+        return renderVerticalFeedBlock({
+          items: followingFeed,
+          loadingState: followingLoading,
+          errorState: followingError,
+          emptyMessage:
+            "Theo dõi thêm người dùng để khám phá nội dung tại đây.",
+          refreshingState: followingRefreshing,
+          onRefresh: refreshFollowingFeed,
+          onRetry: () => loadFollowingFeed(true),
+        });
+      case "Đề xuất":
+        return renderVerticalFeedBlock({
+          items: feedItems,
+          loadingState: loading,
+          errorState: error,
+          emptyMessage: "Không có nội dung nào",
+          refreshingState: refreshing,
+          onRefresh: refreshVideos,
+          onRetry: loadVideos,
+        });
       default:
         return null;
     }

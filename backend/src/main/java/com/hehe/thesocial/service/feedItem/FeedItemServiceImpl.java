@@ -2,14 +2,18 @@ package com.hehe.thesocial.service.feedItem;
 
 import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
+import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.*;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
+import com.hehe.thesocial.mapper.feedItem.FeedItemMapper;
 import com.hehe.thesocial.mapper.file.FileMapper;
+import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.*;
 import com.hehe.thesocial.service.file.FileService;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -18,8 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,9 +48,12 @@ public class FeedItemServiceImpl implements FeedItemService {
     FileRepository fileRepository;
     FileService fileService;
     FileMapper fileMapper;
+    FeedItemMapper feedItemMapper;
+    UserDetailMapper userDetailMapper;
     UserDetailRepository userDetailRepository;
     MetaDataRepository metaDataRepository;
     HashTagRepository hashTagRepository;
+    AuthenticationHelper authenticationHelper;
 
     @NonFinal
     @Value("${file.upload-dir:uploads}")
@@ -113,6 +118,22 @@ public class FeedItemServiceImpl implements FeedItemService {
         log.info("Found {} feed items of type {}", feedItems.getTotalElements(), feedItemType);
 
         return feedItems.map(this::toFeedItemUploadResponse);
+    }
+
+    @Override
+    public FeedItemResponse getFeedItemById(String feedItemId) {
+        log.info("Fetching feed item by id {}", feedItemId);
+        FeedItem feedItem = feedItemRepository.findById(feedItemId)
+                .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
+
+        String currentUserDetailId = null;
+        try {
+            currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
+        } catch (Exception ex) {
+            log.debug("Could not determine current user detail id while fetching feed item {}", feedItemId);
+        }
+
+        return feedItemMapper.toFeedItemResponse(feedItem, fileMapper, userDetailMapper, currentUserDetailId);
     }
 
     // Private helper methods
@@ -392,40 +413,11 @@ public class FeedItemServiceImpl implements FeedItemService {
     }
 
     private UserDetail getCurrentUser() {
-        var authentication = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            String userDetailId = jwt.getClaim("userDetailId");
-
-            if (userDetailId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            return userDetailRepository.findById(userDetailId)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        }
-
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
+        return authenticationHelper.getCurrentUserDetail();
     }
 
     private String getCurrentUserId() {
-        var authentication = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            String userDetailId = jwt.getClaim("userDetailId");
-
-            if (userDetailId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            return userDetailId;
-        }
-
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
+        return authenticationHelper.getCurrentUserDetail().getId();
     }
 
     private String getFileExtension(String filename) {

@@ -23,12 +23,16 @@ import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { ConversationRequest } from "../../Types/request/ConversationRequest";
 import UserDetailService from "../../Services/UserDetailService";
 import ConversationService from "../../Services/ConversationService";
-import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
-import { fetchVideosByUserId } from "../../Services/VideoService";
+import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
+import {
+  fetchFeedItemsByUserId,
+  VideoItem,
+} from "../../Services/FeedItemService";
 import { Video, ResizeMode } from "expo-av";
+import { FeedItemType } from "../../Types/response/FeedItemResponse";
 import ReportTicketService from "../../Services/ReportTicketService";
 import {
-  FeedItemType,
+  FeedItemType as ReportFeedItemType,
   ReportCategory,
   REPORT_CATEGORY_LABELS,
 } from "../../Types/request/ReportTicketRequest";
@@ -76,13 +80,13 @@ const UserProfileScreen = () => {
   const fetchUserVideos = async (userId: string) => {
     try {
       setVideosLoading(true);
-      const response = await fetchVideosByUserId(userId, 0, 50);
+      const response = await fetchFeedItemsByUserId(userId, 0, 50);
       if (response.code === 1000 && response.result) {
         setVideos(response.result.videos);
         setTotalVideos(response.result.totalElements);
       }
     } catch (error) {
-      console.error("Error fetching user videos:", error);
+      console.error("Error fetching user feed items:", error);
     } finally {
       setVideosLoading(false);
     }
@@ -217,9 +221,7 @@ const UserProfileScreen = () => {
           conversationId: response.result.conversationId,
           conversationName:
             response.result.conversationName || userDetail.displayName,
-          avatar: avatarUrl
-            ? { uri: avatarUrl }
-            : require("../../../assets/unknown-avatar.png"),
+          avatar: avatarUrl ? { uri: avatarUrl } : UNKNOWN_AVATAR,
           receiverId: userDetail.id,
         });
       } else {
@@ -254,7 +256,7 @@ const UserProfileScreen = () => {
     setIsSubmittingReport(true);
     try {
       const response = await ReportTicketService.createReportTicket({
-        feedItemType: FeedItemType.USER_DETAIL,
+        feedItemType: ReportFeedItemType.USER_DETAIL,
         targetId: userDetail.id,
         reportCategory: selectedCategory,
         violationContent: reportDetails || undefined,
@@ -349,15 +351,12 @@ const UserProfileScreen = () => {
                 userDetail.avatar?.fileName && userDetail.id
                   ? getAvatarUrl(userDetail.id, userDetail.avatar.fileName)
                   : null;
-              return avatarUrl ? (
+              const avatarSource = avatarUrl
+                ? { uri: avatarUrl }
+                : UNKNOWN_AVATAR;
+              return (
                 <Image
-                  source={{ uri: avatarUrl }}
-                  className="w-24 h-24 rounded-full"
-                  style={{ resizeMode: "cover" }}
-                />
-              ) : (
-                <Image
-                  source={require('../../../assets/unknown-avatar.png')}
+                  source={avatarSource}
                   className="w-24 h-24 rounded-full"
                   style={{ resizeMode: "cover" }}
                 />
@@ -551,7 +550,13 @@ const UserProfileScreen = () => {
                     }}
                     activeOpacity={0.8}
                     onPress={() => {
-                      navigation.navigate("TopVideo", { videoId: item.id });
+                      // Navigate to MainTabs -> Home with videoId
+                      // Profile screen can navigate directly to "Home" because it's in Bottom Tab Navigator
+                      // UserProfile is in Stack Navigator, so we navigate to MainTabs -> Home
+                      (navigation as any).navigate("MainTabs", {
+                        screen: "Home",
+                        params: { videoId: item.id },
+                      });
                     }}
                   >
                     {item.thumbnailUrl ? (
@@ -560,7 +565,7 @@ const UserProfileScreen = () => {
                         style={{ width: "100%", height: "100%" }}
                         resizeMode="cover"
                       />
-                    ) : (
+                    ) : item.feedItemType === FeedItemType.VIDEO ? (
                       <Video
                         source={{ uri: item.uri }}
                         style={{ width: "100%", height: "100%" }}
@@ -570,12 +575,16 @@ const UserProfileScreen = () => {
                         isMuted
                         useNativeControls={false}
                       />
-                    )}
+                    ) : null}
 
-                    {/* Play Icon Overlay */}
+                    {/* Icon Overlay */}
                     <View className="absolute inset-0 justify-center items-center">
                       <View className="bg-black/30 rounded-full p-2">
-                        <Ionicons name="play" size={20} color="white" />
+                        {item.feedItemType === FeedItemType.IMAGE_SLIDE ? (
+                          <Ionicons name="images" size={20} color="white" />
+                        ) : (
+                          <Ionicons name="play" size={20} color="white" />
+                        )}
                       </View>
                     </View>
 

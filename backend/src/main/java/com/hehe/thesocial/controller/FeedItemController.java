@@ -2,6 +2,7 @@ package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
+import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
 import com.hehe.thesocial.entity.enums.FeedItemType;
@@ -50,14 +51,14 @@ public class FeedItemController {
                 .build());
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user/{userDetailId}")
     public ResponseEntity<ApiResponse<FeedItemListResponse>> getFeedItemsByUserId(
-            @PathVariable String userId,
+            @PathVariable String userDetailId,
             @PageableDefault(size = 10, page = 0) Pageable pageable) {
 
-        log.info("Fetching feed items for user ID: {} with page: {}, size: {}", userId, pageable.getPageNumber(), pageable.getPageSize());
+        log.info("Fetching feed items for user detail ID: {} with page: {}, size: {}", userDetailId, pageable.getPageNumber(), pageable.getPageSize());
 
-        Page<FeedItemUploadResponse> feedItems = feedItemService.getFeedItemsByUserDetailId(userId, pageable);
+        Page<FeedItemUploadResponse> feedItems = feedItemService.getFeedItemsByUserDetailId(userDetailId, pageable);
 
         FeedItemListResponse response = FeedItemListResponse.builder()
                 .feedItems(feedItems)
@@ -71,6 +72,16 @@ public class FeedItemController {
         return ResponseEntity.ok(ApiResponse.<FeedItemListResponse>builder()
                 .result(response)
                 .message(response.getMessage())
+                .build());
+    }
+
+    @GetMapping("/{feedItemId}")
+    public ResponseEntity<ApiResponse<FeedItemResponse>> getFeedItemById(@PathVariable String feedItemId) {
+        log.info("Fetching feed item with id {}", feedItemId);
+        FeedItemResponse feedItem = feedItemService.getFeedItemById(feedItemId);
+
+        return ResponseEntity.ok(ApiResponse.<FeedItemResponse>builder()
+                .result(feedItem)
                 .build());
     }
 

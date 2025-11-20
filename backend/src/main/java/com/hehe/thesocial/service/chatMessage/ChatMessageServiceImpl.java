@@ -102,7 +102,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         Set<String> participantIds = getParticipantIds(conversation);
 
         FileDocument attachment = resolveAttachment(request.getFileId());
-        validateMessagePayload(request.getMessage(), attachment);
+        validateMessagePayload(request.getMessage(), attachment, request.getMessageType(), request.getFeedItemId());
 
         ChatMessageType messageType = resolveMessageType(request.getMessageType(), attachment);
         String messageContent = normalizeMessageContent(request.getMessage(), attachment);
@@ -112,7 +112,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 conversation.getConversationId(),
                 sender.getId(),
                 messageType,
-                attachment
+                attachment,
+                request.getFeedItemId()
         );
 
         return saveAndBroadcastMessage(chatMessage, participantIds);
@@ -128,7 +129,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         validateUserIsParticipant(conversation, sender.getId());
 
         FileDocument attachment = resolveAttachment(request.getFileId());
-        validateMessagePayload(request.getMessage(), attachment);
+        validateMessagePayload(request.getMessage(), attachment, request.getMessageType(), request.getFeedItemId());
 
         ChatMessageType messageType = resolveMessageType(request.getMessageType(), attachment);
         String messageContent = normalizeMessageContent(request.getMessage(), attachment);
@@ -138,7 +139,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 conversation.getConversationId(),
                 sender.getId(),
                 messageType,
-                attachment
+                attachment,
+                request.getFeedItemId()
         );
 
         Set<String> participantIds = getParticipantIds(conversation);
@@ -168,7 +170,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 conversation.getConversationId(),
                 sender.getId(),
                 messageType,
-                attachment
+                attachment,
+                null
         );
 
         Set<String> participantIds = getParticipantIds(conversation);
@@ -331,6 +334,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 conversation.getConversationId(),
                 sender.getId(),
                 ChatMessageType.TEXT,
+                null,
                 null
         );
 
@@ -358,7 +362,16 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
     }
 
-    private void validateMessagePayload(String message, FileDocument attachment) {
+    private void validateMessagePayload(String message, FileDocument attachment, ChatMessageType messageType, String feedItemId) {
+        // SHARED_VIDEO messages only need feedItemId
+        if (messageType == ChatMessageType.SHARED_VIDEO) {
+            if (feedItemId == null || feedItemId.isBlank()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            return;
+        }
+        
+        // Other message types need either message text or attachment
         boolean hasMessage = message != null && !message.isBlank();
         if (!hasMessage && attachment == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -445,7 +458,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                                          String conversationId,
                                          String senderId,
                                          ChatMessageType messageType,
-                                         FileDocument fileDocument) {
+                                         FileDocument fileDocument,
+                                         String feedItemId) {
         return ChatMessage.builder()
                 .message(message)
                 .conversationId(conversationId)
@@ -454,6 +468,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .fileDocument(fileDocument)
                 .readParticipantsId(new java.util.ArrayList<>())
                 .messageType(messageType)
+                .feedItemId(feedItemId)
                 .build();
     }
 

@@ -9,7 +9,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Document(value = "chat_message")
@@ -21,7 +20,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public class ChatMessage extends BaseDocument{
+public class ChatMessage extends BaseDocument {
     @EqualsAndHashCode.Include
     @Id
     String id;
@@ -44,6 +43,10 @@ public class ChatMessage extends BaseDocument{
     List<String> readParticipantsId;
 
     ChatMessageType messageType;
+
+    //Share type-specific field
+    @Field("feedItem")
+    String feedItemId;
 
     //AI chat fields
     String role;

@@ -4,7 +4,7 @@ const API_URL =
 /**
  * Default unknown avatar image
  */
-export const UNKNOWN_AVATAR = require('../../assets/unknown-avatar.png');
+export const UNKNOWN_AVATAR = require("../../assets/unknown-avatar.png");
 
 /**
  * Constructs the avatar URL using the new endpoint pattern:
@@ -27,24 +27,34 @@ export const getAvatarUrl = (
  * Handles localhost URLs by replacing with configured API host
  */
 export const getVideoUrl = (originalUrl: string): string => {
-  if (!originalUrl) return '';
-
+  if (!originalUrl) return "";
 
   try {
     // If it's already a proper URL, check if it needs host replacement
-    if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
+    if (
+      originalUrl.startsWith("http://") ||
+      originalUrl.startsWith("https://")
+    ) {
       // Replace old host with configured API host
-      const currentHost = API_URL.replace('/api/v1', '').replace('http://', '').replace('https://', '');
-      
-      if (originalUrl.includes('172.20.82.76:8082') || 
-          originalUrl.includes('192.168.239.147:8082') ||
-          originalUrl.includes('localhost:8082')) {
+      const currentHost = API_URL.replace("/api/v1", "")
+        .replace("http://", "")
+        .replace("https://", "");
+
+      if (
+        originalUrl.includes("172.20.82.76:8082") ||
+        originalUrl.includes("192.168.239.147:8082") ||
+        originalUrl.includes("localhost:8082")
+      ) {
         // Extract the protocol and the rest of the URL
-        const protocol = originalUrl.startsWith('https://') ? 'https://' : 'http://';
-        const oldHost = originalUrl.match(/(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/)?.[0];
+        const protocol = originalUrl.startsWith("https://")
+          ? "https://"
+          : "http://";
+        const oldHost = originalUrl.match(
+          /(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/
+        )?.[0];
         if (oldHost) {
           const newUrl = originalUrl.replace(oldHost, currentHost);
-          console.log('Replaced URL:', newUrl);
+          console.log("Replaced URL:", newUrl);
           return newUrl;
         }
       }
@@ -52,9 +62,9 @@ export const getVideoUrl = (originalUrl: string): string => {
     }
 
     // If it's a relative path, construct full URL using configured API_URL
-    return `${API_URL}${originalUrl.startsWith('/') ? '' : '/'}${originalUrl}`;
+    return `${API_URL}${originalUrl.startsWith("/") ? "" : "/"}${originalUrl}`;
   } catch (error) {
-    console.error('Error processing video URL:', error);
+    console.error("Error processing video URL:", error);
     return originalUrl; // Return original URL as fallback
   }
 };
@@ -64,23 +74,32 @@ export const getVideoUrl = (originalUrl: string): string => {
  * Handles URL replacement similar to getVideoUrl
  */
 export const getThumbnailUrl = (originalUrl: string): string => {
-  if (!originalUrl) return '';
+  if (!originalUrl) return "";
 
-  console.log('Original Thumbnail URL:', originalUrl);
+  console.log("Original Thumbnail URL:", originalUrl);
 
   try {
     // If it's already a proper URL, check if it needs host replacement
-    if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
+    if (
+      originalUrl.startsWith("http://") ||
+      originalUrl.startsWith("https://")
+    ) {
       // Replace old host with configured API host
-      const currentHost = API_URL.replace('/api/v1', '').replace('http://', '').replace('https://', '');
-      
-      if (originalUrl.includes('172.20.82.76:8082') || 
-          originalUrl.includes('192.168.239.147:8082') ||
-          originalUrl.includes('localhost:8082')) {
-        const oldHost = originalUrl.match(/(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/)?.[0];
+      const currentHost = API_URL.replace("/api/v1", "")
+        .replace("http://", "")
+        .replace("https://", "");
+
+      if (
+        originalUrl.includes("172.20.82.76:8082") ||
+        originalUrl.includes("192.168.239.147:8082") ||
+        originalUrl.includes("localhost:8082")
+      ) {
+        const oldHost = originalUrl.match(
+          /(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/
+        )?.[0];
         if (oldHost) {
           const newUrl = originalUrl.replace(oldHost, currentHost);
-          console.log('Replaced Thumbnail URL:', newUrl);
+          console.log("Replaced Thumbnail URL:", newUrl);
           return newUrl;
         }
       }
@@ -88,9 +107,9 @@ export const getThumbnailUrl = (originalUrl: string): string => {
     }
 
     // If it's a relative path, construct full URL using configured API_URL
-    return `${API_URL}${originalUrl.startsWith('/') ? '' : '/'}${originalUrl}`;
+    return `${API_URL}${originalUrl.startsWith("/") ? "" : "/"}${originalUrl}`;
   } catch (error) {
-    console.error('Error processing thumbnail URL:', error);
+    console.error("Error processing thumbnail URL:", error);
     return originalUrl; // Return original URL as fallback
   }
 };
@@ -100,23 +119,32 @@ export const getThumbnailUrl = (originalUrl: string): string => {
  * Handles URL replacement for image slides
  */
 export const getImageUrl = (originalUrl: string): string => {
-  if (!originalUrl) return '';
+  if (!originalUrl) return "";
 
-  console.log('Original Image URL:', originalUrl);
+  console.log("Original Image URL:", originalUrl);
 
   try {
     // If it's already a proper URL, check if it needs host replacement
-    if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
+    if (
+      originalUrl.startsWith("http://") ||
+      originalUrl.startsWith("https://")
+    ) {
       // Replace old host with configured API host
-      const currentHost = API_URL.replace('/api/v1', '').replace('http://', '').replace('https://', '');
-      
-      if (originalUrl.includes('172.20.82.76:8082') || 
-          originalUrl.includes('192.168.239.147:8082') ||
-          originalUrl.includes('localhost:8082')) {
-        const oldHost = originalUrl.match(/(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/)?.[0];
+      const currentHost = API_URL.replace("/api/v1", "")
+        .replace("http://", "")
+        .replace("https://", "");
+
+      if (
+        originalUrl.includes("172.20.82.76:8082") ||
+        originalUrl.includes("192.168.239.147:8082") ||
+        originalUrl.includes("localhost:8082")
+      ) {
+        const oldHost = originalUrl.match(
+          /(172\.20\.82\.76:8082|192\.168\.239\.147:8082|localhost:8082)/
+        )?.[0];
         if (oldHost) {
           const newUrl = originalUrl.replace(oldHost, currentHost);
-          console.log('Replaced Image URL:', newUrl);
+          console.log("Replaced Image URL:", newUrl);
           return newUrl;
         }
       }
@@ -124,9 +152,9 @@ export const getImageUrl = (originalUrl: string): string => {
     }
 
     // If it's a relative path, construct full URL using configured API_URL
-    return `${API_URL}${originalUrl.startsWith('/') ? '' : '/'}${originalUrl}`;
+    return `${API_URL}${originalUrl.startsWith("/") ? "" : "/"}${originalUrl}`;
   } catch (error) {
-    console.error('Error processing image URL:', error);
+    console.error("Error processing image URL:", error);
     return originalUrl; // Return original URL as fallback
   }
 };

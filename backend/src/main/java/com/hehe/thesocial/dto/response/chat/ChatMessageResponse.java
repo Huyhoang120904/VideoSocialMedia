@@ -29,4 +29,5 @@ public class ChatMessageResponse {
     Integer readCount;
     ChatMessageType messageType;
     FileDocument file;
+    String feedItemId;
 }

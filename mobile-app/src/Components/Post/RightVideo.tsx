@@ -20,8 +20,9 @@ import {
 } from "@expo/vector-icons";
 import img from "../../../assets/avatar.png";
 import styles from "./styles";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ShareVideoModal from "./ShareVideoModal";
+import { useSafeBottomTabBarHeight } from "../../Hooks/useSafeBottomTabBarHeight";
 
 const ICON_SIZE = 32; // Increased for better visibility
 
@@ -74,6 +75,7 @@ export default function RightVideo({
   const [liked, setLiked] = useState(isLoved); // Khởi tạo từ prop isLoved
   const [currentLikes, setCurrentLikes] = useState(likes); // Track likes locally
   const [currentComments, setCurrentComments] = useState(comments); // Track comments locally
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   // Animations
   const likeScale = useRef(new Animated.Value(1)).current;
@@ -114,7 +116,7 @@ export default function RightVideo({
 
   // Compute bottom position dynamically so RightVideo aligns with BottomVideo
   // and the tab bar icons across devices (mirrors BottomVideo logic).
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useSafeBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const EXTRA_SPACING = 0; // tuned down after runtime logs
   const visualTabIconsHeight = Math.max(tabBarHeight - insets.bottom, 0);
@@ -352,6 +354,7 @@ export default function RightVideo({
           />
         }
         count={shares}
+        onPress={() => setShareModalVisible(true)}
       />
 
       {/* Music Icon with rotation animation */}
@@ -361,6 +364,13 @@ export default function RightVideo({
           style={[styles.musicIcon, { transform: [{ rotate: spin }] }]}
         />
       </View>
+
+      {/* Share Video Modal */}
+      <ShareVideoModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        feedItemId={id}
+      />
     </View>
   );
 }

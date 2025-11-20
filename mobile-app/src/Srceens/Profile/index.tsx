@@ -17,23 +17,16 @@ import { useAuth } from "../../Context/AuthProvider";
 import UserDetailService from "../../Services/UserDetailService";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import { useConversations } from "../../Context/ConversationProvider";
-import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
-import { fetchVideosByUserId } from "../../Services/VideoService";
+import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
+import {
+  fetchFeedItemsByUserId,
+  VideoItem,
+} from "../../Services/FeedItemService";
 import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
+import { FeedItemType } from "../../Types/response/FeedItemResponse";
 
 const { width } = Dimensions.get("window");
-
-interface VideoItem {
-  id: string;
-  uri: string;
-  title: string;
-  likes: number;
-  comments: number;
-  shares: number;
-  outstanding: number;
-  thumbnailUrl?: string;
-}
 
 export default function Profile() {
   const navigation = useNavigation<any>();
@@ -44,7 +37,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'liked'>('posts');
+  const [activeTab, setActiveTab] = useState<"posts" | "liked">("posts");
   const [totalVideos, setTotalVideos] = useState(0);
   const { clearConversations } = useConversations();
 
@@ -95,13 +88,13 @@ export default function Profile() {
   const fetchUserVideos = async (userId: string) => {
     try {
       setVideosLoading(true);
-      const response = await fetchVideosByUserId(userId, 0, 50);
+      const response = await fetchFeedItemsByUserId(userId, 0, 50);
       if (response.code === 1000 && response.result) {
         setVideos(response.result.videos);
         setTotalVideos(response.result.totalElements);
       }
     } catch (error) {
-      console.error("Error fetching user videos:", error);
+      console.error("Error fetching user feed items:", error);
     } finally {
       setVideosLoading(false);
     }
@@ -115,7 +108,6 @@ export default function Profile() {
     }
     return num.toString();
   };
-
 
   if (loading) {
     return (
@@ -133,10 +125,7 @@ export default function Profile() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <ScrollView 
-        className="flex-1" 
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="flex-row justify-between items-center px-4 py-3">
           <Text className="text-gray-900 text-lg font-semibold">Profile</Text>
@@ -157,15 +146,12 @@ export default function Profile() {
                 userDetails?.avatar?.fileName && userDetails.id
                   ? getAvatarUrl(userDetails.id, userDetails.avatar.fileName)
                   : null;
-              return avatarUrl ? (
+              const avatarSource = avatarUrl
+                ? { uri: avatarUrl }
+                : UNKNOWN_AVATAR;
+              return (
                 <Image
-                  source={{ uri: avatarUrl }}
-                  className="w-24 h-24 rounded-full"
-                  style={{ resizeMode: "cover" }}
-                />
-              ) : (
-                <Image
-                  source={require('../../../assets/unknown-avatar.png')}
+                  source={avatarSource}
                   className="w-24 h-24 rounded-full"
                   style={{ resizeMode: "cover" }}
                 />
@@ -265,20 +251,24 @@ export default function Profile() {
         {/* Tabs Section */}
         <View className="border-t border-gray-300">
           <View className="flex-row">
-            <TouchableOpacity 
-              className={`flex-1 py-4 border-b-2 ${activeTab === 'posts' ? 'border-gray-900' : 'border-transparent'}`}
-              onPress={() => setActiveTab('posts')}
+            <TouchableOpacity
+              className={`flex-1 py-4 border-b-2 ${activeTab === "posts" ? "border-gray-900" : "border-transparent"}`}
+              onPress={() => setActiveTab("posts")}
             >
-              <Text className={`text-center font-semibold ${activeTab === 'posts' ? 'text-gray-900' : 'text-gray-600'}`}>
+              <Text
+                className={`text-center font-semibold ${activeTab === "posts" ? "text-gray-900" : "text-gray-600"}`}
+              >
                 Posts
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              className={`flex-1 py-4 border-b-2 ${activeTab === 'liked' ? 'border-gray-900' : 'border-transparent'}`}
-              onPress={() => setActiveTab('liked')}
+            <TouchableOpacity
+              className={`flex-1 py-4 border-b-2 ${activeTab === "liked" ? "border-gray-900" : "border-transparent"}`}
+              onPress={() => setActiveTab("liked")}
             >
-              <Text className={`text-center font-semibold ${activeTab === 'liked' ? 'text-gray-900' : 'text-gray-600'}`}>
+              <Text
+                className={`text-center font-semibold ${activeTab === "liked" ? "text-gray-900" : "text-gray-600"}`}
+              >
                 Liked
               </Text>
             </TouchableOpacity>
@@ -286,7 +276,7 @@ export default function Profile() {
         </View>
 
         {/* Videos Grid */}
-        {activeTab === 'posts' && (
+        {activeTab === "posts" && (
           <View className="flex-1 px-2 py-2">
             {videosLoading ? (
               <View className="items-center justify-center py-20">
@@ -303,72 +293,81 @@ export default function Profile() {
                   When you post videos, they'll appear here
                 </Text>
               </View>
-              ) : (
-                <FlatList
-                  data={videos}
-                  numColumns={3}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      className="m-1 bg-gray-900 rounded-lg overflow-hidden"
-                      style={{ 
-                        width: (width - 24) / 3, 
-                        height: ((width - 24) / 3) * 16 / 9
-                      }}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        navigation.navigate('Home', { videoId: item.id });
-                      }}
-                    >
-                      {item.thumbnailUrl ? (
-                        <Image
-                          source={{ uri: item.thumbnailUrl }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <Video
-                          source={{ uri: item.uri }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode={ResizeMode.COVER}
-                          shouldPlay={false}
-                          isLooping={false}
-                          isMuted
-                          useNativeControls={false}
-                        />
-                      )}
-                      
-                      {/* Play Icon Overlay */}
-                      <View className="absolute inset-0 justify-center items-center">
-                        <View className="bg-black/30 rounded-full p-2">
-                          <Ionicons name="play" size={20} color="white" />
-                        </View>
-                      </View>
+            ) : (
+              <FlatList
+                data={videos}
+                numColumns={3}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    className="m-1 bg-gray-900 rounded-lg overflow-hidden"
+                    style={{
+                      width: (width - 24) / 3,
+                      height: (((width - 24) / 3) * 16) / 9,
+                    }}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      navigation.navigate("Home", { videoId: item.id });
+                    }}
+                  >
+                    {item.thumbnailUrl ? (
+                      <Image
+                        source={{ uri: item.thumbnailUrl }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : item.feedItemType === FeedItemType.VIDEO ? (
+                      <Video
+                        source={{ uri: item.uri }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode={ResizeMode.COVER}
+                        shouldPlay={false}
+                        isLooping={false}
+                        isMuted
+                        useNativeControls={false}
+                      />
+                    ) : null}
 
-                      {/* Bottom Info */}
-                      <View className="absolute bottom-0 left-0 right-0 p-1.5" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                        <View className="flex-row items-center">
-                          <Ionicons name="heart" size={10} color="white" />
-                          <Text className="text-white text-xs ml-1 font-semibold">
-                            {formatNumber(item.likes || 0)}
-                          </Text>
-                        </View>
+                    {/* Icon Overlay */}
+                    <View className="absolute inset-0 justify-center items-center">
+                      <View className="bg-black/30 rounded-full p-2">
+                        {item.feedItemType === FeedItemType.IMAGE_SLIDE ? (
+                          <Ionicons name="images" size={20} color="white" />
+                        ) : (
+                          <Ionicons name="play" size={20} color="white" />
+                        )}
                       </View>
-                    </TouchableOpacity>
-                  )}
-                />
-              )}
+                    </View>
+
+                    {/* Bottom Info */}
+                    <View
+                      className="absolute bottom-0 left-0 right-0 p-1.5"
+                      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                    >
+                      <View className="flex-row items-center">
+                        <Ionicons name="heart" size={10} color="white" />
+                        <Text className="text-white text-xs ml-1 font-semibold">
+                          {formatNumber(item.likes || 0)}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
         )}
 
-        {activeTab === 'liked' && (
+        {activeTab === "liked" && (
           <View className="flex-1 px-4 py-6">
             <View className="items-center justify-center py-20">
               <View className="w-16 h-16 bg-gray-200 rounded-full justify-center items-center mb-4">
                 <Text className="text-gray-600 text-2xl">❤️</Text>
               </View>
-              <Text className="text-gray-600 text-lg mb-2">No liked videos</Text>
+              <Text className="text-gray-600 text-lg mb-2">
+                No liked videos
+              </Text>
               <Text className="text-gray-500 text-sm text-center">
                 Videos you like will appear here
               </Text>
