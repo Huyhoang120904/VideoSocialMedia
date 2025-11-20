@@ -7,14 +7,19 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
 import { ChatMessageType } from "../../Types/common/ChatMessageType";
-import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
-import { StyleSheet } from "react-native";
+import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
+import SharedVideoMessage from "./SharedVideoMessage";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const MAX_BUBBLE_WIDTH = Math.min(SCREEN_WIDTH * 0.8, SCREEN_WIDTH - 80);
+const MAX_MEDIA_WIDTH = Math.min(SCREEN_WIDTH * 0.9, SCREEN_WIDTH - 48);
 
 interface MessageBubbleProps {
   message: ChatMessageResponse;
@@ -47,6 +52,7 @@ export default function MessageBubble({
   const [fullScreenImageUrl, setFullScreenImageUrl] = useState<string | null>(
     null
   );
+  const [showActionSheet, setShowActionSheet] = useState(false);
 
   useEffect(() => {
     setIsVideoBuffering(true);
@@ -59,6 +65,9 @@ export default function MessageBubble({
     (message.messageType === ChatMessageType.IMAGE ||
       message.messageType === ChatMessageType.VIDEO) &&
     !!message.file?.url;
+
+  const isTextMessage = message.messageType === ChatMessageType.TEXT;
+  const shouldShowBubble = isTextMessage;
 
   const hasCustomCaption = useMemo(() => {
     if (!message.message) return false;
@@ -82,12 +91,12 @@ export default function MessageBubble({
           onPress={() => setFullScreenImageUrl(message.file!.url)}
         >
           <View
-            className="overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black/5"
-            style={styles.mediaWrapper}
+            className="self-stretch overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black/5"
+            style={mediaWrapperStyle}
           >
             <Image
               source={{ uri: message.file.url }}
-              style={styles.mediaElement}
+              className="w-full h-full"
               resizeMode="cover"
             />
           </View>
@@ -111,13 +120,13 @@ export default function MessageBubble({
 
     return (
       <View
-        className="overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black"
-        style={styles.mediaWrapper}
+        className="self-stretch overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black"
+        style={mediaWrapperStyle}
       >
         <Video
           key={`${message.id}-${message.file.url}`}
           source={{ uri: message.file.url }}
-          style={styles.mediaElement}
+          className="w-full h-full bg-black"
           resizeMode={ResizeMode.COVER}
           useNativeControls
           onLoadStart={() => {
@@ -172,10 +181,27 @@ export default function MessageBubble({
     ? (["#111827", "#0F172A"] as [string, string])
     : (["#FFFFFF", "#F1F5F9"] as [string, string]);
 
-  const bubbleStyles = [
-    styles.bubbleBase,
-    isMyMessage ? styles.myBubble : styles.otherBubble,
-  ];
+  const bubbleClassName = [
+    "px-4 py-3 rounded-[28px] border border-white/5 shrink",
+    isMyMessage
+      ? "rounded-br-[10px] shadow-lg shadow-slate-900/40"
+      : "rounded-bl-[10px] shadow-md shadow-slate-900/10",
+  ].join(" ");
+
+  const bubbleContainerStyle = {
+    maxWidth: MAX_BUBBLE_WIDTH,
+    flexShrink: 1,
+  };
+
+  const nonBubbleContainerStyle = {
+    maxWidth: MAX_MEDIA_WIDTH,
+    flexShrink: 1,
+    marginTop: 4,
+  };
+
+  const mediaWrapperStyle = {
+    aspectRatio: 4 / 3,
+  };
 
   if (isEditing) {
     return (
@@ -209,117 +235,165 @@ export default function MessageBubble({
     );
   }
 
+  const renderMainContent = () => {
+    if (
+      message.messageType === ChatMessageType.SHARED_VIDEO &&
+      message.feedItemId
+    ) {
+      return (
+        <SharedVideoMessage
+          feedItemId={message.feedItemId}
+          messageText={message.message}
+          isMyMessage={isMyMessage}
+        />
+      );
+    }
+
+    if (isMediaMessage) {
+      return (
+        <>
+          {renderMediaPreview()}
+          {hasCustomCaption && message.message ? (
+            <Text
+              className={`text-sm mt-2 ${
+                isMyMessage ? "text-white/90" : "text-gray-900"
+              }`}
+            >
+              {message.message}
+            </Text>
+          ) : null}
+        </>
+      );
+    }
+
+    return (
+      <Text
+        className={`text-sm leading-5 ${
+          isMyMessage ? "text-white" : "text-gray-900"
+        }`}
+      >
+        {message.message}
+      </Text>
+    );
+  };
+
+  const renderMetaInfo = (withinBubble: boolean) => {
+    const timestampColor = withinBubble
+      ? isMyMessage
+        ? "#ffffffb3"
+        : "#475569"
+      : isMyMessage
+        ? "#cbd5f5"
+        : "#475569";
+
+    const rowClasses = withinBubble
+      ? "flex-row justify-between items-center mt-3"
+      : "flex-row justify-between items-center mt-1 max-w-[90%]";
+
+    return (
+      <View
+        className={`${rowClasses} ${isMyMessage ? "self-end" : "self-start"}`}
+      >
+        <View className="flex-row items-center gap-2">
+          <Text className="text-[11px]" style={{ color: timestampColor }}>
+            {new Date(message.createdAt as string).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+          {isMyMessage && (
+            <View className="flex-row items-center gap-1">
+              {message.readCount && message.readCount > 0 ? (
+                <View className="flex-row items-center gap-1">
+                  <Ionicons
+                    name="checkmark-done"
+                    size={12}
+                    color={message.isReadByCurrentUser ? "#34D399" : "#F9A8D4"}
+                  />
+                  {message.readCount > 1 && (
+                    <Text
+                      className="text-[11px]"
+                      style={{ color: timestampColor }}
+                    >
+                      {message.readCount}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Ionicons name="checkmark" size={12} color={timestampColor} />
+              )}
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const mainContent = renderMainContent();
+
+  const bubbleWrapperAlignment = isMyMessage ? "self-end" : "self-start";
+
+  const contentNode = shouldShowBubble ? (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onLongPress={() => setShowActionSheet(isMyMessage)}
+      delayLongPress={250}
+      style={bubbleContainerStyle}
+      className={`shrink ${bubbleWrapperAlignment}`}
+    >
+      <LinearGradient
+        colors={bubbleGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className={bubbleClassName}
+      >
+        {mainContent}
+        {renderMetaInfo(true)}
+      </LinearGradient>
+    </TouchableOpacity>
+  ) : (
+    <View
+      style={[nonBubbleContainerStyle]}
+      className={`shrink ${bubbleWrapperAlignment}`}
+    >
+      {mainContent}
+    </View>
+  );
+
   return (
     <View className={`mb-2 ${isMyMessage ? "items-end" : "items-start"}`}>
       <View
         className={`flex-row ${isMyMessage ? "flex-row-reverse" : "flex-row"} items-end`}
       >
-        {/* Avatar for non-my messages */}
         {!isMyMessage && (
           <View className="mr-2 mb-1">
             {(() => {
-              // Use the same logic as Profile screen
               const avatarUrl =
                 message.avatar?.fileName && message.senderId
                   ? getAvatarUrl(message.senderId, message.avatar.fileName)
                   : null;
-              return avatarUrl ? (
+              const avatarSource = avatarUrl
+                ? { uri: avatarUrl }
+                : UNKNOWN_AVATAR;
+              return (
                 <Image
-                  source={{ uri: avatarUrl }}
+                  source={avatarSource}
                   className="w-8 h-8 rounded-full"
                   style={{
                     backgroundColor: "#f3f4f6",
                     resizeMode: "cover",
                   }}
                 />
-              ) : (
-                <Image
-                  source={require('../../../assets/unknown-avatar.png')}
-                  className="w-8 h-8 rounded-full"
-                  style={{ resizeMode: "cover" }}
-                />
               );
             })()}
           </View>
         )}
 
-        <LinearGradient
-          colors={bubbleGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={bubbleStyles}
-        >
-          {renderMediaPreview()}
-
-          {!isMediaMessage || hasCustomCaption ? (
-            <Text
-              className={`text-sm leading-5 ${
-                isMyMessage ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {message.message}
-            </Text>
-          ) : null}
-
-          <View className="flex-row justify-between items-center mt-3">
-            <View className="flex-row items-center space-x-2">
-              <Text
-                className={`text-[11px] ${
-                  isMyMessage ? "text-white/70" : "text-gray-500"
-                }`}
-              >
-                {new Date(message.createdAt as string).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-
-              {/* Read status indicators for my messages */}
-              {isMyMessage && (
-                <View className="flex-row items-center space-x-1">
-                  {message.readCount && message.readCount > 0 ? (
-                    <View className="flex-row items-center space-x-1">
-                      <Ionicons
-                        name="checkmark-done"
-                        size={12}
-                        color={
-                          message.isReadByCurrentUser ? "#34D399" : "#F9A8D4"
-                        }
-                      />
-                      {message.readCount > 1 && (
-                        <Text className="text-[11px] text-white/70">
-                          {message.readCount}
-                        </Text>
-                      )}
-                    </View>
-                  ) : (
-                    <Ionicons name="checkmark" size={12} color="#CBD5F5" />
-                  )}
-                </View>
-              )}
-            </View>
-
-            {isMyMessage && (
-              <View className="flex-row space-x-2">
-                <TouchableOpacity
-                  onPress={() => onStartEditing(message)}
-                  className="p-1.5 bg-white/15 rounded-full"
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="create-outline" size={14} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => onDeleteMessage(message.id)}
-                  className="p-1.5 bg-white/15 rounded-full"
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="trash-outline" size={14} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </LinearGradient>
+        {contentNode}
       </View>
+
+      {!shouldShowBubble && renderMetaInfo(false)}
+
       <Modal
         visible={!!fullScreenImageUrl}
         transparent
@@ -343,7 +417,7 @@ export default function MessageBubble({
               {fullScreenImageUrl && (
                 <Image
                   source={{ uri: fullScreenImageUrl }}
-                  style={styles.fullScreenImage}
+                  className="w-full h-full"
                   resizeMode="contain"
                 />
               )}
@@ -351,48 +425,68 @@ export default function MessageBubble({
           </TouchableOpacity>
         </View>
       </Modal>
+      <Modal
+        visible={showActionSheet}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionSheet(false)}
+      >
+        <TouchableOpacity
+          className="flex-1 bg-slate-900/55"
+          activeOpacity={1}
+          onPress={() => setShowActionSheet(false)}
+        />
+        <View className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white p-5 gap-3 shadow-2xl">
+          <Text className="text-base font-semibold text-slate-900 text-center mb-1">
+            Message actions
+          </Text>
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-1"
+            onPress={() => {
+              setShowActionSheet(false);
+              onStartEditing(message);
+            }}
+          >
+            <Ionicons
+              name="create-outline"
+              size={18}
+              color="#0f172a"
+              style={{ marginRight: 12 }}
+            />
+            <Text className="text-[15px] text-slate-900 font-medium">
+              Edit message
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-1"
+            onPress={() => {
+              setShowActionSheet(false);
+              onDeleteMessage(message.id);
+            }}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={18}
+              color="#dc2626"
+              style={{ marginRight: 12 }}
+            />
+            <Text
+              className="text-[15px] font-medium"
+              style={{ color: "#dc2626" }}
+            >
+              Delete message
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="mt-1 py-3 items-center rounded-xl bg-slate-100"
+            onPress={() => setShowActionSheet(false)}
+          >
+            <Text className="text-[15px] text-slate-900 font-semibold">
+              Cancel
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  bubbleBase: {
-    maxWidth: "85%",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  myBubble: {
-    borderBottomRightRadius: 10,
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  otherBubble: {
-    borderBottomLeftRadius: 10,
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  mediaWrapper: {
-    width: "100%",
-    aspectRatio: 4 / 3,
-    alignSelf: "stretch",
-    backgroundColor: "#000",
-  },
-  mediaElement: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#000",
-  },
-  fullScreenImage: {
-    width: "100%",
-    height: "100%",
-  },
-});

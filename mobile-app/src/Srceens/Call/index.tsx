@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
+import { UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 
 type CallNavigationProp = StackNavigationProp<AuthedStackParamList, "Call">;
 
@@ -134,11 +135,7 @@ const CallScreen = () => {
           {/* User Avatar/Info */}
           <View className="items-center mb-8">
             <Image
-              source={
-                userAvatar
-                  ? { uri: userAvatar }
-                  : require("../../../assets/unknown-avatar.png")
-              }
+              source={userAvatar ? { uri: userAvatar } : UNKNOWN_AVATAR}
               className={`w-32 h-32 rounded-full mb-4 ${
                 callStatus === "connected" ? "border-4 border-green-500" : ""
               }`}

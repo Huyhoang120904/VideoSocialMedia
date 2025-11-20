@@ -10,7 +10,6 @@ import { VideoView, useVideoPlayer } from "expo-video";
 import { Audio } from "expo-av";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { theme } from "../../constants/theme";
 import { dimensions } from "../../Utils/responsive";
 import RightVideo from "./RightVideo";
@@ -20,6 +19,7 @@ import VideoOptionsModal from "./VideoOptionsModal";
 import UserInteractionService from "../../Services/UserInteractionService";
 import UserDetailService from "../../Services/UserDetailService";
 import { useAuth } from "../../Context/AuthProvider";
+import { useSafeBottomTabBarHeight } from "../../Hooks/useSafeBottomTabBarHeight";
 
 interface VideoData {
   id: string;
@@ -87,7 +87,7 @@ const VideoCard: React.FC<VideoCardProps> = memo(
     const { isAuthenticated } = useAuth();
 
     const insets = useSafeAreaInsets();
-    const tabBarHeight = useBottomTabBarHeight();
+    const tabBarHeight = useSafeBottomTabBarHeight();
     // Remove adding top safe-area to video height — it was increasing the
     // total item height and effectively pushing BottomVideo/RightVideo up.
     const videoHeight = itemHeight;

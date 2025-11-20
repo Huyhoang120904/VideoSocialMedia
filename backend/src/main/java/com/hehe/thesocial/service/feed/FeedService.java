@@ -8,5 +8,7 @@ import org.springframework.data.domain.Pageable;
 public interface FeedService {
     Page<FeedItemResponse> getAllFeedItems(Pageable pageable);
     Page<FeedItemResponse> getPersonalizedFeed(Pageable pageable);
+    Page<FeedItemResponse> getExploreFeed(Pageable pageable);
+    Page<FeedItemResponse> getFollowingFeed(Pageable pageable);
 }
 

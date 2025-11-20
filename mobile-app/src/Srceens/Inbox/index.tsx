@@ -14,7 +14,7 @@ import NotificationsList from "../../Components/Inbox/NotificationsList";
 import RequestsList from "../../Components/Inbox/RequestsList";
 import NewestMessageIndicator from "../../Components/Inbox/NewestMessageIndicator";
 import UserDetailService from "../../Services/UserDetailService";
-import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
+import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 
 type InboxNavigationProp = StackNavigationProp<AuthedStackParamList>;
 
@@ -73,9 +73,7 @@ export default function Inbox() {
     navigation.navigate("Conversation", {
       conversationId: item.conversationId,
       conversationName: item.conversationName,
-      avatar: avatarUrl
-        ? { uri: avatarUrl }
-        : require("../../../assets/unknown-avatar.png"),
+      avatar: avatarUrl ? { uri: avatarUrl } : UNKNOWN_AVATAR,
     });
   };
 

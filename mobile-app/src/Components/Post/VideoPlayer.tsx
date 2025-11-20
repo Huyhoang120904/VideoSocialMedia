@@ -3,7 +3,6 @@ import { View, Pressable, Dimensions, Text, StyleSheet } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Audio } from "expo-av";
 import { FontAwesome6 } from "@expo/vector-icons";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 const { width: screenWidth } = Dimensions.get("window");
 

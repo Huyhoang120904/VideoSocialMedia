@@ -14,6 +14,7 @@ import FollowersListScreen from "../Srceens/FollowersList";
 import EditProfileScreen from "../Srceens/EditProfile";
 import CallScreen from "../Srceens/Call";
 import AIChatScreen from "../Srceens/AIChat";
+import SharedVideoPreviewScreen from "../Srceens/SharedVideoPreview";
 import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
@@ -42,6 +43,10 @@ export default function RootNavigation() {
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Call" component={CallScreen} />
       <Stack.Screen name="AIChat" component={AIChatScreen} />
+      <Stack.Screen
+        name="SharedVideoPreview"
+        component={SharedVideoPreviewScreen}
+      />
     </Stack.Navigator>
   );
 

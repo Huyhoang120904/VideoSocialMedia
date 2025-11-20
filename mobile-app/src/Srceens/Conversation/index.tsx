@@ -653,30 +653,43 @@ const ConversationScreen = () => {
       <View className="absolute bottom-32 left-6 w-12 h-12 bg-blue-100 rounded-full opacity-15" />
 
       {/* Header - Fixed at top */}
-      <SafeAreaView
-        edges={["top"]}
-        onLayout={(event) => {
-          setHeaderHeight(event.nativeEvent.layout.height);
-        }}
+      <View
+        pointerEvents="box-none"
         style={{
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 20,
+          zIndex: 30,
+          elevation: 30,
         }}
       >
-        <ConversationHeader
-          conversationName={conversationName}
-          avatarUrl={avatarUrl}
-          fadeAnim={fadeAnim}
-          slideAnim={slideAnim}
-          onBackPress={handleBackPress}
-          onSearchPress={handleSearchPress}
-          onOptionsPress={handleOptionsPress}
-          isAiConversation={isAiConversation}
-        />
-      </SafeAreaView>
+        <SafeAreaView
+          edges={["top"]}
+          onLayout={(event) => {
+            setHeaderHeight(event.nativeEvent.layout.height);
+          }}
+          style={{
+            backgroundColor: "white",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            elevation: 30,
+          }}
+        >
+          <ConversationHeader
+            conversationName={conversationName}
+            avatarUrl={avatarUrl}
+            fadeAnim={fadeAnim}
+            slideAnim={slideAnim}
+            onBackPress={handleBackPress}
+            onSearchPress={handleSearchPress}
+            onOptionsPress={handleOptionsPress}
+            isAiConversation={isAiConversation}
+          />
+        </SafeAreaView>
+      </View>
 
       <View style={{ height: headerHeight }} />
 

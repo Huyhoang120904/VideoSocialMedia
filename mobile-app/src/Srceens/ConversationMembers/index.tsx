@@ -19,7 +19,7 @@ import { AuthedStackParamList } from "../../Types/response/navigation.types";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
 import ConversationService from "../../Services/ConversationService";
 import UserDetailService from "../../Services/UserDetailService";
-import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
+import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 
 type ConversationMembersNavigationProp = StackNavigationProp<
   AuthedStackParamList,
@@ -140,13 +140,10 @@ const ConversationMembersScreen = () => {
             member.avatar?.fileName && member.id
               ? getAvatarUrl(member.id, member.avatar.fileName)
               : null;
+          const avatarSource = avatarUrl ? { uri: avatarUrl } : UNKNOWN_AVATAR;
           return (
             <Image
-              source={
-                avatarUrl
-                  ? { uri: avatarUrl }
-                  : require("../../../assets/unknown-avatar.png")
-              }
+              source={avatarSource}
               className="w-12 h-12 rounded-full mr-4"
               resizeMode="cover"
             />

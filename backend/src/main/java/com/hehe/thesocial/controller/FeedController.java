@@ -53,6 +53,37 @@ public class FeedController {
                 .build());
     }
 
+    @GetMapping("/explore")
+    public ResponseEntity<ApiResponse<Page<FeedItemResponse>>> getExploreFeed(
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+
+        log.info("Fetching personalized feed items with page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+//        Page<FeedItemResponse> feedItems = feedService.getExploreFeed(pageable);
+
+        Page<FeedItemResponse> feedItems = feedService.getPersonalizedFeed(pageable);
+
+        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
+                .result(feedItems)
+                .build());
+    }
+
+    @GetMapping("/following")
+    public ResponseEntity<ApiResponse<Page<FeedItemResponse>>> getFollowingFeed(
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+
+        log.info("Fetching personalized feed items with page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<FeedItemResponse> feedItems = feedService.getFollowingFeed(pageable);
+
+        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
+                .result(feedItems)
+                .build());
+    }
+
+
 
 
 }

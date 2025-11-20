@@ -752,6 +752,69 @@ Get feed items (videos, image slides).
 
 ---
 
+#### GET /feed/personal
+
+Get personalized recommendations for the authenticated user.
+
+**Headers**: Requires authentication
+
+**Query Parameters**: Same as `GET /feed`
+
+**Response** (`200 OK`): `Page<FeedItemResponse>`
+
+---
+
+#### GET /feed/explore
+
+Get trending content for discovery (non-personalized but filtered to exclude items you've already consumed).
+
+**Headers**: Requires authentication
+
+**Query Parameters**: Same as `GET /feed`
+
+**Response** (`200 OK`): `Page<FeedItemResponse>`
+
+---
+
+#### GET /feed/following
+
+Get posts created by creators the user follows, sorted by recency.
+
+**Headers**: Requires authentication
+
+**Query Parameters**: Same as `GET /feed`
+
+**Response** (`200 OK`): `Page<FeedItemResponse>`
+
+---
+
+#### POST /feed-items/{feedItemId}/view
+
+Record a view for a feed item and add it to the authenticated user's watched list.
+
+**Path Parameters**:
+
+- `feedItemId` (string): ID of the feed item being viewed
+
+**Headers**: Requires authentication
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "View recorded successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "feedItemId": "feed_item_id",
+    "viewsCount": 123,
+    "watched": true
+  }
+}
+```
+
+---
+
 ## WebSocket Endpoints
 
 ### WebSocket Connection

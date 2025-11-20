@@ -23,6 +23,8 @@ public class GroupChatMessageRequest {
 
     String fileId;
 
+    String feedItemId;
+
     @AssertTrue(message = "Either message text or fileId must be provided")
     public boolean isValidPayload() {
         return (message != null && !message.isBlank()) || (fileId != null && !fileId.isBlank());

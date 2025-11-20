@@ -1,9 +1,9 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styles from "./styles";
+import { useSafeBottomTabBarHeight } from "../../Hooks/useSafeBottomTabBarHeight";
 
 interface BottomVideoProps {
   title?: string;
@@ -21,7 +21,7 @@ export default function BottomVideo({
   const [showFullDescription, setShowFullDescription] = React.useState(false);
 
   // Lấy chiều cao thực tế của tab bar và safe area
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useSafeBottomTabBarHeight();
   const insets = useSafeAreaInsets();
 
   // Tính bottom position: mong muốn là sát phía trên phần icon của tab bar

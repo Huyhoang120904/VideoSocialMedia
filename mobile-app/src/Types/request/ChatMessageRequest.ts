@@ -6,6 +6,7 @@ export interface DirectChatMessageRequest {
   receiverId: string;
   messageType: ChatMessageType;
   fileId?: string;
+  feedItemId?: string;
 }
 
 export interface ChatMessageRequest {
@@ -18,6 +19,7 @@ export interface GroupChatMessageRequest {
   groupId: string;
   messageType: ChatMessageType;
   fileId?: string;
+  feedItemId?: string;
 }
 
 export interface ChatMessageUpdateRequest {
