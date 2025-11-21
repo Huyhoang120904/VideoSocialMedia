@@ -309,8 +309,203 @@ After merge, verify:
 - [BACKEND_RULES.md](./BACKEND_RULES.md) - Coding standards
 - [ERROR_HANDLING.md](./ERROR_HANDLING.md) - Error handling patterns
 
+## Code Quality Patterns to Review
+
+### Mobile App Specific Checks
+
+**Service Layer Usage:**
+
+- [ ] All API calls go through service files
+- [ ] Services return `ApiResponse<T>` type
+- [ ] No UI logic in services (no Alert, no navigation)
+- [ ] Services use centralized `api` instance from HttpClient
+
+**Context Provider Checks:**
+
+- [ ] Context values are memoized with `useMemo`
+- [ ] Default values provided in context creation
+- [ ] State is cleared on logout/unmount
+- [ ] Loading states included in context when appropriate
+
+**Component State Management:**
+
+- [ ] Loading flags prevent duplicate API calls
+- [ ] Proper dependency arrays in `useEffect`
+- [ ] Effects are cleaned up (subscriptions, timers)
+- [ ] State updates use functional form when needed
+
+**Error Handling:**
+
+- [ ] All async operations have try-catch
+- [ ] User-friendly error messages displayed
+- [ ] Error states shown in UI with retry options
+- [ ] Errors logged to console for debugging
+
+**Navigation:**
+
+- [ ] Navigation is typed correctly
+- [ ] Route params accessed safely with type assertions
+- [ ] Parent navigation accessed correctly when needed
+
+**Image/URL Handling:**
+
+- [ ] Utility functions used for URL construction
+- [ ] Null/undefined URLs handled properly
+- [ ] No hardcoded URLs or IP addresses
+
+**Type Safety:**
+
+- [ ] No `any` types used
+- [ ] Proper TypeScript types from `Types/` directory
+- [ ] Helper types created when needed
+
+### Backend Specific Checks
+
+**Service Layer:**
+
+- [ ] Services implement interfaces
+- [ ] Constructor injection used (not field injection)
+- [ ] Optional handled properly (orElseThrow, not get())
+- [ ] Business logic in services, not controllers
+
+**Transaction Management:**
+
+- [ ] `@Transactional` used for multi-step operations
+- [ ] `readOnly = true` for query methods
+- [ ] Proper transaction propagation when needed
+
+**Error Handling:**
+
+- [ ] `AppException` with `ErrorCode` used
+- [ ] Errors logged with context
+- [ ] No generic RuntimeException thrown
+- [ ] Global exception handler catches all exceptions
+
+**Validation:**
+
+- [ ] `@Valid` annotation on request parameters
+- [ ] Custom validators for complex validation
+- [ ] Entity validation annotations used
+
+**Repository:**
+
+- [ ] Query methods used instead of manual filtering
+- [ ] Custom queries use `@Query` annotation
+- [ ] No N+1 query problems
+- [ ] Proper indexing on frequently queried fields
+
+**DTOs and Mappers:**
+
+- [ ] DTOs used for API communication
+- [ ] Entities not exposed directly
+- [ ] MapStruct used for mapping
+- [ ] Request/Response DTOs separated
+
+**Response Wrapping:**
+
+- [ ] All responses wrapped in `ApiResponse<T>`
+- [ ] Proper HTTP status codes
+- [ ] Consistent response format
+
+### Common Code Smells to Flag
+
+**Mobile App:**
+
+1. Direct API calls in components
+2. Missing loading states
+3. Missing error handling
+4. Hardcoded URLs
+5. Unmemoized context values
+6. Missing cleanup in effects
+7. Direct state mutation
+8. Missing current user filtering
+9. Using `any` type
+10. Missing empty states
+
+**Backend:**
+
+1. Field injection instead of constructor
+2. Missing `@Transactional` on multi-step operations
+3. Using `.get()` on Optional
+4. Exposing entities directly
+5. Missing `@Valid` on requests
+6. N+1 query problems
+7. Logging sensitive data
+8. Catching and swallowing exceptions
+9. Generic exceptions instead of AppException
+10. Missing response wrapping
+
+## Review Examples
+
+### Good Code Examples
+
+**Mobile - Service Pattern:**
+
+```typescript
+// ✅ Good - Service layer pattern
+const ConversationService = {
+  getMyConversations: async (
+    params?: PaginationParams
+  ): Promise<ApiResponse<Page<ConversationResponse>>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined)
+      queryParams.append("page", params.page.toString());
+    const url = `/conversations/me${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    const response = await api.get(url);
+    return response.data;
+  },
+};
+```
+
+**Backend - Service Pattern:**
+
+```java
+// ✅ Good - Service with proper error handling
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class VideoServiceImpl implements VideoService {
+    private final VideoRepository videoRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public VideoResponse getVideoById(String id) {
+        log.debug("Getting video by id: {}", id);
+        Video video = videoRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+        return videoMapper.toResponse(video);
+    }
+}
+```
+
+### Bad Code Examples to Flag
+
+**Mobile - Direct API Call:**
+
+```typescript
+// ❌ Bad - Direct API call in component
+const handleCreate = async () => {
+  const response = await api.post("/conversations", request);
+  // Should use ConversationService
+};
+```
+
+**Backend - Field Injection:**
+
+```java
+// ❌ Bad - Field injection
+@Service
+public class VideoServiceImpl {
+    @Autowired
+    private VideoRepository videoRepository; // Should use constructor injection
+}
+```
+
 ## Change Log
 
-| Version | Date       | Changes         | Author           |
-| ------- | ---------- | --------------- | ---------------- |
-| 1.0     | 2025-01-27 | Initial version | Development Team |
+| Version | Date       | Changes                                         | Author           |
+| ------- | ---------- | ----------------------------------------------- | ---------------- |
+| 1.0     | 2025-01-27 | Initial version                                 | Development Team |
+| 1.1     | 2025-01-27 | Added code quality patterns and review examples | Development Team |

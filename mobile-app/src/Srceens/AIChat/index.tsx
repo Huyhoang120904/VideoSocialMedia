@@ -1,55 +1,199 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
   KeyboardAvoidingView,
   Platform,
   Alert,
   Animated,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useAuth } from "../../Context/AuthProvider";
 import { useChatMessages } from "../../Context/ChatMessageProvider";
-import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
 import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
+import { ChatMessageResponse } from "../../Types/response/ChatMessageResponse";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
-import ChatMessageService from "../../Services/ChatMessageService";
 import UserDetailService from "../../Services/UserDetailService";
 import ConversationHeader from "../../Components/Conversation/ConversationHeader";
-import MessagesList from "../../Components/Conversation/MessagesList";
+import AIChatMessagesList from "../../Components/AIChat/MessagesList";
 import MessageInput from "../../Components/Conversation/MessageInput";
+import ConversationBackground from "../../Components/Conversation/ConversationBackground";
+import { useAIConversation } from "../../Hooks/useAIConversation";
+import { useAiConversationMessages } from "../../Hooks/useAiConversationMessages";
+import { useConversationWebSocket } from "../../Hooks/useConversationWebSocket";
 
 type AIChatNavigationProp = StackNavigationProp<AuthedStackParamList, "AIChat">;
 
 const AIChatScreen = () => {
   const navigation = useNavigation<AIChatNavigationProp>();
+  const insets = useSafeAreaInsets();
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [editingMessage, setEditingMessage] =
-    useState<ChatMessageResponse | null>(null);
-  const [editText, setEditText] = useState("");
   const [currentUserDetail, setCurrentUserDetail] =
     useState<UserDetailResponse | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
-  const [aiConversationId, setAiConversationId] = useState<string | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const { isAuthenticated } = useAuth();
   const {
     messages,
     isMessagesLoading,
     getChatMessagesByConversationId,
+    addMessage,
+    updateMessage,
+    removeMessage,
     clearCurrentConversation,
   } = useChatMessages();
 
   const conversationName = "AI Assistant";
-  const AI_USER_ID = "ai-system";
-  const AI_CONVERSATION_STORAGE_KEY = "@ai_conversation_id";
+  const isAiConversation = true;
+
+  // Use ref to track messages for duplicate detection (avoids stale closure)
+  const messagesRef = React.useRef(messages);
+  React.useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // Load AI conversation
+  const { aiConversationId, updateConversationId, clearConversation } =
+    useAIConversation({
+      isAuthenticated,
+      onConversationLoaded: (conversationId) => {
+        getChatMessagesByConversationId(conversationId);
+      },
+      onError: () => {
+        clearCurrentConversation();
+      },
+    });
+
+  // Use AI-specific message handling hook
+  const {
+    isLoading: isMessageLoading,
+    editingMessage,
+    editText,
+    setEditText,
+    handleSend,
+    handleDeleteMessage,
+    startEditing,
+    cancelEditing,
+    saveEdit,
+  } = useAiConversationMessages({
+    conversationId: aiConversationId || "",
+    currentUserDetail,
+    onMessageAdded: (newMessage) => {
+      // Check if this message already exists by ID (ChatMessageProvider already does this)
+      // But also check by content for user messages to catch optimistic duplicates
+      const isUserMessage =
+        newMessage.sender === "me" ||
+        newMessage.senderId === currentUserDetail?.id;
+
+      if (isUserMessage) {
+        // For user messages, check if we have one with same content (optimistic or real)
+        // Use ref to get current messages (avoid stale closure)
+        const duplicateMessage = messagesRef.current.find(
+          (msg) =>
+            msg.message === newMessage.message &&
+            (msg.sender === "me" ||
+              msg.senderId === currentUserDetail?.id ||
+              (msg.senderId === newMessage.senderId &&
+                newMessage.senderId === currentUserDetail?.id))
+        );
+
+        if (duplicateMessage) {
+          if (duplicateMessage.id.startsWith("temp-")) {
+            // Replace optimistic with real message
+            console.log(
+              "🔄 Replacing optimistic message from API:",
+              duplicateMessage.id,
+              "->",
+              newMessage.id
+            );
+            updateMessage(duplicateMessage.id, newMessage);
+          } else {
+            // Already have real message, skip
+            console.log("⏭️ Duplicate user message, skipping:", newMessage.id);
+          }
+          // Update conversation ID even if we skip the message
+          if (newMessage.conversationId && !aiConversationId) {
+            updateConversationId(newMessage.conversationId);
+            // Don't reload messages here - we already have them via optimistic/WebSocket
+          }
+          return;
+        }
+      }
+
+      // No duplicate found, add the message
+      addMessage(newMessage);
+
+      // Update conversation ID if we got one from the message
+      // Only reload messages if we don't have a conversation ID yet
+      if (newMessage.conversationId && !aiConversationId) {
+        updateConversationId(newMessage.conversationId);
+        // Don't reload messages - we're already receiving them via optimistic/API/WebSocket
+        // getChatMessagesByConversationId(newMessage.conversationId);
+      }
+    },
+    onMessageUpdated: updateMessage,
+    onMessageRemoved: removeMessage,
+  });
+
+  // Handle WebSocket messages - check for duplicates with optimistic messages
+  const handleWebSocketMessage = (newMessage: ChatMessageResponse) => {
+    // Check if this is a user message
+    const isUserMessage =
+      newMessage.sender === "me" ||
+      newMessage.senderId === currentUserDetail?.id;
+
+    if (isUserMessage) {
+      // Check if we already have this message (by content and sender)
+      // Use ref to get current messages (avoid stale closure)
+      const existingMessage = messagesRef.current.find((msg) => {
+        const sameContent = msg.message === newMessage.message;
+        const sameSender =
+          msg.sender === "me" ||
+          msg.senderId === currentUserDetail?.id ||
+          (msg.senderId === newMessage.senderId &&
+            newMessage.senderId === currentUserDetail?.id);
+
+        return sameContent && sameSender;
+      });
+
+      if (existingMessage) {
+        // We already have this message (either optimistic or real)
+        if (existingMessage.id.startsWith("temp-")) {
+          // Replace optimistic message with real one
+          console.log(
+            "🔄 Replacing optimistic message from WebSocket:",
+            existingMessage.id,
+            "->",
+            newMessage.id
+          );
+          updateMessage(existingMessage.id, newMessage);
+        } else {
+          // Already have the real message, skip
+          console.log(
+            "⏭️ Duplicate message from WebSocket, skipping:",
+            newMessage.id
+          );
+        }
+        return; // Don't add the message
+      }
+    }
+
+    // Regular message (AI response or new user message), add it
+    addMessage(newMessage);
+  };
+
+  // WebSocket subscription (AI conversations skip WebSocket to prevent duplication)
+  useConversationWebSocket({
+    conversationId: aiConversationId || "",
+    isAiConversation: true,
+    onMessageReceived: handleWebSocketMessage,
+  });
 
   // Animation on component mount
   useEffect(() => {
@@ -67,56 +211,22 @@ const AIChatScreen = () => {
     ]).start();
   }, []);
 
-  // Use global ChatMessageProvider for consistent message handling
-
-  // Load current user and persisted conversation on mount
+  // Load current user details
   useEffect(() => {
-    const loadData = async () => {
+    const loadCurrentUser = async () => {
       if (!isAuthenticated) return;
 
       try {
-        // Load current user details
-        const userResponse = await UserDetailService.getMyDetails();
-        if (userResponse.result) {
-          setCurrentUserDetail(userResponse.result);
-        }
-
-        // Get or create AI conversation using the dedicated endpoint
-        try {
-          console.log("🤖 Getting AI conversation...");
-          const aiConversationResponse =
-            await ChatMessageService.getAiConversation();
-
-          if (aiConversationResponse.result) {
-            const conversationId = aiConversationResponse.result.conversationId;
-            setAiConversationId(conversationId);
-
-            // Store conversation ID for future sessions
-            await AsyncStorage.setItem(
-              AI_CONVERSATION_STORAGE_KEY,
-              conversationId
-            );
-            console.log("💾 Stored AI conversation ID:", conversationId);
-
-            // Load messages for the conversation
-            await getChatMessagesByConversationId(conversationId);
-            console.log("✅ Successfully loaded AI conversation and messages");
-          }
-        } catch (error: any) {
-          console.error("❌ Error getting AI conversation:", error);
-          // Clear any stored conversation ID if there's an error
-          await AsyncStorage.removeItem(AI_CONVERSATION_STORAGE_KEY);
-          setAiConversationId(null);
-          clearCurrentConversation();
+        const response = await UserDetailService.getMyDetails();
+        if (response.result) {
+          setCurrentUserDetail(response.result);
         }
       } catch (error) {
-        console.error("Error loading data:", error);
-        // Clear any potentially corrupted state
-        clearCurrentConversation();
+        console.error("Error loading current user:", error);
       }
     };
 
-    loadData();
+    loadCurrentUser();
   }, [isAuthenticated]);
 
   // Cleanup when component unmounts
@@ -126,130 +236,6 @@ const AIChatScreen = () => {
       clearCurrentConversation();
     };
   }, []);
-
-  // Send message to AI via RESTful API
-  const handleSend = async () => {
-    if (!message.trim() || !currentUserDetail) return;
-
-    const userMessageText = message.trim();
-    setMessage(""); // Clear input immediately
-    setIsLoading(true);
-
-    try {
-      console.log("📤 Sending message to AI:", userMessageText);
-      const response = await ChatMessageService.createAiChatMessage(
-        userMessageText,
-        AI_USER_ID
-      );
-
-      if (response.result) {
-        const conversationId = response.result.conversationId;
-
-        // Update conversation ID if we don't have one yet
-        if (!aiConversationId && conversationId) {
-          setAiConversationId(conversationId);
-
-          // Persist conversation ID for future sessions
-          await AsyncStorage.setItem(
-            AI_CONVERSATION_STORAGE_KEY,
-            conversationId
-          );
-          console.log("💾 Stored AI conversation ID:", conversationId);
-
-          // Load messages for the new conversation using global provider
-          if (conversationId) {
-            getChatMessagesByConversationId(conversationId);
-          }
-        } else if (aiConversationId) {
-          // For existing conversations, messages will be received via WebSocket
-          console.log(
-            "✅ User message sent, AI response will come via WebSocket"
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Error sending message to AI:", error);
-      Alert.alert("Error", "Failed to send message to AI. Please try again.");
-      // Restore message text
-      setMessage(userMessageText);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Edit message
-  const handleEditMessage = async (messageId: string, newText: string) => {
-    if (!newText.trim()) return;
-
-    setIsLoading(true);
-    try {
-      const response = await ChatMessageService.updateChatMessage(messageId, {
-        message: newText.trim(),
-      });
-
-      if (response.result) {
-        console.log("✏️ Message updated");
-        setEditingMessage(null);
-        setEditText("");
-        // Message will be updated via WebSocket
-      }
-    } catch (error) {
-      console.error("Error updating message:", error);
-      Alert.alert("Error", "Failed to update message. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Delete message
-  const handleDeleteMessage = async (messageId: string) => {
-    Alert.alert(
-      "Delete Message",
-      "Are you sure you want to delete this message?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              await ChatMessageService.deleteChatMessage(messageId);
-              console.log("🗑️ Message deleted");
-              // Message will be removed via WebSocket
-            } catch (error) {
-              console.error("Error deleting message:", error);
-              Alert.alert(
-                "Error",
-                "Failed to delete message. Please try again."
-              );
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // Start editing a message
-  const startEditing = (message: ChatMessageResponse) => {
-    setEditingMessage(message);
-    setEditText(message.message);
-  };
-
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditingMessage(null);
-    setEditText("");
-  };
-
-  // Save edit
-  const saveEdit = () => {
-    if (editingMessage && editText.trim()) {
-      handleEditMessage(editingMessage.id, editText);
-    }
-  };
 
   // Navigation handlers
   const handleBackPress = () => {
@@ -282,9 +268,7 @@ const AIChatScreen = () => {
                 style: "destructive",
                 onPress: async () => {
                   try {
-                    // Clear persisted conversation ID
-                    await AsyncStorage.removeItem(AI_CONVERSATION_STORAGE_KEY);
-                    setAiConversationId(null);
+                    await clearConversation();
                     clearCurrentConversation();
                     console.log("🗑️ AI conversation cleared");
                     Alert.alert("Success", "AI conversation cleared");
@@ -296,21 +280,6 @@ const AIChatScreen = () => {
               },
             ]
           );
-        },
-      },
-      {
-        text: "Debug: Clear Storage",
-        onPress: async () => {
-          try {
-            await AsyncStorage.removeItem(AI_CONVERSATION_STORAGE_KEY);
-            setAiConversationId(null);
-            clearCurrentConversation();
-            console.log("🗑️ Storage cleared for debugging");
-            Alert.alert("Debug", "Storage cleared");
-          } catch (error) {
-            console.error("Error clearing storage:", error);
-            Alert.alert("Error", "Failed to clear storage");
-          }
         },
       },
       {
@@ -327,41 +296,76 @@ const AIChatScreen = () => {
     ]);
   };
 
+  const handleSendMessage = async () => {
+    if (!message.trim() || !aiConversationId) {
+      // If no conversation ID yet, the message will create one
+      await handleSend(message);
+    } else {
+      await handleSend(message);
+    }
+    setMessage("");
+  };
+
+  const isLoading = isMessageLoading;
+
   return (
     <View className="flex-1 bg-white">
-      {/* Clean Background with subtle gradient */}
-      <LinearGradient
-        colors={["#fafafa", "#ffffff", "#f8fafc"]}
-        className="absolute inset-0"
-      />
+      <ConversationBackground />
 
-      {/* Minimal decorative elements with AI theme */}
-      <View className="absolute top-20 right-8 w-16 h-16 bg-purple-100 rounded-full opacity-20" />
-      <View className="absolute bottom-32 left-6 w-12 h-12 bg-indigo-100 rounded-full opacity-15" />
+      {/* Header - Fixed at top */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 30,
+          elevation: 30,
+        }}
+      >
+        <SafeAreaView
+          edges={["top"]}
+          onLayout={(event) => {
+            setHeaderHeight(event.nativeEvent.layout.height);
+          }}
+          style={{
+            backgroundColor: "white",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            elevation: 30,
+          }}
+        >
+          <ConversationHeader
+            conversationName={conversationName}
+            avatarUrl={null}
+            fadeAnim={fadeAnim}
+            slideAnim={slideAnim}
+            onBackPress={handleBackPress}
+            onSearchPress={handleSearchPress}
+            onOptionsPress={handleOptionsPress}
+            isAiConversation={true}
+          />
+        </SafeAreaView>
+      </View>
 
-      {/* Header */}
-      <SafeAreaView edges={["top"]}>
-        <ConversationHeader
-          conversationName={conversationName}
-          avatarUrl={null}
-          fadeAnim={fadeAnim}
-          slideAnim={slideAnim}
-          onBackPress={handleBackPress}
-          onSearchPress={handleSearchPress}
-          onOptionsPress={handleOptionsPress}
-          isAiConversation={true}
-        />
-      </SafeAreaView>
+      <View style={{ height: headerHeight }} />
 
-      {/* KeyboardAvoidingView wrapping both messages and input */}
+      {/* KeyboardAvoidingView wrapping only messages and input */}
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        behavior={Platform.select({ ios: "padding", android: "height" })}
+        keyboardVerticalOffset={Platform.select({
+          ios: headerHeight || insets.top + 60,
+          android: (headerHeight || insets.top + 60) + insets.bottom,
+        })}
+        enabled
       >
         {/* Messages List */}
         <View className="flex-1">
-          <MessagesList
+          <AIChatMessagesList
             messages={messages}
             isMessagesLoading={isMessagesLoading}
             editingMessage={editingMessage}
@@ -384,7 +388,19 @@ const AIChatScreen = () => {
           <MessageInput
             message={message}
             onMessageChange={setMessage}
-            onSend={handleSend}
+            onSend={handleSendMessage}
+            onImagePick={async () => {
+              Alert.alert(
+                "Info",
+                "Image attachments are not available for AI conversations."
+              );
+            }}
+            onVideoPick={async () => {
+              Alert.alert(
+                "Info",
+                "Video attachments are not available for AI conversations."
+              );
+            }}
             editingMessage={editingMessage}
             editText={editText}
             onEditTextChange={setEditText}

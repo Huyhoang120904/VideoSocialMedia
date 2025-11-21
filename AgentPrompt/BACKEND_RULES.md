@@ -672,8 +672,314 @@ public class JwtProperties {
 - [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) - Database design
 - [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) - API reference
 
+## Code Quality Patterns and Best Practices
+
+### Service Layer Patterns
+
+**Always use interfaces for services:**
+
+```java
+// ✅ Good - Interface first
+public interface VideoService {
+    VideoResponse getVideoById(String id);
+    Page<VideoResponse> getAllVideos(Pageable pageable);
+}
+
+@Service
+@RequiredArgsConstructor
+public class VideoServiceImpl implements VideoService {
+    // Implementation
+}
+```
+
+**Use constructor injection with Lombok:**
+
+```java
+// ✅ Good - Constructor injection with Lombok
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class VideoServiceImpl implements VideoService {
+    private final VideoRepository videoRepository;
+    private final VideoMapper videoMapper;
+}
+
+// ❌ Bad - Field injection
+@Service
+public class VideoServiceImpl {
+    @Autowired
+    private VideoRepository videoRepository;
+}
+```
+
+**Always handle Optional properly:**
+
+```java
+// ✅ Good - Proper Optional handling
+public Video getVideoById(String id) {
+    return videoRepository.findById(id)
+            .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+}
+
+// ❌ Bad - Unsafe get()
+public Video getVideoById(String id) {
+    return videoRepository.findById(id).get(); // Can throw NoSuchElementException
+}
+```
+
+### Transaction Management
+
+**Use @Transactional for multi-step operations:**
+
+```java
+// ✅ Good - Transactional method
+@Transactional
+public VideoUploadResponse uploadVideo(VideoUploadRequest request) {
+    FileDocument file = fileRepository.save(createFile(request));
+    Video video = videoRepository.save(createVideo(request, file));
+    // Both succeed or both rollback
+    return videoMapper.toResponse(video);
+}
+
+// ❌ Bad - No transaction
+public VideoUploadResponse uploadVideo(VideoUploadRequest request) {
+    FileDocument file = fileRepository.save(createFile(request));
+    // If this fails, file is saved but video is not
+    Video video = videoRepository.save(createVideo(request, file));
+    return videoMapper.toResponse(video);
+}
+```
+
+**Use read-only transactions for queries:**
+
+```java
+// ✅ Good - Read-only transaction
+@Transactional(readOnly = true)
+public Page<VideoResponse> getAllVideos(Pageable pageable) {
+    return videoRepository.findAll(pageable)
+            .map(videoMapper::toResponse);
+}
+```
+
+### Error Handling Patterns
+
+**Always use AppException with ErrorCode:**
+
+```java
+// ✅ Good - Custom exception
+public Video getVideoById(String id) {
+    return videoRepository.findById(id)
+            .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+}
+
+// ❌ Bad - Generic exception
+public Video getVideoById(String id) {
+    if (!videoRepository.existsById(id)) {
+        throw new RuntimeException("Video not found"); // Not standardized
+    }
+    return videoRepository.findById(id).get();
+}
+```
+
+**Log errors with context:**
+
+```java
+// ✅ Good - Logged with context
+@Slf4j
+public class VideoServiceImpl {
+    public void uploadVideo(VideoUploadRequest request) {
+        log.info("Uploading video: {}", request.getTitle());
+        try {
+            // Upload logic
+            log.debug("Video uploaded successfully: {}", videoId);
+        } catch (Exception e) {
+            log.error("Failed to upload video: {}", request.getTitle(), e);
+            throw new AppException(ErrorCode.ERROR_UPLOADING_FILE);
+        }
+    }
+}
+```
+
+### Validation Patterns
+
+**Always validate requests:**
+
+```java
+// ✅ Good - Validated request
+@PostMapping("/upload")
+public ResponseEntity<ApiResponse<VideoResponse>> uploadVideo(
+        @Valid @RequestBody VideoUploadRequest request) {
+    // Request is automatically validated
+    return ResponseEntity.ok(apiResponse);
+}
+
+// ❌ Bad - No validation
+@PostMapping("/upload")
+public ResponseEntity<ApiResponse<VideoResponse>> uploadVideo(
+        @RequestBody VideoUploadRequest request) {
+    // No validation - can receive invalid data
+}
+```
+
+**Use custom validators for complex validation:**
+
+```java
+// ✅ Good - Custom validator
+@Target({ElementType.PARAMETER, ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = ValidFileValidator.class)
+public @interface ValidFile {
+    String message() default "File is not valid";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+    long maxSize() default 50 * 1024 * 1024;
+    String[] types() default {};
+}
+```
+
+### Repository Patterns
+
+**Use query methods for common operations:**
+
+```java
+// ✅ Good - Query method
+public interface VideoRepository extends MongoRepository<Video, String> {
+    Page<Video> findByUploader(UserDetail uploader, Pageable pageable);
+    List<Video> findByTitleContaining(String title);
+    boolean existsByUploader(UserDetail uploader);
+}
+
+// ❌ Bad - Manual query in service
+public List<Video> getVideosByUser(UserDetail user) {
+    List<Video> allVideos = videoRepository.findAll();
+    return allVideos.stream()
+            .filter(v -> v.getUploader().equals(user))
+            .collect(Collectors.toList()); // Inefficient
+}
+```
+
+**Use @Query for complex queries:**
+
+```java
+// ✅ Good - Custom query
+@Query("{ 'uploader_ref': ?0, 'created_at': { $gte: ?1 } }")
+List<Video> findRecentVideosByUploader(UserDetail uploader, Instant since);
+```
+
+**Avoid N+1 query problems:**
+
+```java
+// ❌ Bad - N+1 queries
+for (User user : users) {
+    List<Video> videos = videoRepository.findByUploader(user);
+}
+
+// ✅ Good - Single query
+@Query("{ 'uploader_ref': { $in: ?0 } }")
+List<Video> findByUploaders(List<UserDetail> uploaders);
+```
+
+### DTO and Mapper Patterns
+
+**Always use DTOs for API communication:**
+
+```java
+// ✅ Good - DTO for request
+public class VideoUploadRequest {
+    @NotBlank
+    private String title;
+
+    @Size(max = 500)
+    private String description;
+
+    @NotNull
+    @ValidFile
+    private MultipartFile file;
+}
+
+// ❌ Bad - Using entity directly
+@PostMapping
+public ResponseEntity<Video> uploadVideo(@RequestBody Video video) {
+    // Entity exposed to API - security risk
+}
+```
+
+**Use MapStruct for mapping:**
+
+```java
+// ✅ Good - MapStruct mapper
+@Mapper(componentModel = "spring")
+public interface VideoMapper {
+    VideoResponse toResponse(Video video);
+    Video toEntity(VideoUploadRequest request);
+    List<VideoResponse> toResponseList(List<Video> videos);
+}
+```
+
+### Response Wrapping
+
+**Always wrap responses in ApiResponse:**
+
+```java
+// ✅ Good - Wrapped response
+@GetMapping("/{id}")
+public ResponseEntity<ApiResponse<VideoResponse>> getVideo(@PathVariable String id) {
+    VideoResponse video = videoService.getVideoById(id);
+    return ResponseEntity.ok(ApiResponse.<VideoResponse>builder()
+            .result(video)
+            .code(200)
+            .message("Success")
+            .timeStamp(Instant.now().toString())
+            .build());
+}
+```
+
+### Logging Best Practices
+
+**Use appropriate log levels:**
+
+```java
+// ✅ Good - Appropriate log levels
+@Slf4j
+public class VideoServiceImpl {
+    public void uploadVideo(VideoUploadRequest request) {
+        log.info("Uploading video: {}", request.getTitle()); // Info for important events
+        log.debug("Video details: {}", request); // Debug for detailed info
+        try {
+            // Logic
+        } catch (Exception e) {
+            log.error("Failed to upload video: {}", request.getTitle(), e); // Error for exceptions
+        }
+    }
+}
+```
+
+**Never log sensitive data:**
+
+```java
+// ❌ Bad - Logging sensitive data
+log.info("User login: username={}, password={}", username, password);
+
+// ✅ Good - No sensitive data
+log.info("User login attempt: username={}", username);
+```
+
+### Common Pitfalls to Avoid
+
+1. **Don't use field injection** - Use constructor injection
+2. **Don't forget @Transactional** - For multi-step operations
+3. **Don't use .get() on Optional** - Use orElseThrow()
+4. **Don't expose entities directly** - Use DTOs
+5. **Don't forget validation** - Always use @Valid
+6. **Don't create N+1 queries** - Use proper queries
+7. **Don't log sensitive data** - Never log passwords, tokens
+8. **Don't catch and swallow exceptions** - Log and rethrow or handle properly
+9. **Don't forget error codes** - Use ErrorCode enum
+10. **Don't forget to wrap responses** - Always use ApiResponse
+
 ## Change Log
 
-| Version | Date       | Changes         | Author       |
-| ------- | ---------- | --------------- | ------------ |
-| 1.0     | 2025-01-27 | Initial version | Backend Team |
+| Version | Date       | Changes                                        | Author       |
+| ------- | ---------- | ---------------------------------------------- | ------------ |
+| 1.0     | 2025-01-27 | Initial version                                | Backend Team |
+| 1.1     | 2025-01-27 | Added code quality patterns and best practices | Backend Team |

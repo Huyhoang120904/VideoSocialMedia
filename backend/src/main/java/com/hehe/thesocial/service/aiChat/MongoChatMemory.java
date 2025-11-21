@@ -19,6 +19,7 @@ import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
 
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MongoChatMemory implements ChatMemory {
@@ -68,46 +70,21 @@ public class MongoChatMemory implements ChatMemory {
 
     @Override
     public void add(String conversationId, List<Message> messages) {
+        // Note: This method is called by MessageChatMemoryAdvisor for automatic message persistence.
+        // However, since we now explicitly save messages in AiChatService.sendAiMessage(),
+        // this method should check for duplicates to avoid saving the same message twice.
+        // 
+        // For now, we'll skip saving here since messages are explicitly saved in the service layer.
+        // The advisor is primarily used for retrieving conversation history via the get() method.
+        
         // Validate conversation exists
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
 
-        UserDetail aiUserDetail = getOrCreateAiUser();
-        UserDetail currentUser = getCurrentUser();
-
-        // Get participant IDs for broadcasting
-        Set<String> participantIds = conversation.getUserDetails().stream()
-                .map(UserDetail::getId)
-                .collect(Collectors.toSet());
-
-        // Save each message to the database and broadcast
-        for (Message message : messages) {
-            ChatMessage chatMessage = ChatMessage.builder()
-                    .conversationId(conversationId)
-                    .message(message.getText())
-                    .edited(false)
-                    .build();
-
-            // Determine sender based on message type
-            if (message instanceof AssistantMessage) {
-                chatMessage.setSenderId(aiUserDetail.getId());
-            } else if (message instanceof UserMessage) {
-                chatMessage.setSenderId(currentUser.getId());
-            }
-            ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
-            
-            // Create response and broadcast
-            ChatMessageResponse response = chatMessageMapper.toChatMessageResponse(savedMessage);
-            
-            // Add sender's avatar to the response
-            UserDetail sender = getUserDetailById(savedMessage.getSenderId());
-            response.setAvatar(sender.getAvatar());
-
-            messageDeliveryService.deliverMessageToConversation(savedMessage.getConversationId(), response);
-            newestMessageBroadcastService.broadcastNewestMessage(savedMessage.getConversationId(), response);
-
-
-        }
+        // Skip automatic saving - messages are explicitly saved in AiChatService
+        // This prevents duplicate message saves while still allowing the advisor
+        // to retrieve conversation history via the get() method
+        log.debug("MongoChatMemory.add() called for conversation {}, but skipping save as messages are explicitly saved in service layer", conversationId);
     }
 
     @Override

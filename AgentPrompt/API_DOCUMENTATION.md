@@ -374,22 +374,7 @@ Create group chat message.
 
 **Response** (`201 Created`): ChatMessageResponse
 
-#### POST /chat-messages/ai
-
-Create AI chat message.
-
-**Request Body**:
-
-```json
-{
-  "recipientId": "ai_assistant_id",
-  "message": "What is the weather?",
-  "role": "user",
-  "content": "What is the weather?"
-}
-```
-
-**Response** (`201 Created`): ChatMessageResponse with AI response
+---
 
 #### PUT /chat-messages/{messageId}
 
@@ -547,6 +532,75 @@ Delete conversation.
 - `conversationId` (string): Conversation ID
 
 **Response** (`204 No Content`)
+
+---
+
+### AI Chat Endpoints
+
+#### POST /ai-chat/messages
+
+Send a message to AI and receive a response.
+
+**Request Body**:
+
+```json
+{
+  "message": "What is the weather today?"
+}
+```
+
+**Headers**: Requires authentication
+
+**Response** (`201 Created`):
+
+```json
+{
+  "code": 1000,
+  "message": "AI message sent successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "id": "message_id",
+    "conversationId": "conversation_id",
+    "senderId": "ai_assistant_id",
+    "message": "The weather today is sunny with a temperature of 72°F.",
+    "createdAt": "2025-01-27T12:00:00Z",
+    "edited": false,
+    "readParticipantsId": []
+  }
+}
+```
+
+#### GET /ai-chat/conversation
+
+Get or create the AI conversation for the current authenticated user.
+
+**Headers**: Requires authentication
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "AI conversation retrieved successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "conversationId": "conversation_id",
+    "conversationType": "DIRECT",
+    "conversationName": "AI Assistant",
+    "participants": [
+      {
+        "id": "user_detail_id",
+        "displayName": "John Doe"
+      },
+      {
+        "id": "ai_assistant_id",
+        "displayName": "AI Assistant"
+      }
+    ],
+    "createdAt": "2025-01-27T12:00:00Z"
+  }
+}
+```
 
 ---
 

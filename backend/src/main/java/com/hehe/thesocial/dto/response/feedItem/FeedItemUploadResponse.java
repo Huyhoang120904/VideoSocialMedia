@@ -31,5 +31,11 @@ public class FeedItemUploadResponse {
     String title;
     String description;
 
+    // Metadata fields
+    Long likeCount;
+    Long commentCount;
+    Long shareCount;
+    Long viewCount;
+
 }
 

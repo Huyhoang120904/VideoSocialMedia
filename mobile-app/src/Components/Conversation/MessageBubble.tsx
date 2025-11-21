@@ -87,16 +87,17 @@ export default function MessageBubble({
     if (message.messageType === ChatMessageType.IMAGE) {
       return (
         <TouchableOpacity
-          activeOpacity={0.85}
+          activeOpacity={0.9}
           onPress={() => setFullScreenImageUrl(message.file!.url)}
+          className="shadow-lg"
         >
           <View
-            className="self-stretch overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black/5"
+            className="overflow-hidden rounded-2xl border border-gray-200/50 mb-3 bg-gray-100"
             style={mediaWrapperStyle}
           >
             <Image
               source={{ uri: message.file.url }}
-              className="w-full h-full"
+              style={{ width: "100%", height: "100%" }}
               resizeMode="cover"
             />
           </View>
@@ -120,13 +121,17 @@ export default function MessageBubble({
 
     return (
       <View
-        className="self-stretch overflow-hidden rounded-3xl border border-white/10 mb-3 bg-black"
+        className="overflow-hidden rounded-2xl border border-gray-200/50 mb-3 bg-black shadow-lg"
         style={mediaWrapperStyle}
       >
         <Video
           key={`${message.id}-${message.file.url}`}
           source={{ uri: message.file.url }}
-          className="w-full h-full bg-black"
+          style={{
+            width: "100%",
+            height: "100%",
+            backgroundColor: "#000000",
+          }}
           resizeMode={ResizeMode.COVER}
           useNativeControls
           onLoadStart={() => {
@@ -149,8 +154,13 @@ export default function MessageBubble({
             <ActivityIndicator color="#ffffff" />
           ) : (
             !isVideoPlaying && (
-              <View className="w-12 h-12 bg-black/40 rounded-full items-center justify-center border border-white/40">
-                <Ionicons name="play" size={22} color="#ffffff" />
+              <View className="w-14 h-14 bg-black/50 rounded-full items-center justify-center border-2 border-white/50 shadow-xl">
+                <Ionicons
+                  name="play"
+                  size={24}
+                  color="#ffffff"
+                  className="ml-0.5"
+                />
               </View>
             )
           )}
@@ -158,17 +168,17 @@ export default function MessageBubble({
         {!videoError ? (
           <View
             pointerEvents="none"
-            className="absolute top-3 right-3 bg-black/45 rounded-full px-3 py-1 flex-row items-center"
+            className="absolute top-3 right-3 bg-black/60 rounded-full px-3 py-1.5 flex-row items-center backdrop-blur-sm shadow-md"
           >
-            <Ionicons name="videocam-outline" size={14} color="#fff" />
-            <Text className="text-white text-[10px] font-semibold uppercase ml-1">
+            <Ionicons name="videocam-outline" size={15} color="#fff" />
+            <Text className="text-white text-[11px] font-semibold uppercase ml-1.5 tracking-wide">
               Video
             </Text>
           </View>
         ) : (
-          <View className="absolute inset-0 bg-black/75 items-center justify-center px-3">
-            <Ionicons name="warning-outline" size={20} color="#FCA5A5" />
-            <Text className="text-white text-xs text-center mt-2">
+          <View className="absolute inset-0 bg-black/80 items-center justify-center px-4 rounded-2xl">
+            <Ionicons name="warning-outline" size={24} color="#FCA5A5" />
+            <Text className="text-white text-sm text-center mt-3 font-medium">
               {videoError}
             </Text>
           </View>
@@ -178,56 +188,62 @@ export default function MessageBubble({
   };
 
   const bubbleGradient = isMyMessage
-    ? (["#111827", "#0F172A"] as [string, string])
-    : (["#FFFFFF", "#F1F5F9"] as [string, string]);
+    ? (["#8B5CF6", "#6366F1"] as [string, string]) // Purple-to-blue gradient for sent messages (matches image)
+    : (["#FFFFFF", "#FFFFFF"] as [string, string]); // Pure white for received messages (matches image)
 
   const bubbleClassName = [
-    "px-4 py-3 rounded-[28px] border border-white/5 shrink",
-    isMyMessage
-      ? "rounded-br-[10px] shadow-lg shadow-slate-900/40"
-      : "rounded-bl-[10px] shadow-md shadow-slate-900/10",
+    "px-4 py-3 shrink",
+    !isMyMessage ? "border border-gray-200/60" : "",
   ].join(" ");
 
-  const bubbleContainerStyle = {
-    maxWidth: MAX_BUBBLE_WIDTH,
-    flexShrink: 1,
-  };
-
-  const nonBubbleContainerStyle = {
-    maxWidth: MAX_MEDIA_WIDTH,
-    flexShrink: 1,
-    marginTop: 4,
+  const bubbleStyle = {
+    borderRadius: 20,
+    ...(isMyMessage
+      ? { borderBottomRightRadius: 8 }
+      : { borderBottomLeftRadius: 8 }),
   };
 
   const mediaWrapperStyle = {
     aspectRatio: 4 / 3,
+    alignSelf: "stretch" as const,
   };
 
   if (isEditing) {
     return (
-      <View className="mb-2 items-end">
-        <View className="px-3 py-2 bg-gray-100 rounded-xl">
+      <View className="mb-3 items-end">
+        <View
+          className="px-4 py-3.5 bg-white rounded-2xl border border-gray-200 shadow-lg"
+          style={{ maxWidth: MAX_BUBBLE_WIDTH }}
+        >
           <TextInput
             value={editText}
             onChangeText={onEditTextChange}
-            className="bg-white rounded-lg px-2 py-1.5 mb-2 text-sm"
+            className="bg-gray-50 rounded-xl px-3.5 py-2.5 mb-3 text-[15px] text-gray-900 border border-gray-200 min-h-[60px]"
             multiline
             autoFocus
             maxLength={500}
+            placeholderTextColor="#9CA3AF"
+            textAlignVertical="top"
           />
-          <View className="flex-row justify-end space-x-1">
+          <View className="flex-row justify-end gap-2">
             <TouchableOpacity
               onPress={onCancelEditing}
-              className="px-2 py-1 bg-gray-300 rounded-md"
+              className="px-4 py-2 bg-gray-100 rounded-xl active:bg-gray-200"
+              activeOpacity={0.7}
             >
-              <Text className="text-gray-700 text-xs">Cancel</Text>
+              <Text className="text-gray-700 text-sm font-semibold">
+                Cancel
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onSaveEdit}
-              className="px-2 py-1 bg-pink-600 rounded-md"
+              className={`px-4 py-2 rounded-xl active:opacity-80 ${
+                editText.trim() ? "bg-indigo-500" : "bg-gray-400"
+              }`}
               disabled={!editText.trim()}
+              activeOpacity={0.8}
             >
-              <Text className="text-white text-xs">Save</Text>
+              <Text className="text-white text-sm font-semibold">Save</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -255,8 +271,8 @@ export default function MessageBubble({
           {renderMediaPreview()}
           {hasCustomCaption && message.message ? (
             <Text
-              className={`text-sm mt-2 ${
-                isMyMessage ? "text-white/90" : "text-gray-900"
+              className={`text-[15px] leading-6 mt-3 tracking-wide ${
+                isMyMessage ? "text-white/95" : "text-gray-900"
               }`}
             >
               {message.message}
@@ -268,8 +284,8 @@ export default function MessageBubble({
 
     return (
       <Text
-        className={`text-sm leading-5 ${
-          isMyMessage ? "text-white" : "text-gray-900"
+        className={`text-[15px] leading-5 tracking-wide ${
+          isMyMessage ? "text-white font-medium" : "text-gray-900 font-medium"
         }`}
       >
         {message.message}
@@ -278,24 +294,34 @@ export default function MessageBubble({
   };
 
   const renderMetaInfo = (withinBubble: boolean) => {
+    const timestampColorClass = withinBubble
+      ? isMyMessage
+        ? "text-white/80"
+        : "text-slate-500"
+      : isMyMessage
+        ? "text-indigo-300"
+        : "text-slate-500";
+
     const timestampColor = withinBubble
       ? isMyMessage
-        ? "#ffffffb3"
-        : "#475569"
+        ? "#ffffffcc"
+        : "#64748B"
       : isMyMessage
-        ? "#cbd5f5"
-        : "#475569";
+        ? "#A5B4FC"
+        : "#64748B";
 
     const rowClasses = withinBubble
-      ? "flex-row justify-between items-center mt-3"
-      : "flex-row justify-between items-center mt-1 max-w-[90%]";
+      ? "flex-row justify-between items-center mt-2.5"
+      : "flex-row justify-between items-center mt-2 max-w-[90%]";
 
     return (
       <View
         className={`${rowClasses} ${isMyMessage ? "self-end" : "self-start"}`}
       >
-        <View className="flex-row items-center gap-2">
-          <Text className="text-[11px]" style={{ color: timestampColor }}>
+        <View className="flex-row items-center gap-1.5">
+          <Text
+            className={`text-[11px] font-medium opacity-85 ${timestampColorClass}`}
+          >
             {new Date(message.createdAt as string).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -307,20 +333,19 @@ export default function MessageBubble({
                 <View className="flex-row items-center gap-1">
                   <Ionicons
                     name="checkmark-done"
-                    size={12}
-                    color={message.isReadByCurrentUser ? "#34D399" : "#F9A8D4"}
+                    size={13}
+                    color={message.isReadByCurrentUser ? "#10B981" : "#F472B6"}
                   />
                   {message.readCount > 1 && (
                     <Text
-                      className="text-[11px]"
-                      style={{ color: timestampColor }}
+                      className={`text-[10px] font-semibold opacity-90 ${timestampColorClass}`}
                     >
                       {message.readCount}
                     </Text>
                   )}
                 </View>
               ) : (
-                <Ionicons name="checkmark" size={12} color={timestampColor} />
+                <Ionicons name="checkmark" size={13} color={timestampColor} />
               )}
             </View>
           )}
@@ -335,17 +360,20 @@ export default function MessageBubble({
 
   const contentNode = shouldShowBubble ? (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.95}
       onLongPress={() => setShowActionSheet(isMyMessage)}
       delayLongPress={250}
-      style={bubbleContainerStyle}
-      className={`shrink ${bubbleWrapperAlignment}`}
+      style={{
+        maxWidth: MAX_BUBBLE_WIDTH,
+      }}
+      className={`${isMyMessage ? "shadow-lg shadow-indigo-500/25" : "shadow-md"}`}
     >
       <LinearGradient
         colors={bubbleGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className={bubbleClassName}
+        style={bubbleStyle}
       >
         {mainContent}
         {renderMetaInfo(true)}
@@ -353,20 +381,33 @@ export default function MessageBubble({
     </TouchableOpacity>
   ) : (
     <View
-      style={[nonBubbleContainerStyle]}
-      className={`shrink ${bubbleWrapperAlignment}`}
+      style={{
+        maxWidth: MAX_MEDIA_WIDTH,
+        marginTop: 4,
+      }}
+      className="shadow-md"
     >
       {mainContent}
     </View>
   );
 
   return (
-    <View className={`mb-2 ${isMyMessage ? "items-end" : "items-start"}`}>
+    <View
+      className="mb-2"
+      style={{
+        width: "100%",
+        paddingHorizontal: 0,
+      }}
+    >
       <View
-        className={`flex-row ${isMyMessage ? "flex-row-reverse" : "flex-row"} items-end`}
+        className="flex-row items-end"
+        style={{
+          width: "100%",
+          justifyContent: isMyMessage ? "flex-end" : "flex-start",
+        }}
       >
         {!isMyMessage && (
-          <View className="mr-2 mb-1">
+          <View className="mr-2.5 mb-0.5" style={{ flexShrink: 0 }}>
             {(() => {
               const avatarUrl =
                 message.avatar?.fileName && message.senderId
@@ -376,23 +417,38 @@ export default function MessageBubble({
                 ? { uri: avatarUrl }
                 : UNKNOWN_AVATAR;
               return (
-                <Image
-                  source={avatarSource}
-                  className="w-8 h-8 rounded-full"
-                  style={{
-                    backgroundColor: "#f3f4f6",
-                    resizeMode: "cover",
-                  }}
-                />
+                <View className="shadow-sm">
+                  <Image
+                    source={avatarSource}
+                    className="w-9 h-9 rounded-full bg-slate-100 border-2 border-white"
+                    resizeMode="cover"
+                  />
+                </View>
               );
             })()}
           </View>
         )}
 
-        {contentNode}
+        <View
+          style={{
+            flexShrink: 1,
+            maxWidth: MAX_BUBBLE_WIDTH,
+          }}
+        >
+          {contentNode}
+        </View>
       </View>
 
-      {!shouldShowBubble && renderMetaInfo(false)}
+      {!shouldShowBubble && (
+        <View
+          style={{
+            width: "100%",
+            alignItems: isMyMessage ? "flex-end" : "flex-start",
+          }}
+        >
+          {renderMetaInfo(false)}
+        </View>
+      )}
 
       <Modal
         visible={!!fullScreenImageUrl}
@@ -400,13 +456,13 @@ export default function MessageBubble({
         animationType="fade"
         onRequestClose={() => setFullScreenImageUrl(null)}
       >
-        <View className="flex-1 bg-black/95">
+        <View className="flex-1 bg-black">
           <TouchableOpacity
-            className="absolute top-14 right-6 w-10 h-10 rounded-full bg-white/15 items-center justify-center z-10"
+            className="absolute top-14 right-6 w-11 h-11 rounded-full bg-black/40 items-center justify-center z-10 border border-white/20 shadow-xl"
             onPress={() => setFullScreenImageUrl(null)}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Ionicons name="close" size={20} color="#fff" />
+            <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={{ flex: 1 }}
@@ -428,62 +484,57 @@ export default function MessageBubble({
       <Modal
         visible={showActionSheet}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowActionSheet(false)}
       >
         <TouchableOpacity
-          className="flex-1 bg-slate-900/55"
+          className="flex-1 bg-black/50"
           activeOpacity={1}
           onPress={() => setShowActionSheet(false)}
         />
-        <View className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white p-5 gap-3 shadow-2xl">
-          <Text className="text-base font-semibold text-slate-900 text-center mb-1">
-            Message actions
+        <View className="absolute bottom-0 left-0 right-0 rounded-t-[28px] bg-white pt-5 pb-8 px-5 shadow-2xl">
+          <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
+          <Text className="text-lg font-bold text-gray-900 text-center mb-6">
+            Message Options
           </Text>
           <TouchableOpacity
-            className="flex-row items-center py-3 px-1"
+            className="flex-row items-center py-4 px-2 rounded-xl active:bg-gray-50"
             onPress={() => {
               setShowActionSheet(false);
               onStartEditing(message);
             }}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="create-outline"
-              size={18}
-              color="#0f172a"
-              style={{ marginRight: 12 }}
-            />
-            <Text className="text-[15px] text-slate-900 font-medium">
+            <View className="w-10 h-10 rounded-full bg-indigo-100 items-center justify-center mr-3">
+              <Ionicons name="create-outline" size={20} color="#6366F1" />
+            </View>
+            <Text className="text-[16px] text-gray-900 font-semibold flex-1">
               Edit message
             </Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
-            className="flex-row items-center py-3 px-1"
+            className="flex-row items-center py-4 px-2 rounded-xl active:bg-red-50 mt-2"
             onPress={() => {
               setShowActionSheet(false);
               onDeleteMessage(message.id);
             }}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name="trash-outline"
-              size={18}
-              color="#dc2626"
-              style={{ marginRight: 12 }}
-            />
-            <Text
-              className="text-[15px] font-medium"
-              style={{ color: "#dc2626" }}
-            >
+            <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center mr-3">
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+            </View>
+            <Text className="text-[16px] font-semibold flex-1 text-red-500">
               Delete message
             </Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
-            className="mt-1 py-3 items-center rounded-xl bg-slate-100"
+            className="mt-4 py-4 items-center rounded-xl bg-gray-100 active:bg-gray-200"
             onPress={() => setShowActionSheet(false)}
+            activeOpacity={0.7}
           >
-            <Text className="text-[15px] text-slate-900 font-semibold">
-              Cancel
-            </Text>
+            <Text className="text-[16px] text-gray-700 font-bold">Cancel</Text>
           </TouchableOpacity>
         </View>
       </Modal>

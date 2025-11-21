@@ -6,3 +6,10 @@ export interface LoginPayload {
 export interface IntrospectPayload {
   token: string;
 }
+
+export interface RegisterPayload {
+  username: string;
+  mail: string;
+  phoneNumber?: string;
+  password: string;
+}
