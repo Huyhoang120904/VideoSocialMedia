@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { UnauthedStackParamList } from "../../Types/response/navigation.types";
+import { RegisterRequest } from "../../Services/AuthService";
 
 type RegisterNavigationProp = StackNavigationProp<
   UnauthedStackParamList,
@@ -78,13 +79,57 @@ const RegisterScreen = () => {
       return;
     }
 
+    // Password strength validation
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long");
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate registration process
-    setTimeout(() => {
+    try {
+      await RegisterRequest({
+        username: username.trim(),
+        mail: email.trim(),
+        password: password,
+      });
+
+      Alert.alert(
+        "Success",
+        "Registration successful! You can now login.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              navigation.navigate("Login");
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error: any) {
+      console.error("Registration Error:", error);
+
+      // Handle different error types
+      if (error.response) {
+        // Server responded with error
+        const errorMessage =
+          error.response.data?.message || "Registration failed. Please try again.";
+        Alert.alert("Registration Error", errorMessage);
+      } else if (error.request) {
+        // Network error
+        Alert.alert(
+          "Network Error",
+          "Unable to connect to server. Please check your internet connection."
+        );
+      } else {
+        // Other error
+        const errorMessage =
+          error.message || "An unexpected error occurred during registration";
+        Alert.alert("Error", errorMessage);
+      }
+    } finally {
       setIsLoading(false);
-      Alert.alert("Success", "Registration successful! You can now login.");
-      // Here you would navigate to the login screen in a real app
-    }, 2000);
+    }
   };
 
   const handleGoogleSignup = () => {

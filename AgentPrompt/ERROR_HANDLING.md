@@ -366,8 +366,294 @@ const getErrorMessage = (code: number) => {
 - [BACKEND_RULES.md](./BACKEND_RULES.md) - Backend exception handling
 - [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) - Error codes reference
 
+## Code Quality Patterns for Error Handling
+
+### Mobile App Error Handling Patterns
+
+**Comprehensive Error Handling in Components:**
+
+```typescript
+// ✅ Good - Complete error handling
+const handleUserSelect = async (user: UserSearchResult) => {
+  if (isCreatingConversation || isAddingMember) return; // Prevent duplicates
+
+  setIsCreatingConversation(true);
+  setError(null); // Clear previous errors
+
+  try {
+    const response = await ConversationService.createConversation(request);
+    if (response.result) {
+      // Success handling
+      addConversation(response.result);
+      navigation.navigate("Conversation", {
+        conversationId: response.result.conversationId,
+      });
+    } else {
+      setError("Failed to create conversation. Please try again.");
+    }
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    // User-friendly error message
+    setError(
+      "Failed to create conversation. Please check your connection and try again."
+    );
+  } finally {
+    setIsCreatingConversation(false);
+  }
+};
+```
+
+**Error State Display:**
+
+```typescript
+// ✅ Good - Error state with retry
+const renderErrorState = () => (
+  <View className="flex-1 justify-center items-center py-20">
+    <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+    <Text className="text-red-500 text-lg mt-4">Error</Text>
+    <Text className="text-gray-400 text-sm mt-2 text-center px-8">{error}</Text>
+    <TouchableOpacity
+      className="mt-4 bg-pink-500 px-6 py-2 rounded-full"
+      onPress={() =>
+        searchQuery ? searchUsers(searchQuery) : loadRecentUsers()
+      }
+    >
+      <Text className="text-white font-semibold">Try Again</Text>
+    </TouchableOpacity>
+  </View>
+);
+```
+
+**Error Handling in Service Calls:**
+
+```typescript
+// ✅ Good - Service error handling
+const searchUsers = async (query: string) => {
+  setIsLoading(true);
+  setError(null); // Clear previous errors
+
+  try {
+    const displayNameResults = await UserDetailService.searchByDisplayName(
+      query
+    );
+    const mappedResults = (displayNameResults.result || [])
+      .map(mapUserDetailToSearchResult)
+      .filter((user) => currentUserDetail && user.id !== currentUserDetail.id);
+    setSearchResults(mappedResults);
+  } catch (err) {
+    console.error("Error searching users:", err);
+    setError("Failed to search users. Please try again.");
+    setSearchResults([]); // Clear results on error
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### Backend Error Handling Patterns
+
+**Service Layer Error Handling:**
+
+```java
+// ✅ Good - Proper error handling with logging
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class VideoServiceImpl implements VideoService {
+    private final VideoRepository videoRepository;
+
+    @Override
+    @Transactional
+    public VideoUploadResponse uploadVideo(VideoUploadRequest request) {
+        log.info("Uploading video: {}", request.getTitle());
+
+        // Validate input
+        if (request.getFile() == null || request.getFile().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_FILE);
+        }
+
+        try {
+            // Upload logic
+            FileDocument file = fileRepository.save(createFile(request));
+            Video video = videoRepository.save(createVideo(request, file));
+            log.debug("Video uploaded successfully: {}", video.getId());
+            return videoMapper.toResponse(video);
+        } catch (IOException e) {
+            log.error("Error uploading file: {}", request.getTitle(), e);
+            throw new AppException(ErrorCode.ERROR_UPLOADING_FILE);
+        } catch (Exception e) {
+            log.error("Unexpected error uploading video: {}", request.getTitle(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED);
+        }
+    }
+}
+```
+
+**Repository Error Handling:**
+
+```java
+// ✅ Good - Repository with proper Optional handling
+public Video getVideoById(String id) {
+    return videoRepository.findById(id)
+            .orElseThrow(() -> {
+                log.warn("Video not found: {}", id);
+                return new AppException(ErrorCode.VIDEO_NOT_FOUND);
+            });
+}
+
+// ❌ Bad - Unsafe Optional handling
+public Video getVideoById(String id) {
+    return videoRepository.findById(id).get(); // Can throw NoSuchElementException
+}
+```
+
+**Controller Error Handling:**
+
+```java
+// ✅ Good - Controller delegates to service
+@RestController
+@RequiredArgsConstructor
+public class VideoController {
+    private final VideoService videoService;
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<VideoResponse>> getVideo(@PathVariable String id) {
+        // Service handles errors, controller just wraps response
+        VideoResponse video = videoService.getVideoById(id);
+        return ResponseEntity.ok(ApiResponse.<VideoResponse>builder()
+                .result(video)
+                .code(200)
+                .message("Success")
+                .timeStamp(Instant.now().toString())
+                .build());
+    }
+}
+```
+
+### Error Recovery Patterns
+
+**Retry Logic:**
+
+```typescript
+// ✅ Good - Retry with exponential backoff
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+const retryWithBackoff = async <T>(
+  fn: () => Promise<T>,
+  retries = MAX_RETRIES,
+  delay = RETRY_DELAY
+): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return retryWithBackoff(fn, retries - 1, delay * 2); // Exponential backoff
+    }
+    throw error;
+  }
+};
+```
+
+**Network Error Detection:**
+
+```typescript
+// ✅ Good - Network status handling
+import NetInfo from "@react-native-community/netinfo";
+
+const checkNetworkAndRetry = async (fn: () => Promise<any>) => {
+  const netInfo = await NetInfo.fetch();
+  if (!netInfo.isConnected) {
+    throw new Error(
+      "No internet connection. Please check your network settings."
+    );
+  }
+  return await fn();
+};
+```
+
+### Error Message Best Practices
+
+**User-Friendly Messages:**
+
+```typescript
+// ✅ Good - User-friendly error messages
+const getErrorMessage = (error: any): string => {
+  if (error.response) {
+    // Server responded with error
+    const errorCode = error.response.data?.code;
+    const serverMessage = error.response.data?.message;
+
+    // Map error codes to user-friendly messages
+    const errorMessages: Record<number, string> = {
+      1101: "User not found. Please check your account.",
+      1102: "Video not found. It may have been deleted.",
+      1001: "Your session has expired. Please login again.",
+      1051: "Invalid file. Please upload a valid video file.",
+    };
+
+    return (
+      errorMessages[errorCode] ||
+      serverMessage ||
+      "An error occurred. Please try again."
+    );
+  } else if (error.request) {
+    // Network error
+    return "Unable to connect to server. Please check your internet connection.";
+  } else {
+    // Other error
+    return "Something went wrong. Please try again.";
+  }
+};
+```
+
+### Logging Best Practices
+
+**Structured Logging:**
+
+```java
+// ✅ Good - Structured logging with context
+@Slf4j
+public class VideoServiceImpl {
+    public void uploadVideo(VideoUploadRequest request) {
+        log.info("Uploading video: title={}, userId={}",
+            request.getTitle(),
+            getCurrentUserId());
+
+        try {
+            // Logic
+            log.debug("Video uploaded: videoId={}, size={}",
+                video.getId(),
+                video.getFileSize());
+        } catch (AppException e) {
+            log.warn("Video upload failed: title={}, errorCode={}",
+                request.getTitle(),
+                e.getErrorCode());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error uploading video: title={}",
+                request.getTitle(),
+                e);
+            throw new AppException(ErrorCode.UNCATEGORIZED);
+        }
+    }
+}
+```
+
+**Never Log Sensitive Data:**
+
+```java
+// ❌ Bad - Logging sensitive data
+log.info("User login: username={}, password={}", username, password);
+
+// ✅ Good - No sensitive data
+log.info("User login attempt: username={}", username);
+```
+
 ## Change Log
 
-| Version | Date       | Changes         | Author           |
-| ------- | ---------- | --------------- | ---------------- |
-| 1.0     | 2025-01-27 | Initial version | Development Team |
+| Version | Date       | Changes                                        | Author           |
+| ------- | ---------- | ---------------------------------------------- | ---------------- |
+| 1.0     | 2025-01-27 | Initial version                                | Development Team |
+| 1.1     | 2025-01-27 | Added code quality patterns for error handling | Development Team |

@@ -77,8 +77,7 @@ export default function RootNavigation() {
             </ChatMessageProvider>
           </ConversationProvider>
         </SocketProvider>
-
       </AuthProvider>
-    </SafeAreaProvider >
+    </SafeAreaProvider>
   );
 }

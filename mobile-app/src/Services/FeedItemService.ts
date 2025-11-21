@@ -70,13 +70,20 @@ export const fetchFeedItemsByUserId = async (
                 file.title ||
                 file.fileName ||
                 "Untitled Video",
-              likes: feedItem.likeCount || 0,
-              comments: feedItem.commentCount || 0,
-              shares: feedItem.shareCount || 0,
+              likes: feedItem.likeCount ?? 0,
+              comments: feedItem.commentCount ?? 0,
+              shares: feedItem.shareCount ?? 0,
               outstanding: 0,
               thumbnailUrl: thumbnailUrl,
               feedItemType: FeedItemType.VIDEO,
             };
+            console.log("VideoItem metadata:", {
+              id: videoItem.id,
+              likes: videoItem.likes,
+              comments: videoItem.comments,
+              shares: videoItem.shares,
+              backendLikeCount: feedItem.likeCount,
+            });
             return videoItem;
           }
 
@@ -96,13 +103,20 @@ export const fetchFeedItemsByUserId = async (
               id: feedItem.feedItemId || feedItem.id,
               uri: imageUrl || "", // For IMAGE_SLIDE, uri points to the first image
               title: feedItem.title || feedItem.captions || "Image Slide",
-              likes: feedItem.likeCount || 0,
-              comments: feedItem.commentCount || 0,
-              shares: feedItem.shareCount || 0,
+              likes: feedItem.likeCount ?? 0,
+              comments: feedItem.commentCount ?? 0,
+              shares: feedItem.shareCount ?? 0,
               outstanding: 0,
               thumbnailUrl: imageUrl || undefined, // Use first image as thumbnail
               feedItemType: FeedItemType.IMAGE_SLIDE,
             };
+            console.log("ImageSlideItem metadata:", {
+              id: imageSlideItem.id,
+              likes: imageSlideItem.likes,
+              comments: imageSlideItem.comments,
+              shares: imageSlideItem.shares,
+              backendLikeCount: feedItem.likeCount,
+            });
             return imageSlideItem;
           }
 

@@ -96,9 +96,16 @@ export default function Inbox() {
     } as any);
   };
 
-  const handleAiChat = () => {
-    // Navigate to dedicated AI Chat screen
-    navigation.navigate("AIChat");
+  const handleAIChatPress = () => {
+    // Navigate to AIChat screen in the parent AuthedStack
+    const parentNavigation =
+      navigation.getParent<StackNavigationProp<AuthedStackParamList>>();
+    if (parentNavigation) {
+      parentNavigation.navigate("AIChat");
+    } else {
+      // Fallback: try direct navigation
+      navigation.navigate("AIChat" as never);
+    }
   };
 
   const handleRefresh = async () => {
@@ -121,7 +128,7 @@ export default function Inbox() {
       <InboxHeader
         onSearchPress={navigateToSearch}
         onCreateGroupPress={handleCreateGroup}
-        onAiChatPress={handleAiChat}
+        onAIChatPress={handleAIChatPress}
       />
 
       <TabNavigation
@@ -135,7 +142,11 @@ export default function Inbox() {
 
       {activeTab === "Messages" && (
         <MessagesList
-          conversations={conversations}
+          conversations={conversations.filter(
+            (conv) =>
+              conv.conversationName !== "AI Assistant" &&
+              conv.conversationId !== "ai-assistant"
+          )}
           isLoading={isLoading}
           refreshing={refreshing}
           onRefresh={handleRefresh}

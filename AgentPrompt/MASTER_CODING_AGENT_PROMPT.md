@@ -239,11 +239,251 @@ When these documents conflict with generic best practices, the documents win. If
 - Build/compile succeeds for the target platform.
 - Public contracts documented or updated (only if working on backend API changes).
 
+### Code Quality and Logic Guidelines
+
+This section contains patterns, conventions, and best practices observed in the codebase to ensure consistent, high-quality code.
+
+#### Mobile App (`mobile-app/`) - Code Quality Patterns
+
+**Service Layer Patterns:**
+
+- All API calls must go through service files in `Services/` directory
+- Services should return `ApiResponse<T>` type consistently
+- Use the centralized `api` instance from `HttpClient.ts` for all HTTP requests
+- Services should not handle UI concerns (no Alert, no navigation)
+- Example pattern:
+  ```typescript
+  const ConversationService = {
+    getMyConversations: async (
+      params?: PaginationParams
+    ): Promise<ApiResponse<Page<ConversationResponse>>> => {
+      const queryParams = new URLSearchParams();
+      if (params?.page !== undefined)
+        queryParams.append("page", params.page.toString());
+      if (params?.size !== undefined)
+        queryParams.append("size", params.size.toString());
+      const url = `/conversations/me${
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      }`;
+      const response = await api.get(url);
+      return response.data;
+    },
+  };
+  ```
+
+**Context Provider Patterns:**
+
+- Use Context API for shared state (Auth, Conversations, Socket, etc.)
+- Always provide default values in context creation
+- Use `useMemo` to memoize context values to prevent unnecessary re-renders
+- Include loading states in context when appropriate
+- Clear state on logout/unmount
+- Example pattern:
+  ```typescript
+  const value = useMemo(
+    () => ({
+      isLoading,
+      conversations,
+      getMyConversations,
+      refreshConversations,
+    }),
+    [isLoading, conversations, getMyConversations, refreshConversations]
+  );
+  ```
+
+**Component State Management:**
+
+- Use `useState` for local component state
+- Use `useEffect` for side effects (API calls, subscriptions)
+- Always clean up subscriptions and timers in `useEffect` return
+- Use `useMemo` for expensive computations
+- Use `useCallback` for functions passed as props to prevent re-renders
+- Prevent duplicate API calls with loading flags:
+  ```typescript
+  if (isCreatingConversation || isAddingMember) return; // Prevent multiple calls
+  ```
+
+**Error Handling in Components:**
+
+- Always set error state in catch blocks
+- Provide user-friendly error messages
+- Show error states in UI with retry options
+- Log errors to console for debugging
+- Example pattern:
+  ```typescript
+  try {
+    const response = await ConversationService.createConversation(request);
+    // Handle success
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    setError(
+      "Failed to create conversation. Please check your connection and try again."
+    );
+  } finally {
+    setIsCreatingConversation(false);
+  }
+  ```
+
+**Navigation Patterns:**
+
+- Use typed navigation from `@react-navigation/native`
+- Access parent navigator when needed: `navigation.getParent<StackNavigationProp<AuthedStackParamList>>()`
+- Pass typed params: `navigation.navigate("ScreenName", { param1: value })`
+- Use `useRoute()` to access route params
+- Always check if parent navigation exists before calling
+
+**Type Safety:**
+
+- Always use TypeScript types from `Types/` directory
+- Import types from appropriate locations:
+  - Request types: `Types/request/`
+  - Response types: `Types/response/`
+  - Navigation types: `Types/response/navigation.types`
+- Use `ApiResponse<T>` wrapper for all API responses
+- Avoid `any` type; use proper types or `unknown` with type guards
+- Create helper types when mapping between different type structures
+
+**Image and URL Handling:**
+
+- Always use utility functions from `Utils/ImageUrlHelper.ts`:
+  - `getAvatarUrl(userDetailId, fileName)` for avatars
+  - `getVideoUrl(originalUrl)` for videos
+  - `getThumbnailUrl(originalUrl)` for thumbnails
+  - `getImageUrl(originalUrl)` for images
+- These utilities handle URL replacement for different environments
+- Always check for null/undefined before using URLs
+- Use `UNKNOWN_AVATAR` constant for fallback avatars
+
+**Styling Patterns:**
+
+- Use NativeWind (TailwindCSS) with `className` prop for styling
+- Prefer `className` over inline styles when possible
+- Use consistent spacing and color patterns
+- Use SafeAreaView from `react-native-safe-area-context` for proper screen boundaries
+- Example:
+  ```typescript
+  <View className="flex-1 bg-white">
+    <SafeAreaView edges={["top", "right", "left"]}>
+      <View className="px-4 py-3 border-b border-gray-200">
+  ```
+
+**Loading States:**
+
+- Always show loading indicators during async operations
+- Use `ActivityIndicator` with appropriate colors (e.g., `#EC4899` for pink theme)
+- Show overlay loading for blocking operations
+- Provide loading text when appropriate
+- Example:
+  ```typescript
+  {
+    isLoading && (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#EC4899" />
+        <Text className="text-gray-500 mt-2">Loading...</Text>
+      </View>
+    );
+  }
+  ```
+
+**Empty States:**
+
+- Always provide empty states for lists
+- Include helpful messages and icons
+- Provide actionable guidance (e.g., "Search for users to chat with")
+- Use consistent empty state styling
+
+**Data Filtering and Mapping:**
+
+- Filter out current user from lists when appropriate
+- Map API responses to component-expected formats
+- Use helper functions for data transformation
+- Example:
+  ```typescript
+  const mappedResults = (apiResponse.result || [])
+    .map(mapUserDetailToSearchResult)
+    .filter((user) => currentUserDetail && user.id !== currentUserDetail.id);
+  ```
+
+**Performance Considerations:**
+
+- Use `FlatList` for long lists with proper `keyExtractor`
+- Implement pagination for large datasets
+- Memoize expensive computations
+- Avoid unnecessary re-renders with proper dependency arrays
+- Use `windowSize`, `initialNumToRender`, `maxToRenderPerBatch` for FlatList optimization
+
+**Common Pitfalls to Avoid:**
+
+1. **Don't call APIs directly in components** - Always use service layer
+2. **Don't forget to handle loading states** - Users need feedback
+3. **Don't forget error handling** - Always catch and display errors
+4. **Don't use hardcoded URLs** - Use utility functions for URL construction
+5. **Don't forget to clean up effects** - Prevent memory leaks
+6. **Don't mutate state directly** - Always use setState or functional updates
+7. **Don't forget to filter current user** - When showing user lists
+8. **Don't use `any` type** - Use proper TypeScript types
+9. **Don't forget navigation type safety** - Use typed navigation
+10. **Don't forget to handle edge cases** - Null checks, empty arrays, etc.
+
+**Code Review Checklist for Mobile App:**
+
+- [ ] All API calls go through service layer
+- [ ] Error handling is implemented with user-friendly messages
+- [ ] Loading states are shown during async operations
+- [ ] Empty states are provided for lists
+- [ ] Types are properly used (no `any`)
+- [ ] Navigation is typed correctly
+- [ ] Image/URL utilities are used for media
+- [ ] Context values are memoized
+- [ ] Effects are properly cleaned up
+- [ ] Current user is filtered from lists when appropriate
+- [ ] Component state is managed correctly
+- [ ] No hardcoded URLs or magic numbers
+- [ ] Consistent styling with NativeWind
+- [ ] SafeAreaView is used for proper screen boundaries
+
+#### Backend (`backend/`) - Code Quality Patterns
+
+**Service Layer Patterns:**
+
+- Follow layered architecture: Controller → Service → Repository
+- Services contain business logic; repositories handle data access
+- Use DTOs for data transfer between layers
+- Validate input at controller level
+- Handle exceptions and map to appropriate HTTP status codes
+
+**Error Handling:**
+
+- Use custom exception classes
+- Provide meaningful error messages
+- Log errors with appropriate context
+- Never expose internal errors to clients
+- Follow error response format from `ERROR_HANDLING.md`
+
+**Database Patterns:**
+
+- Use transactions for multi-step operations
+- Implement proper pagination
+- Use indexes for frequently queried fields
+- Follow migration patterns from `DATABASE_SCHEMA.md`
+- Never expose raw SQL errors to clients
+
+#### Web App (`admin-portal/`) - Code Quality Patterns
+
+- Follow patterns from `FRONTEND_WEB_RULES.md`
+- Use server components when possible
+- Implement proper loading and error states
+- Use typed API calls
+- Follow cookie-based authentication patterns
+
 ### When in Doubt
 
 - Prefer conservative, backwards-compatible changes within the target platform.
 - Document assumptions briefly in code comments and continue.
 - If a required policy is missing in the docs, follow the most conservative industry practice for the target platform and note the gap.
 - **Remember**: Focus on one platform at a time. Do not implement changes across multiple platforms simultaneously.
+- **Code Quality**: When implementing features, refer to the patterns and guidelines in the "Code Quality and Logic Guidelines" section above.
+- **Consistency**: Match existing code patterns in the codebase. If you see a pattern used multiple times, follow it.
+- **Testing**: After implementing changes, verify that the code compiles, types are correct, and the feature works as expected.
 
 Follow this prompt rigorously for every change. Your output should be immediately usable in this repo without additional rework.

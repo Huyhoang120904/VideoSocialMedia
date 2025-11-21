@@ -5,10 +5,7 @@ import com.hehe.thesocial.dto.request.chat.ChatMessageUpdateRequest;
 import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
-import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
-import com.hehe.thesocial.service.aiChat.AiChatService;
 import com.hehe.thesocial.service.chatMessage.ChatMessageService;
-import com.hehe.thesocial.service.chatMessage.ChatMessageServiceImpl;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatMessageController {
     ChatMessageService chatMessageService;
-    AiChatService aiChatService;
 
     @GetMapping("/conversation/{conversationId}")
     public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getAllChatMessagesByConversation(
@@ -66,27 +62,6 @@ public class ChatMessageController {
                 .body(ApiResponse.<ChatMessageResponse>builder()
                         .result(message)
                         .build());
-    }
-
-    @PostMapping("/ai")
-    public ResponseEntity<ApiResponse<ChatMessageResponse>> createAiChatMessage(
-            @RequestBody @Valid DirectChatMessageRequest request) {
-
-        ChatMessageResponse message = aiChatService.aiChatRequest(request);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ChatMessageResponse>builder()
-                        .result(message)
-                        .build());
-    }
-
-    @GetMapping("/ai/conversation")
-    public ResponseEntity<ApiResponse<ConversationResponse>> getAiConversation() {
-        ConversationResponse conversation = aiChatService.getAiConversation();
-
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversation)
-                .build());
     }
 
     @PutMapping("/{messageId}")

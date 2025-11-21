@@ -409,6 +409,21 @@ public class FeedItemServiceImpl implements FeedItemService {
             builder.captions(feedItem.getDescription());
         }
 
+        // Populate metadata fields
+        if (feedItem.getMetaData() != null) {
+            MetaData metaData = feedItem.getMetaData();
+            builder.likeCount(metaData.getLoveCount() != null ? metaData.getLoveCount() : 0L);
+            builder.commentCount(metaData.getCommentsCount() != null ? metaData.getCommentsCount() : 0L);
+            builder.shareCount(metaData.getSharesCount() != null ? metaData.getSharesCount() : 0L);
+            builder.viewCount(metaData.getViewsCount() != null ? metaData.getViewsCount() : 0L);
+        } else {
+            // Set default values if metadata is null
+            builder.likeCount(0L);
+            builder.commentCount(0L);
+            builder.shareCount(0L);
+            builder.viewCount(0L);
+        }
+
         return builder.build();
     }
 
