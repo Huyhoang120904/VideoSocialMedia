@@ -15,8 +15,25 @@ spring:
       enabled: true
 
   ai:
+    vectorstore:
+      qdrant:
+        host: ${QDRANT_HOST:localhost}
+        port: 6334
+        collection-name: thesocial_corp_knowledge_base
+        initialize-schema: true
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-3.5-turbo
+          temperature: 0.7
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 server:
   port: 8082
   host: ${SERVER_HOST}
@@ -32,3 +49,7 @@ jwt:
 # Local file storage configuration
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads}
+
+logging:
+  level:
+    org.springframework.security: DEBUG

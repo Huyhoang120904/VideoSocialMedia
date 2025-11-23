@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ConversationResponse } from "../../Types/response/ConversationResponse";
 import { useConversations } from "../../Context/ConversationProvider";
 import { useNewestMessage } from "../../Context/NewestMessageProvider";
+import { useNotifications } from "../../Context/NotificationProvider";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
 import InboxHeader from "../../Components/Inbox/InboxHeader";
 import TabNavigation from "../../Components/Inbox/TabNavigation";
@@ -25,6 +26,7 @@ export default function Inbox() {
   const navigation = useNavigation<InboxNavigationProp>();
   const { conversations, isLoading, getMyConversations } = useConversations();
   const { isConnected: newestMessageConnected } = useNewestMessage();
+  const { refreshNotifications } = useNotifications();
 
   useEffect(() => {
     // Load current user details to get their ID for avatar filtering
@@ -111,13 +113,15 @@ export default function Inbox() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await getMyConversations();
+      if (activeTab === "Messages") {
+        await getMyConversations();
+      } else if (activeTab === "Notifications") {
+        await refreshNotifications();
+      }
+      // Add refresh logic for Requests tab if needed
     } catch (error) {
-      console.error("Error refreshing conversations:", error);
-      Alert.alert(
-        "Error",
-        "Failed to refresh conversations. Please try again."
-      );
+      console.error("Error refreshing:", error);
+      Alert.alert("Error", "Failed to refresh. Please try again.");
     } finally {
       setRefreshing(false);
     }

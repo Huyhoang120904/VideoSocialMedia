@@ -25,6 +25,7 @@ import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.service.file.FileService;
 import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
 import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
+import com.hehe.thesocial.service.notification.NotificationService;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
@@ -55,6 +56,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     FileService fileService;
     MessageDeliveryService messageDeliveryService;
     NewestMessageBroadcastService newestMessageBroadcastService;
+    NotificationService notificationService;
     AuthenticationHelper authenticationHelper;
     SimpMessagingTemplate simpMessagingTemplate;
 
@@ -488,6 +490,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
         // Broadcast newest message for inbox updates
         newestMessageBroadcastService.broadcastNewestMessage(savedMessage.getConversationId(), response);
+        notificationService.notifyConversationMessage(participantIds, savedMessage, sender);
 
         return response;
     }

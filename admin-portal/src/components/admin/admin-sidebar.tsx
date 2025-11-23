@@ -15,6 +15,8 @@ import {
   TrendingUp,
   MessageSquare,
   Flag,
+  FileText,
+  Brain,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
@@ -56,6 +58,22 @@ const menuItems = [
     title: "Analytics",
     href: "/admin/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "AI & Documents",
+    icon: Brain,
+    submenu: [
+      {
+        title: "Document Ingestion",
+        href: "/admin/document-ingestion",
+        icon: FileText,
+      },
+      {
+        title: "RAG Query",
+        href: "/admin/rag",
+        icon: Brain,
+      },
+    ],
   },
   {
     title: "Settings",

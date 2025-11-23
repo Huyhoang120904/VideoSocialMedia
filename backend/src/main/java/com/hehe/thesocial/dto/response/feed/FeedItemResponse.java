@@ -28,6 +28,7 @@ public class FeedItemResponse {
     long likeCount;
     long commentCount;
     long shareCount;
+    long viewCount;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     boolean loved;

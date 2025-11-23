@@ -67,6 +67,21 @@ public class InitDataConfig {
             log.info("User role already exists");
         }
 
+        // Check if moderator role exists, create it if not
+        Optional<Role> moderatorRoleOptional = roleRepository.findByRoleName(PredefinedRoles.MODERATOR);
+        Role moderatorRole;
+
+        if (moderatorRoleOptional.isEmpty()) {
+            log.info("Moderator role not found, creating it...");
+            RoleRequest roleRequest = new RoleRequest();
+            roleRequest.setRoleName(PredefinedRoles.MODERATOR);
+            roleRequest.setDescription("Moderator role with content moderation access");
+            moderatorRole = convertToRole(roleService.createRole(roleRequest), PredefinedRoles.MODERATOR);
+        } else {
+            moderatorRole = moderatorRoleOptional.get();
+            log.info("Moderator role already exists");
+        }
+
         // Check if any user exists, if not create admin user and regular users
         if (userRepository.count() == 0) {
             log.info("No users found, creating initial users...");

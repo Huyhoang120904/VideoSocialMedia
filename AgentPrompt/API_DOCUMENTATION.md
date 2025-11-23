@@ -869,6 +869,47 @@ Record a view for a feed item and add it to the authenticated user's watched lis
 
 ---
 
+#### GET /feed-items/loved
+
+Get the authenticated user's loved feed items.
+
+**Headers**: Requires authentication
+
+**Query Parameters**:
+
+- `page` (int, default: 0)
+- `size` (int, default: 10)
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "Loved feed items retrieved successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "content": [
+      {
+        "id": "feed_item_id",
+        "feedItemType": "VIDEO",
+        "loved": true,
+        "likeCount": 123,
+        "uploader": {
+          "id": "user_detail_id",
+          "displayName": "Creator"
+        }
+      }
+    ],
+    "totalElements": 5,
+    "totalPages": 1,
+    "currentPage": 0,
+    "pageSize": 10
+  }
+}
+```
+
+---
+
 ## WebSocket Endpoints
 
 ### WebSocket Connection

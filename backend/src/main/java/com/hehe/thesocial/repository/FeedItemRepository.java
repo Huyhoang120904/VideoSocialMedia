@@ -20,6 +20,7 @@ public interface FeedItemRepository extends MongoRepository<FeedItem, String> {
     Page<FeedItem> findByFeedItemType(FeedItemType feedItemType, Pageable pageable);
     Page<FeedItem> findByUploader(UserDetail uploader, Pageable pageable);
     Page<FeedItem> findByUploaderIn(Collection<UserDetail> uploaders, Pageable pageable);
+    Page<FeedItem> findByIdIn(Collection<String> ids, Pageable pageable);
     List<FeedItem> findAllByHashTags_NameInAndIdNotIn(Set<String> hashTags, Set<String> id);
     List<FeedItem> findByIdNotIn(Collection<String> ids, Pageable pageable);
     

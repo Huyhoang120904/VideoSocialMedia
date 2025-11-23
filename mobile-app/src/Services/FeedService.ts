@@ -4,6 +4,7 @@ import { FeedItem } from "../Store/feedSlice";
 import FeedItemResponse from "../Types/response/FeedItemResponse";
 import { PaginatedResponse } from "../Types/response/PaginatedResponse";
 import { mapFeedItemResponses } from "../Utils/feedItemMapper";
+import { PageResponse } from "../Types/response/PageResponse";
 
 const MAX_RETRIES = 3;
 
@@ -91,6 +92,7 @@ const fetchFeedFromEndpoint = async (
 export const fetchFeedItems = async (
   retryCount: number = 0
 ): Promise<ApiResponse<FeedItem[]>> => {
+  console.log("fetchFeedItems called ------------------------");
   return fetchFeedFromEndpoint("/feed/personal", retryCount);
 };
 
@@ -109,6 +111,60 @@ export const fetchFollowingFeedItems = async (
   return fetchFeedFromEndpoint("/feed/following", 0, {
     page: options?.page,
     size: options?.size ?? 10,
+  });
+};
+
+export const fetchUserFeedItems = async (
+  userDetailId: string,
+  options?: FeedFetchOptions
+): Promise<ApiResponse<FeedItem[]>> => {
+  try {
+    const { data } = await api.get<ApiResponse<PageResponse<FeedItemResponse>>>(
+      `/feed-items/user/${userDetailId}`,
+      {
+        params: {
+          page: options?.page ?? 0,
+          size: options?.size ?? 30,
+        },
+      }
+    );
+
+    const content = data.result?.content || [];
+    const feedItems = mapFeedItemResponses(content);
+
+    return {
+      ...data,
+      result: feedItems,
+    };
+  } catch (error: any) {
+    console.error("API Fetch User Feed Error:", error);
+
+    if (error.config) {
+      console.log("Request URL:", error.config.url);
+      console.log("Request Method:", error.config.method);
+      console.log(
+        "Request Headers:",
+        JSON.stringify(error.config.headers, null, 2)
+      );
+    }
+
+    if (error.response) {
+      console.log("Response Status:", error.response.status);
+      console.log("Response Data:", error.response.data);
+    }
+
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch user feed items"
+    );
+  }
+};
+
+export const fetchLovedFeedItemsList = async (
+  options?: FeedFetchOptions
+): Promise<ApiResponse<FeedItem[]>> => {
+  return fetchFeedFromEndpoint("/feed-items/loved", 0, {
+    page: options?.page,
+    size: options?.size ?? 30,
   });
 };
 

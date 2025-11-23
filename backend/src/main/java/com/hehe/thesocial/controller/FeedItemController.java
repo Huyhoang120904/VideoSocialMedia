@@ -5,8 +5,18 @@ import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
+import com.hehe.thesocial.dto.response.reportTicket.ReportTicketResponse;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.service.feedItem.FeedItemService;
+import com.hehe.thesocial.util.AuthenticationHelper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,12 +36,22 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Tag(name = "Feed Items", description = "Feed item management endpoints - videos and image slides")
 public class FeedItemController {
     FeedItemService feedItemService;
+    private final AuthenticationHelper authenticationHelper;
 
+    @Operation(
+            summary = "Get all feed items",
+            description = "Retrieve paginated list of all feed items (videos and image slides). Public endpoint."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Feed items retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = FeedItemListResponse.class)))
+    })
     @GetMapping
     public ResponseEntity<ApiResponse<FeedItemListResponse>> getAllFeedItems(
-            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+            @Parameter(description = "Pagination parameters") @PageableDefault(size = 10, page = 0) Pageable pageable) {
 
         log.info("Fetching all feed items with page: {}, size: {}", pageable.getPageNumber(), pageable.getPageSize());
 
@@ -51,32 +71,37 @@ public class FeedItemController {
                 .build());
     }
 
+    @Operation(
+            summary = "Get feed items by user",
+            description = "Retrieve paginated feed items uploaded by a specific user. Public endpoint."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Feed items retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
+    })
     @GetMapping("/user/{userDetailId}")
-    public ResponseEntity<ApiResponse<FeedItemListResponse>> getFeedItemsByUserId(
-            @PathVariable String userDetailId,
-            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+    public ResponseEntity<ApiResponse<Page<FeedItemResponse>>> getFeedItemsByUserId(
+            @Parameter(description = "User detail ID", required = true) @PathVariable String userDetailId,
+            @Parameter(description = "Pagination parameters") @PageableDefault(size = 10, page = 0) Pageable pageable) {
 
         log.info("Fetching feed items for user detail ID: {} with page: {}, size: {}", userDetailId, pageable.getPageNumber(), pageable.getPageSize());
 
-        Page<FeedItemUploadResponse> feedItems = feedItemService.getFeedItemsByUserDetailId(userDetailId, pageable);
-
-        FeedItemListResponse response = FeedItemListResponse.builder()
-                .feedItems(feedItems)
-                .message(feedItems.getTotalElements() == 0 ? "No feed items found for this user" : "User feed items retrieved successfully")
-                .totalElements(feedItems.getTotalElements())
-                .totalPages(feedItems.getTotalPages())
-                .currentPage(feedItems.getNumber())
-                .pageSize(feedItems.getSize())
-                .build();
-
-        return ResponseEntity.ok(ApiResponse.<FeedItemListResponse>builder()
-                .result(response)
-                .message(response.getMessage())
+        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
+                .result(feedItemService.getFeedItemsByUserDetailId(userDetailId, pageable))
                 .build());
     }
 
+    @Operation(
+            summary = "Get feed item by ID",
+            description = "Retrieve a specific feed item by its ID. Public endpoint."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Feed item retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Feed item not found")
+    })
     @GetMapping("/{feedItemId}")
-    public ResponseEntity<ApiResponse<FeedItemResponse>> getFeedItemById(@PathVariable String feedItemId) {
+    public ResponseEntity<ApiResponse<FeedItemResponse>> getFeedItemById(
+            @Parameter(description = "Feed item ID", required = true) @PathVariable String feedItemId) {
         log.info("Fetching feed item with id {}", feedItemId);
         FeedItemResponse feedItem = feedItemService.getFeedItemById(feedItemId);
 
@@ -109,7 +134,38 @@ public class FeedItemController {
                 .build());
     }
 
+    /**
+     * Lấy danh sách feed item mà user đã love
+     * GET /feed-items/loved
+     */
+    @GetMapping("/loved")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Page<FeedItemResponse>>> getLovedFeedItems(
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+        String userDetailId = authenticationHelper.getCurrentUserDetail().getId();
+        log.info("Fetching loved feed items for userDetail {} with page {}, size {}", userDetailId,
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<FeedItemResponse> lovedFeedItems = feedItemService.getLovedFeedItems(userDetailId, pageable);
+
+        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
+                .result(lovedFeedItems)
+                .message(lovedFeedItems.isEmpty() ? "No loved feed items found" : "Loved feed items retrieved successfully")
+                .build());
+    }
+
+    @Operation(
+            summary = "Upload feed item",
+            description = "Upload a new feed item (video or image slide). Requires authentication."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Feed item uploaded successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid file or request"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/upload")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FeedItemUploadResponse>> uploadFeedItem(
             @RequestParam("feedItemType") FeedItemType feedItemType,
             @RequestParam(value = "title", required = false) String title,
@@ -150,6 +206,53 @@ public class FeedItemController {
 
         return ResponseEntity.ok(ApiResponse.<FeedItemUploadResponse>builder()
                 .result(response)
+                .build());
+    }
+
+    @Operation(
+            summary = "Get reports for feed item",
+            description = "Retrieve all reports submitted for a specific feed item. Requires ADMIN or MODERATOR role."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Reports retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - requires ADMIN or MODERATOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Feed item not found")
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/{feedItemId}/reports")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MODERATOR')")
+    public ResponseEntity<ApiResponse<List<ReportTicketResponse>>> getReportsByFeedItemId(
+            @Parameter(description = "Feed item ID", required = true) @PathVariable String feedItemId) {
+        log.info("Fetching all reports for feedItem ID: {}", feedItemId);
+
+        List<ReportTicketResponse> reports = feedItemService.getReportsByFeedItemId(feedItemId);
+
+        return ResponseEntity.ok(ApiResponse.<List<ReportTicketResponse>>builder()
+                .result(reports)
+                .message(reports.isEmpty() ? "No reports found for this feed item" : "Reports retrieved successfully")
+                .build());
+    }
+
+    @Operation(
+            summary = "Disable feed item due to violation",
+            description = "Disable a feed item that violates community guidelines. Sets violated=true and active=false. Requires ADMIN or MODERATOR role."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Feed item disabled successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - requires ADMIN or MODERATOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Feed item not found")
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/{feedItemId}/disable")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MODERATOR')")
+    public ResponseEntity<ApiResponse<Void>> disableFeedItemByViolation(
+            @Parameter(description = "Feed item ID", required = true) @PathVariable String feedItemId) {
+        log.info("Disabling feedItem ID: {} due to violation", feedItemId);
+
+        feedItemService.disableFeedItemByViolation(feedItemId);
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Feed item has been disabled due to violation")
                 .build());
     }
 }

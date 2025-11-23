@@ -4,6 +4,7 @@ import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.request.conversation.ConversationRequest;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.service.conversation.ConversationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -14,16 +15,19 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/conversations")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "Conversations", description = "Conversation management endpoints - requires authentication")
 public class ConversationController {
     ConversationService conversationService;
 
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PagedModel<EntityModel<ConversationResponse>>>> getMyConversations(
             @PageableDefault(size = 20) Pageable pageable, PagedResourcesAssembler<ConversationResponse> assembler){
         return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<ConversationResponse>>>builder()
@@ -32,6 +36,7 @@ public class ConversationController {
     }
 
     @GetMapping("/{conversationId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> getConversationById(@PathVariable String conversationId) {
         return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
                 .result(conversationService.getConversationById(conversationId))
@@ -39,6 +44,7 @@ public class ConversationController {
     }
 
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> createConversation(@RequestBody ConversationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<ConversationResponse>builder()
                 .result(conversationService.createConversation(request))
@@ -46,6 +52,7 @@ public class ConversationController {
     }
 
     @PutMapping("/{conversationId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> updateConversation(
             @PathVariable String conversationId,
             @RequestBody ConversationRequest request) {
@@ -55,6 +62,7 @@ public class ConversationController {
     }
 
     @PostMapping("/{conversationId}/members/{participantId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> addMemberToConversation(
             @PathVariable String conversationId,
             @PathVariable String participantId) {
@@ -64,6 +72,7 @@ public class ConversationController {
     }
 
     @DeleteMapping("/{conversationId}/members/{participantId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> removeMemberFromConversation(
             @PathVariable String conversationId,
             @PathVariable String participantId) {
@@ -73,6 +82,7 @@ public class ConversationController {
     }
 
     @DeleteMapping("/{conversationId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteConversation(@PathVariable String conversationId) {
         conversationService.deleteConversation(conversationId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()

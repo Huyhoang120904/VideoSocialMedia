@@ -1,16 +1,26 @@
 package com.hehe.thesocial.service.metadata.love;
 
+import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.metadata.LoveResponse;
 import com.hehe.thesocial.entity.FeedItem;
 import com.hehe.thesocial.entity.MetaData;
+import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.entity.UserPreference;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
+import com.hehe.thesocial.mapper.file.FileMapper;
+import com.hehe.thesocial.mapper.feedItem.FeedItemMapper;
+import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.FeedItemRepository;
 import com.hehe.thesocial.repository.MetaDataRepository;
+import com.hehe.thesocial.repository.UserPreferenceRepository;
+import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.service.notification.NotificationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -24,6 +34,12 @@ public class LoveServiceImpl implements LoveService {
 
     FeedItemRepository feedItemRepository;
     MetaDataRepository metaDataRepository;
+    UserPreferenceRepository userPreferenceRepository;
+    UserDetailRepository userDetailRepository;
+    FeedItemMapper feedItemMapper;
+    FileMapper fileMapper;
+    UserDetailMapper userDetailMapper;
+    NotificationService notificationService;
 
     /**
      * Thêm love (tim/thích) cho một FeedItem
@@ -35,6 +51,8 @@ public class LoveServiceImpl implements LoveService {
     public LoveResponse addLove(String feedItemId, String userDetailId) {
         FeedItem feedItem = feedItemRepository.findById(feedItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
+        UserDetail liker = userDetailRepository.findById(userDetailId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         // Kiểm tra đã love chưa
         Set<String> lovedBy = feedItem.getLovedBy() != null ? feedItem.getLovedBy() : new HashSet<>();
@@ -58,6 +76,25 @@ public class LoveServiceImpl implements LoveService {
             metadata.setLoveCount(newLoveCount);
             metaDataRepository.save(metadata);
         }
+
+        // Thêm feedItemId vào likedVideos trong UserPreference
+        UserPreference userPreference = userPreferenceRepository.findByUserDetailId(userDetailId)
+                .orElseGet(() -> {
+                    // Tạo mới UserPreference nếu chưa tồn tại
+                    UserPreference newPreference = UserPreference.builder()
+                            .userDetailId(userDetailId)
+                            .likedVideos(new HashSet<>())
+                            .build();
+                    return userPreferenceRepository.save(newPreference);
+                });
+
+        if (userPreference.getLikedVideos() == null) {
+            userPreference.setLikedVideos(new HashSet<>());
+        }
+        userPreference.getLikedVideos().add(feedItemId);
+        userPreferenceRepository.save(userPreference);
+
+        notificationService.notifyLikeOnFeedItem(feedItem, liker);
 
         return LoveResponse.builder()
                 .loved(true)
@@ -98,6 +135,14 @@ public class LoveServiceImpl implements LoveService {
             metadata.setLoveCount(newLoveCount);
             metaDataRepository.save(metadata);
         }
+
+        // Xóa feedItemId khỏi likedVideos trong UserPreference
+        userPreferenceRepository.findByUserDetailId(userDetailId).ifPresent(userPreference -> {
+            if (userPreference.getLikedVideos() != null) {
+                userPreference.getLikedVideos().remove(feedItemId);
+                userPreferenceRepository.save(userPreference);
+            }
+        });
 
         return LoveResponse.builder()
                 .loved(false)

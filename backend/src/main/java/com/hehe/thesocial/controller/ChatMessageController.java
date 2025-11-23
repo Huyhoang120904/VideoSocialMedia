@@ -6,6 +6,7 @@ import com.hehe.thesocial.dto.request.chat.DirectChatMessageRequest;
 import com.hehe.thesocial.dto.request.chat.GroupChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.service.chatMessage.ChatMessageService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,10 +25,12 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/chat-messages")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "Chat Messages", description = "Chat message management endpoints - requires authentication")
 public class ChatMessageController {
     ChatMessageService chatMessageService;
 
     @GetMapping("/conversation/{conversationId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getAllChatMessagesByConversation(
             @PathVariable String conversationId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -41,6 +45,7 @@ public class ChatMessageController {
 
 
     @PostMapping()
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> createDirectMessage(
             @RequestBody @Valid DirectChatMessageRequest request) {
 
@@ -53,6 +58,7 @@ public class ChatMessageController {
     }
 
     @PostMapping("/group")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> createGroupChatMessage(
             @RequestBody @Valid GroupChatMessageRequest request) {
 
@@ -65,6 +71,7 @@ public class ChatMessageController {
     }
 
     @PutMapping("/{messageId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> updateMessage(
             @PathVariable String messageId,
             @RequestBody @Valid ChatMessageUpdateRequest request) {
@@ -77,6 +84,7 @@ public class ChatMessageController {
     }
 
     @DeleteMapping("/{messageId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteMessage(@PathVariable String messageId) {
         chatMessageService.deleteChatMessage(messageId);
 
@@ -86,6 +94,7 @@ public class ChatMessageController {
     }
 
     @PostMapping("/{messageId}/read")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> markMessageAsRead(@PathVariable String messageId) {
         ChatMessageResponse message = chatMessageService.markMessageAsRead(messageId);
 
@@ -96,6 +105,7 @@ public class ChatMessageController {
     }
 
     @PostMapping("/conversation/{conversationId}/read-all")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> markConversationAsRead(@PathVariable String conversationId) {
         chatMessageService.markConversationMessagesAsRead(conversationId);
 
@@ -105,6 +115,7 @@ public class ChatMessageController {
     }
 
     @PostMapping("/attachment")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendAttachment(
             @RequestParam String conversationId,
             @RequestParam("file") MultipartFile file) {
