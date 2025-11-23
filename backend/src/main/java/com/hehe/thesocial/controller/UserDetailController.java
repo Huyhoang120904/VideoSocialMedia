@@ -14,6 +14,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,11 +31,13 @@ import java.util.List;
 @RequestMapping("/user-details")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "User Details", description = "User profile and social interaction endpoints")
 public class UserDetailController {
     UserDetailService userDetailService;
 
     // READ - Get current user's detail
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getMyDetail() {
         return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.getMyDetail())
@@ -52,6 +62,7 @@ public class UserDetailController {
 
     // READ - Get all user details
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getAllUserDetails() {
         return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
                 .result(userDetailService.getAllUserDetails())
@@ -60,6 +71,7 @@ public class UserDetailController {
 
     // READ - Get paginated user details
     @GetMapping("/paginated")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<UserDetailResponse>>> getUserDetailsPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -96,6 +108,7 @@ public class UserDetailController {
 
     // UPDATE - Update user detail
     @PutMapping(value = "/{userDetailId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> updateUserDetail(
             @PathVariable String userDetailId,
             @RequestParam(name = "displayName", required = false) String displayName,
@@ -117,6 +130,7 @@ public class UserDetailController {
 
     // UPDATE - Update avatar only
     @PatchMapping(value = "/{userDetailId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> updateAvatar(
             @PathVariable String userDetailId,
             @RequestParam(name = "avatar") MultipartFile avatar) {
@@ -132,6 +146,7 @@ public class UserDetailController {
 
     // DELETE - Delete user detail
     @DeleteMapping("/{userDetailId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUserDetail(@PathVariable String userDetailId) {
         userDetailService.deleteUserDetail(userDetailId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
@@ -141,6 +156,7 @@ public class UserDetailController {
 
     // SOCIAL - Follow a user
     @PostMapping("/follow/{targetUserDetailId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> followUser(@PathVariable String targetUserDetailId) {
         return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.followUser(targetUserDetailId))
@@ -149,6 +165,7 @@ public class UserDetailController {
 
     // SOCIAL - Unfollow a user
     @DeleteMapping("/unfollow/{targetUserDetailId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> unfollowUser(@PathVariable String targetUserDetailId) {
         return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
                 .result(userDetailService.unfollowUser(targetUserDetailId))

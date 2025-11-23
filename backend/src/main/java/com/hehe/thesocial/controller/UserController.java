@@ -13,14 +13,23 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+@Tag(name = "Users", description = "User management endpoints")
 public class UserController {
     UserService userService;
 
@@ -31,9 +40,20 @@ public class UserController {
                 .build());
     }
 
+    @Operation(
+            summary = "Get all users (paginated)",
+            description = "Retrieve paginated list of all users. Requires ADMIN role."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Users retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - requires ADMIN role")
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping
-    public ResponseEntity<ApiResponse<PagedModel<EntityModel<UserResponse>>>> getUserByPage(@PageableDefault(size = 12, page = 0) Pageable pageable,
-                                                                            PagedResourcesAssembler<UserResponse> assembler) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PagedModel<EntityModel<UserResponse>>>> getUserByPage(
+            @Parameter(description = "Pagination parameters") @PageableDefault(size = 12, page = 0) Pageable pageable,
+            PagedResourcesAssembler<UserResponse> assembler) {
         return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<UserResponse>>>builder()
                 .result(assembler.toModel(userService.findAllUserBypage(pageable)))
                 .build());
@@ -53,8 +73,20 @@ public class UserController {
                 .build());
     }
 
+    @Operation(
+            summary = "Delete user",
+            description = "Delete a user by ID. Requires ADMIN role."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "User deleted successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - requires ADMIN role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/{userId}")
-    public ResponseEntity<ApiResponse<Void>> deleteUserById(@PathVariable String userId) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteUserById(
+            @Parameter(description = "User ID", required = true) @PathVariable String userId) {
 
         userService.deleteUser(userId);
 

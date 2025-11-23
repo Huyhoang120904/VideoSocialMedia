@@ -7,8 +7,6 @@ import {
   Alert,
   Image,
   ActivityIndicator,
-  Dimensions,
-  FlatList,
   Modal,
   TextInput,
 } from "react-native";
@@ -26,18 +24,19 @@ import ConversationService from "../../Services/ConversationService";
 import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 import {
   fetchFeedItemsByUserId,
+  fetchLovedFeedItems,
   VideoItem,
 } from "../../Services/FeedItemService";
-import { Video, ResizeMode } from "expo-av";
-import { FeedItemType } from "../../Types/response/FeedItemResponse";
 import ReportTicketService from "../../Services/ReportTicketService";
 import {
   FeedItemType as ReportFeedItemType,
   ReportCategory,
   REPORT_CATEGORY_LABELS,
 } from "../../Types/request/ReportTicketRequest";
-
-const { width } = Dimensions.get("window");
+import { ProfileStats } from "../../Components/Profile/ProfileStats";
+import { ProfileTabs } from "../../Components/Profile/ProfileTabs";
+import { ProfileFeedGrid } from "../../Components/Profile/ProfileFeedGrid";
+import { ProfileLikedEmptyState } from "../../Components/Profile/ProfileLikedEmptyState";
 
 type UserProfileNavigationProp = StackNavigationProp<
   AuthedStackParamList,
@@ -62,7 +61,7 @@ const UserProfileScreen = () => {
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [currentUserDetail, setCurrentUserDetail] =
     useState<UserDetailResponse | null>(null);
-  const [videos, setVideos] = useState<any[]>([]);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"posts" | "liked">("posts");
   const [totalVideos, setTotalVideos] = useState(0);
@@ -71,18 +70,22 @@ const UserProfileScreen = () => {
     useState<ReportCategory | null>(null);
   const [reportDetails, setReportDetails] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [likedVideos, setLikedVideos] = useState<VideoItem[]>([]);
+  const [likedVideosLoading, setLikedVideosLoading] = useState(false);
+  const [likedVideosError, setLikedVideosError] = useState<string | null>(null);
+  const [hasFetchedLikedVideos, setHasFetchedLikedVideos] = useState(false);
 
   // Get params from navigation
   const params = route.params as UserProfileRouteParams;
   const userDetailId = params.userDetailId;
-  const userDisplayName = params.userDisplayName || "User";
+  const fallbackDisplayName = params.userDisplayName || "User";
 
   const fetchUserVideos = async (userId: string) => {
     try {
       setVideosLoading(true);
       const response = await fetchFeedItemsByUserId(userId, 0, 50);
       if (response.code === 1000 && response.result) {
-        setVideos(response.result.videos);
+        setVideos(response.result.videos || []);
         setTotalVideos(response.result.totalElements);
       }
     } catch (error) {
@@ -90,15 +93,6 @@ const UserProfileScreen = () => {
     } finally {
       setVideosLoading(false);
     }
-  };
-
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + "M";
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
-    }
-    return num.toString();
   };
 
   useEffect(() => {
@@ -245,6 +239,81 @@ const UserProfileScreen = () => {
     setShowReportModal(true);
   };
 
+  const handleFeedItemPress = (item: VideoItem) => {
+    if (activeTab === "liked" && isCurrentUser) {
+      navigation.navigate("LikedFeed", { initialFeedItemId: item.id });
+      return;
+    }
+
+    if (!userDetail) {
+      return;
+    }
+
+    navigation.navigate("UserFeed", {
+      userDetailId: item.uploaderId || userDetail.id,
+      initialFeedItemId: item.id,
+      userDisplayName:
+        item.uploaderName ||
+        userDetail.displayName ||
+        userDetail.shownName ||
+        fallbackDisplayName,
+    });
+  };
+
+  const handleFollowingPress = () => {
+    if (!userDetail) return;
+
+    navigation.navigate("FollowersList", {
+      userDetailId: userDetail.id,
+      initialTab: "following",
+      userName:
+        userDetail.displayName || userDetail.shownName || fallbackDisplayName,
+    });
+  };
+
+  const handleFollowersPress = () => {
+    if (!userDetail) return;
+
+    navigation.navigate("FollowersList", {
+      userDetailId: userDetail.id,
+      initialTab: "followers",
+      userName:
+        userDetail.displayName || userDetail.shownName || fallbackDisplayName,
+    });
+  };
+
+  const fetchLovedVideos = async () => {
+    if (likedVideosLoading) {
+      return;
+    }
+
+    try {
+      setLikedVideosLoading(true);
+      setLikedVideosError(null);
+      const response = await fetchLovedFeedItems(0, 50);
+      if (response.code === 1000 && response.result) {
+        setLikedVideos(response.result.videos || []);
+      } else {
+        setLikedVideos([]);
+      }
+    } catch (error) {
+      console.error("Error fetching loved feed items:", error);
+      setLikedVideosError(
+        "Unable to load liked videos. Pull to refresh and try again."
+      );
+    } finally {
+      setLikedVideosLoading(false);
+      setHasFetchedLikedVideos(true);
+    }
+  };
+
+  const handleTabChange = (tab: "posts" | "liked") => {
+    if (tab === "liked" && isCurrentUser && !hasFetchedLikedVideos) {
+      fetchLovedVideos();
+    }
+    setActiveTab(tab);
+  };
+
   const handleSubmitReport = async () => {
     if (!selectedCategory) {
       Alert.alert("Error", "Please select a report category");
@@ -324,315 +393,147 @@ const UserProfileScreen = () => {
     );
   }
 
-  return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <TouchableOpacity onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={24} color="#374151" />
+  const headerTitle =
+    userDetail.displayName ||
+    userDetail.shownName ||
+    fallbackDisplayName ||
+    "Profile";
+
+  const headerBar = (
+    <View className="flex-row items-center justify-between px-4 py-3">
+      <TouchableOpacity onPress={handleBackPress}>
+        <Ionicons name="arrow-back" size={24} color="#374151" />
+      </TouchableOpacity>
+      <Text className="text-gray-900 text-lg font-semibold">{headerTitle}</Text>
+      {!isCurrentUser ? (
+        <TouchableOpacity onPress={handleReport}>
+          <Ionicons name="flag-outline" size={24} color="#374151" />
         </TouchableOpacity>
-        <Text className="text-gray-900 text-lg font-semibold">Profile</Text>
-        {!isCurrentUser ? (
-          <TouchableOpacity onPress={handleReport}>
-            <Ionicons name="flag-outline" size={24} color="#374151" />
-          </TouchableOpacity>
-        ) : (
-          <View className="w-6" />
-        )}
+      ) : (
+        <View className="w-6" />
+      )}
+    </View>
+  );
+
+  const profileInfoSection = (
+    <View className="items-center px-6 py-6">
+      <View className="mb-4">
+        {(() => {
+          const avatarUrl =
+            userDetail.avatar?.fileName && userDetail.id
+              ? getAvatarUrl(userDetail.id, userDetail.avatar.fileName)
+              : null;
+          const avatarSource = avatarUrl ? { uri: avatarUrl } : UNKNOWN_AVATAR;
+          return (
+            <Image
+              source={avatarSource}
+              className="w-24 h-24 rounded-full"
+              style={{ resizeMode: "cover" }}
+            />
+          );
+        })()}
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Profile Info */}
-        <View className="items-center px-6 py-6">
-          {/* Avatar */}
-          <View className="mb-4">
-            {(() => {
-              const avatarUrl =
-                userDetail.avatar?.fileName && userDetail.id
-                  ? getAvatarUrl(userDetail.id, userDetail.avatar.fileName)
-                  : null;
-              const avatarSource = avatarUrl
-                ? { uri: avatarUrl }
-                : UNKNOWN_AVATAR;
-              return (
-                <Image
-                  source={avatarSource}
-                  className="w-24 h-24 rounded-full"
-                  style={{ resizeMode: "cover" }}
-                />
-              );
-            })()}
-          </View>
+      <Text className="text-gray-900 text-xl font-bold mb-1">
+        {userDetail.displayName || "Unknown User"}
+      </Text>
 
-          {/* Display Name */}
-          <Text className="text-gray-900 text-xl font-bold mb-1">
-            {userDetail.displayName || "Unknown User"}
+      {userDetail.shownName && (
+        <Text className="text-gray-600 text-base mb-4">
+          @{userDetail.shownName}
+        </Text>
+      )}
+
+      <ProfileStats
+        followingCount={userDetail.followingCount || 0}
+        followerCount={userDetail.followerCount || 0}
+        feedItemCount={totalVideos}
+        onFollowingPress={handleFollowingPress}
+        onFollowersPress={handleFollowersPress}
+      />
+
+      {userDetail.bio && (
+        <View className="w-full mb-6">
+          <Text className="text-gray-700 text-center text-sm leading-5">
+            {userDetail.bio}
           </Text>
+        </View>
+      )}
 
-          {/* Shown Name */}
-          {userDetail.shownName && (
-            <Text className="text-gray-600 text-base mb-4">
-              @{userDetail.shownName}
+      {!isCurrentUser && (
+        <View className="flex-row w-full gap-3 mb-6">
+          <TouchableOpacity
+            onPress={handleFollowToggle}
+            className={`flex-1 rounded-lg py-3 ${
+              isFollowing ? "bg-gray-200" : "bg-gray-900"
+            }`}
+            activeOpacity={0.7}
+          >
+            <Text
+              className={`text-center font-semibold ${
+                isFollowing ? "text-gray-800" : "text-white"
+              }`}
+            >
+              {isFollowing ? "Following" : "Follow"}
             </Text>
-          )}
+          </TouchableOpacity>
 
-          {/* Bio */}
-          {userDetail.bio && (
-            <View className="w-full mb-6">
-              <Text className="text-gray-700 text-center text-sm leading-5">
-                {userDetail.bio}
-              </Text>
-            </View>
-          )}
-
-          {/* Stats */}
-          <View className="flex-row justify-center items-center mb-6 w-full">
-            <TouchableOpacity
-              className="items-center flex-1"
-              onPress={() => {
-                navigation.navigate("FollowersList", {
-                  userDetailId: userDetail.id,
-                  initialTab: "following",
-                  userName: userDetail.displayName || userDetail.shownName,
-                });
-              }}
-              activeOpacity={0.7}
-            >
-              <Text className="text-gray-900 text-lg font-bold">
-                {formatNumber(userDetail.followingCount || 0)}
-              </Text>
-              <Text className="text-gray-600 text-sm">Following</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="items-center flex-1"
-              onPress={() => {
-                navigation.navigate("FollowersList", {
-                  userDetailId: userDetail.id,
-                  initialTab: "followers",
-                  userName: userDetail.displayName || userDetail.shownName,
-                });
-              }}
-              activeOpacity={0.7}
-            >
-              <Text className="text-gray-900 text-lg font-bold">
-                {formatNumber(userDetail.followerCount || 0)}
-              </Text>
-              <Text className="text-gray-600 text-sm">Followers</Text>
-            </TouchableOpacity>
-
-            <View className="items-center flex-1">
-              <Text className="text-gray-900 text-lg font-bold">
-                {formatNumber(totalVideos)}
-              </Text>
-              <Text className="text-gray-600 text-sm">Videos</Text>
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          {!isCurrentUser && (
-            <View className="flex-row w-full gap-3 mb-6">
-              <TouchableOpacity
-                onPress={handleFollowToggle}
-                className={`flex-1 rounded-lg py-3 ${
-                  isFollowing ? "bg-gray-200" : "bg-gray-900"
-                }`}
-                activeOpacity={0.7}
-              >
-                <Text
-                  className={`text-center font-semibold ${
-                    isFollowing ? "text-gray-800" : "text-white"
-                  }`}
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleMessage}
-                className="flex-1 bg-gray-200 rounded-lg py-3"
-                activeOpacity={0.7}
-                disabled={isCreatingConversation}
-              >
-                {isCreatingConversation ? (
-                  <ActivityIndicator size="small" color="#6B7280" />
-                ) : (
-                  <Text className="text-gray-800 text-center font-semibold">
-                    Message
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isCurrentUser && (
-            <View className="flex-row w-full gap-3 mb-6">
-              <TouchableOpacity
-                onPress={() => {
-                  navigation.navigate("EditProfile");
-                }}
-                className="flex-1 bg-gray-900 rounded-lg py-3"
-                activeOpacity={0.7}
-              >
-                <Text className="text-white text-center font-semibold">
-                  Edit Profile
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity className="flex-1 bg-gray-200 rounded-lg py-3">
-                <Text className="text-gray-800 text-center font-semibold">
-                  Share Profile
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Tabs Section */}
-        <View className="border-t border-gray-300">
-          <View className="flex-row">
-            <TouchableOpacity
-              className={`flex-1 py-4 border-b-2 ${activeTab === "posts" ? "border-gray-900" : "border-transparent"}`}
-              onPress={() => setActiveTab("posts")}
-            >
-              <Text
-                className={`text-center font-semibold ${activeTab === "posts" ? "text-gray-900" : "text-gray-600"}`}
-              >
-                Posts
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className={`flex-1 py-4 border-b-2 ${activeTab === "liked" ? "border-gray-900" : "border-transparent"}`}
-              onPress={() => setActiveTab("liked")}
-            >
-              <Text
-                className={`text-center font-semibold ${activeTab === "liked" ? "text-gray-900" : "text-gray-600"}`}
-              >
-                Liked
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Videos Grid */}
-        {activeTab === "posts" && (
-          <View className="flex-1 px-2 py-2">
-            {videosLoading ? (
-              <View className="items-center justify-center py-20">
-                <ActivityIndicator size="large" color="#ff0050" />
-                <Text className="text-gray-700 mt-4">Loading videos...</Text>
-              </View>
-            ) : videos.length === 0 ? (
-              <View className="items-center justify-center py-20">
-                <View className="w-16 h-16 bg-gray-200 rounded-full justify-center items-center mb-4">
-                  <Text className="text-gray-600 text-2xl">📹</Text>
-                </View>
-                <Text className="text-gray-600 text-lg mb-2">No posts yet</Text>
-                <Text className="text-gray-500 text-sm text-center">
-                  {isCurrentUser
-                    ? "You haven't posted any videos yet"
-                    : "This user hasn't posted any videos yet"}
-                </Text>
-              </View>
+          <TouchableOpacity
+            onPress={handleMessage}
+            className="flex-1 bg-gray-200 rounded-lg py-3"
+            activeOpacity={0.7}
+            disabled={isCreatingConversation}
+          >
+            {isCreatingConversation ? (
+              <ActivityIndicator size="small" color="#6B7280" />
             ) : (
-              <FlatList
-                data={videos}
-                numColumns={3}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    className="m-1 bg-gray-900 rounded-lg overflow-hidden"
-                    style={{
-                      width: (width - 24) / 3,
-                      height: (((width - 24) / 3) * 16) / 9,
-                    }}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      // Navigate to MainTabs -> Home with videoId
-                      // Profile screen can navigate directly to "Home" because it's in Bottom Tab Navigator
-                      // UserProfile is in Stack Navigator, so we navigate to MainTabs -> Home
-                      (navigation as any).navigate("MainTabs", {
-                        screen: "Home",
-                        params: { videoId: item.id },
-                      });
-                    }}
-                  >
-                    {item.thumbnailUrl ? (
-                      <Image
-                        source={{ uri: item.thumbnailUrl }}
-                        style={{ width: "100%", height: "100%" }}
-                        resizeMode="cover"
-                      />
-                    ) : item.feedItemType === FeedItemType.VIDEO ? (
-                      <Video
-                        source={{ uri: item.uri }}
-                        style={{ width: "100%", height: "100%" }}
-                        resizeMode={ResizeMode.COVER}
-                        shouldPlay={false}
-                        isLooping={false}
-                        isMuted
-                        useNativeControls={false}
-                      />
-                    ) : null}
-
-                    {/* Icon Overlay */}
-                    <View className="absolute inset-0 justify-center items-center">
-                      <View className="bg-black/30 rounded-full p-2">
-                        {item.feedItemType === FeedItemType.IMAGE_SLIDE ? (
-                          <Ionicons name="images" size={20} color="white" />
-                        ) : (
-                          <Ionicons name="play" size={20} color="white" />
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Bottom Info */}
-                    <View
-                      className="absolute bottom-0 left-0 right-0 p-1.5"
-                      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                    >
-                      <View className="flex-row items-center">
-                        <Ionicons name="heart" size={10} color="white" />
-                        <Text className="text-white text-xs ml-1 font-semibold">
-                          {formatNumber(item.likes || 0)}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              />
+              <Text className="text-gray-800 text-center font-semibold">
+                Message
+              </Text>
             )}
-          </View>
-        )}
+          </TouchableOpacity>
+        </View>
+      )}
 
-        {activeTab === "liked" && (
-          <View className="flex-1 px-4 py-6">
-            <View className="items-center justify-center py-20">
-              <View className="w-16 h-16 bg-gray-200 rounded-full justify-center items-center mb-4">
-                <Text className="text-gray-600 text-2xl">❤️</Text>
-              </View>
-              <Text className="text-gray-600 text-lg mb-2">
-                No liked videos
-              </Text>
-              <Text className="text-gray-500 text-sm text-center">
-                {isCurrentUser
-                  ? "Videos you like will appear here"
-                  : "Liked videos will appear here"}
-              </Text>
-            </View>
-          </View>
-        )}
-      </ScrollView>
+      {isCurrentUser && (
+        <View className="flex-row w-full gap-3 mb-6">
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("EditProfile");
+            }}
+            className="flex-1 bg-gray-900 rounded-lg py-3"
+            activeOpacity={0.7}
+          >
+            <Text className="text-white text-center font-semibold">
+              Edit Profile
+            </Text>
+          </TouchableOpacity>
 
-      {/* Report Modal */}
-      <Modal
-        visible={showReportModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowReportModal(false)}
-      >
+          <TouchableOpacity className="flex-1 bg-gray-200 rounded-lg py-3">
+            <Text className="text-gray-800 text-center font-semibold">
+              Share Profile
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
+  const headerContent = (
+    <>
+      {headerBar}
+      {profileInfoSection}
+      <ProfileTabs activeTab={activeTab} onTabChange={handleTabChange} />
+    </>
+  );
+
+  const reportModal = (
+    <Modal
+      visible={showReportModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowReportModal(false)}
+    >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl max-h-[80%]">
             {/* Modal Header */}
@@ -729,7 +630,48 @@ const UserProfileScreen = () => {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+    </Modal>
+  );
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {headerContent}
+
+        {activeTab === "posts" && (
+          <ProfileFeedGrid
+            feedItems={videos}
+            isLoading={videosLoading}
+            onFeedItemPress={handleFeedItemPress}
+            emptyDescription={
+              isCurrentUser
+                ? "You haven't posted any videos yet"
+                : "This user hasn't posted any videos yet"
+            }
+          />
+        )}
+
+        {activeTab === "liked" &&
+          (isCurrentUser ? (
+            <ProfileFeedGrid
+              feedItems={likedVideos}
+              isLoading={likedVideosLoading}
+              onFeedItemPress={handleFeedItemPress}
+              emptyTitle={
+                likedVideosError
+                  ? "Unable to load liked videos"
+                  : "No liked videos yet"
+              }
+              emptyDescription={
+                likedVideosError ||
+                "Videos you like will appear here once you tap the heart icon."
+              }
+            />
+          ) : (
+            <ProfileLikedEmptyState description="Liked videos are private and only visible to this user." />
+          ))}
+      </ScrollView>
+      {reportModal}
     </SafeAreaView>
   );
 };

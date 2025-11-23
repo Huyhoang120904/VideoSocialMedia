@@ -15,12 +15,16 @@ import EditProfileScreen from "../Srceens/EditProfile";
 import CallScreen from "../Srceens/Call";
 import AIChatScreen from "../Srceens/AIChat";
 import SharedVideoPreviewScreen from "../Srceens/SharedVideoPreview";
+import UserFeedScreen from "../Srceens/UserFeed";
+import LikedFeedScreen from "../Srceens/LikedFeed";
 import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
 import { ChatMessageProvider } from "../Context/ChatMessageProvider";
 import { NewestMessageProvider } from "../Context/NewestMessageProvider";
+import { NotificationProvider } from "../Context/NotificationProvider";
 import { SocketProvider } from "../Context/SocketProvider";
+import { useNotificationNavigation } from "../Hooks/useNotificationNavigation";
 
 export default function RootNavigation() {
   const Stack = createStackNavigator();
@@ -39,6 +43,7 @@ export default function RootNavigation() {
         component={ConversationMembersScreen}
       />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="UserFeed" component={UserFeedScreen} />
       <Stack.Screen name="FollowersList" component={FollowersListScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Call" component={CallScreen} />
@@ -47,6 +52,7 @@ export default function RootNavigation() {
         name="SharedVideoPreview"
         component={SharedVideoPreviewScreen}
       />
+      <Stack.Screen name="LikedFeed" component={LikedFeedScreen} />
     </Stack.Navigator>
   );
 
@@ -59,6 +65,9 @@ export default function RootNavigation() {
 
   const Switcher = () => {
     const { isLoading, isAuthenticated } = useAuth();
+    // Set up notification navigation handling
+    useNotificationNavigation();
+
     if (isLoading) return null;
     return isAuthenticated ? <Authed /> : <Unauthed />;
   };
@@ -70,9 +79,11 @@ export default function RootNavigation() {
           <ConversationProvider>
             <ChatMessageProvider>
               <NewestMessageProvider>
-                <NavigationContainer>
-                  <Switcher />
-                </NavigationContainer>
+                <NotificationProvider>
+                  <NavigationContainer>
+                    <Switcher />
+                  </NavigationContainer>
+                </NotificationProvider>
               </NewestMessageProvider>
             </ChatMessageProvider>
           </ConversationProvider>

@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 public class MessageDeliveryService {
     SimpMessagingTemplate simpMessagingTemplate;
     ConversationRepository conversationRepository;
-    UserDetailRepository userDetailRepository;
 
     /**
      * Deliver message to all participants in a conversation

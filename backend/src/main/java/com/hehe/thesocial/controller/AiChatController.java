@@ -5,6 +5,7 @@ import com.hehe.thesocial.dto.request.aiChat.AiChatMessageRequest;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.service.aiChat.AiChatService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/ai-chat")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "AI Chat", description = "AI chat assistant endpoints - requires authentication")
 public class AiChatController {
     AiChatService aiChatService;
 
@@ -38,6 +41,7 @@ public class AiChatController {
      * @return ChatMessageResponse containing the AI's response
      */
     @PostMapping("/messages")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendMessage(
             @RequestBody @Valid AiChatMessageRequest request) {
         
@@ -59,6 +63,7 @@ public class AiChatController {
      * @return ConversationResponse for the AI conversation
      */
     @GetMapping("/conversation")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> getConversation() {
         log.info("Getting AI conversation for current user");
         ConversationResponse conversation = aiChatService.getAiConversation();

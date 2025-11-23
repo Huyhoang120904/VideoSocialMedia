@@ -68,9 +68,11 @@ public class FeedItem extends BaseDocument {
     @Builder.Default
     int reportCount = 0;
 
+    @Field("status")
+    @Builder.Default
+    boolean violated = false;
+
     @Field("active")
     @Builder.Default
     boolean active = true;
-
-
 }

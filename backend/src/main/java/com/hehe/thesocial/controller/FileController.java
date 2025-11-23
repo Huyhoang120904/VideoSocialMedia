@@ -11,8 +11,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +34,7 @@ import java.util.List;
 @RequestMapping("/files")
 @Slf4j
 @RequiredArgsConstructor
+@Tag(name = "Files", description = "File upload and management endpoints")
 public class FileController {
 
     private final FileService fileService;
@@ -34,6 +43,7 @@ public class FileController {
     private String uploadDir;
 
     @PostMapping("/upload")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FileResponse> uploadFile(@RequestParam("file") MultipartFile file) {
         log.info("Uploading file: {}", file.getOriginalFilename());
         FileResponse response = fileService.storeFile(file);
@@ -41,6 +51,7 @@ public class FileController {
     }
 
     @PostMapping("/upload-multiple")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FileResponse>> uploadMultipleFiles(
             @RequestParam("files") MultipartFile[] files) {
         log.info("Uploading {} files", files.length);
@@ -55,12 +66,14 @@ public class FileController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<FileResponse>> getAllFiles(Pageable pageable) {
         Page<FileResponse> responses = fileService.findAllDocument(pageable);
         return ResponseEntity.ok(responses);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteFile(@PathVariable String id) {
         fileService.deleteFile(id);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

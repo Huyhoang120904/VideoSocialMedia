@@ -4,6 +4,8 @@ import com.hehe.thesocial.dto.request.comment.CommentCreateRequest;
 import com.hehe.thesocial.dto.response.comment.CommentCreateResponse;
 import com.hehe.thesocial.dto.response.comment.CommentResponse;
 import com.hehe.thesocial.dto.response.metadata.CommentActionResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface CommentService {
     /**
@@ -70,10 +72,9 @@ public interface CommentService {
      * @param size - Số lượng comment trên mỗi trang
      * @return Page<CommentResponse>
      */
-    org.springframework.data.domain.Page<CommentResponse> getCommentsByFeedItem(
-            String feedItemId, 
-            String currentUserDetailId, 
-            int page, 
-            int size
+    Page<CommentResponse> getCommentsByFeedItem(
+            String feedItemId,
+            String currentUserDetailId,
+            Pageable pageable
     );
 }

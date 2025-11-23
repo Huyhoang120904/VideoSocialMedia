@@ -1,9 +1,7 @@
 import api from "./HttpClient";
 import { ApiResponse } from "../Types/ApiResponse";
-import {
-  PaginatedResponse,
-  VideoListResponse,
-} from "../Types/response/PaginatedResponse";
+import { VideoListResponse } from "../Types/response/PaginatedResponse";
+import { PageResponse } from "../Types/response/PageResponse";
 import {
   getVideoUrl,
   getThumbnailUrl,
@@ -12,15 +10,6 @@ import {
 import FeedItemResponse, {
   FeedItemType,
 } from "../Types/response/FeedItemResponse";
-
-export interface FeedItemListResponse {
-  feedItems: PaginatedResponse<any>;
-  message?: string;
-  totalElements: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-}
 
 export interface VideoItem {
   id: string;
@@ -32,7 +21,93 @@ export interface VideoItem {
   outstanding: number;
   thumbnailUrl?: string;
   feedItemType?: FeedItemType;
+  uploaderId?: string;
+  uploaderName?: string;
+  loved?: boolean;
 }
+
+const mapFeedItemsToVideoItems = (
+  feedItems?: FeedItemResponse[]
+): VideoItem[] => {
+  if (!feedItems || feedItems.length === 0) {
+    return [];
+  }
+
+  return (
+    feedItems
+      ?.map((feedItem: FeedItemResponse) => {
+        const baseVideoItem = {
+          id: feedItem.id,
+          likes: feedItem.likeCount ?? 0,
+          comments: feedItem.commentCount ?? 0,
+          shares: feedItem.shareCount ?? 0,
+          outstanding: 0,
+          uploaderId: feedItem.uploader?.id,
+          uploaderName:
+            feedItem.uploader?.displayName ||
+            feedItem.uploader?.shownName ||
+            undefined,
+          loved: feedItem.loved,
+        };
+
+        if (feedItem.feedItemType === FeedItemType.VIDEO && feedItem.video) {
+          const file = feedItem.video;
+          const videoUrl = getVideoUrl(file.url || file.secureUrl || "");
+          const thumbnailUrl = file.thumbnailUrl
+            ? getThumbnailUrl(file.thumbnailUrl)
+            : undefined;
+
+          return {
+            ...baseVideoItem,
+            uri: videoUrl || "",
+            title:
+              feedItem.title ||
+              file.title ||
+              file.fileName ||
+              "Untitled Video",
+            thumbnailUrl,
+            feedItemType: FeedItemType.VIDEO,
+          };
+        }
+
+        if (
+          feedItem.feedItemType === FeedItemType.IMAGE_SLIDE &&
+          feedItem.imageSlide &&
+          feedItem.imageSlide.images.length > 0
+        ) {
+          const firstImage = feedItem.imageSlide.images[0];
+          const imageUrl = getImageUrl(
+            firstImage.url || firstImage.secureUrl || ""
+          );
+
+          return {
+            ...baseVideoItem,
+            uri: imageUrl || "",
+            title:
+              feedItem.title ||
+              feedItem.description ||
+              firstImage.title ||
+              "Image Slide",
+            thumbnailUrl: imageUrl || undefined,
+            feedItemType: FeedItemType.IMAGE_SLIDE,
+          };
+        }
+
+        return null;
+      })
+      .filter(
+        (item): item is VideoItem => item !== null && item !== undefined
+      ) || []
+  );
+};
+
+const buildVideoListResponse = (
+  pageResponse?: PageResponse<FeedItemResponse>
+): VideoListResponse<VideoItem> => ({
+  videos: mapFeedItemsToVideoItems(pageResponse?.content),
+  totalElements: pageResponse?.totalElements || 0,
+  totalPages: pageResponse?.totalPages || 0,
+});
 
 export const fetchFeedItemsByUserId = async (
   userId: string,
@@ -40,97 +115,14 @@ export const fetchFeedItemsByUserId = async (
   size: number = 50
 ): Promise<ApiResponse<VideoListResponse<VideoItem>>> => {
   try {
-    const { data } = await api.get<ApiResponse<FeedItemListResponse>>(
+    const { data } = await api.get<ApiResponse<PageResponse<FeedItemResponse>>>(
       `/feed-items/user/${userId}`,
       {
         params: { page, size },
       }
     );
 
-    // Transform feed items to VideoItem[]
-    // The backend returns FeedItemUploadResponse in a Page, but we'll handle it as FeedItemResponse-like structure
-    const videoItems: VideoItem[] =
-      data.result?.feedItems?.content
-        ?.map((feedItem: any) => {
-          // Process VIDEO type feed items
-          if (feedItem.feedItemType === FeedItemType.VIDEO && feedItem.video) {
-            const file = feedItem.video;
-            const videoUrl = getVideoUrl(file.url || file.secureUrl || "");
-            const thumbnailUrl = file.thumbnailUrl
-              ? getThumbnailUrl(file.thumbnailUrl)
-              : feedItem.thumbnailUrl
-                ? getThumbnailUrl(feedItem.thumbnailUrl)
-                : undefined;
-
-            const videoItem: VideoItem = {
-              id: feedItem.feedItemId || feedItem.id,
-              uri: videoUrl || "",
-              title:
-                feedItem.title ||
-                file.title ||
-                file.fileName ||
-                "Untitled Video",
-              likes: feedItem.likeCount ?? 0,
-              comments: feedItem.commentCount ?? 0,
-              shares: feedItem.shareCount ?? 0,
-              outstanding: 0,
-              thumbnailUrl: thumbnailUrl,
-              feedItemType: FeedItemType.VIDEO,
-            };
-            console.log("VideoItem metadata:", {
-              id: videoItem.id,
-              likes: videoItem.likes,
-              comments: videoItem.comments,
-              shares: videoItem.shares,
-              backendLikeCount: feedItem.likeCount,
-            });
-            return videoItem;
-          }
-
-          // Process IMAGE_SLIDE type feed items
-          if (
-            feedItem.feedItemType === FeedItemType.IMAGE_SLIDE &&
-            feedItem.images &&
-            feedItem.images.length > 0
-          ) {
-            // Use the first image as the thumbnail
-            const firstImage = feedItem.images[0];
-            const imageUrl = getImageUrl(
-              firstImage.url || firstImage.secureUrl || ""
-            );
-
-            const imageSlideItem: VideoItem = {
-              id: feedItem.feedItemId || feedItem.id,
-              uri: imageUrl || "", // For IMAGE_SLIDE, uri points to the first image
-              title: feedItem.title || feedItem.captions || "Image Slide",
-              likes: feedItem.likeCount ?? 0,
-              comments: feedItem.commentCount ?? 0,
-              shares: feedItem.shareCount ?? 0,
-              outstanding: 0,
-              thumbnailUrl: imageUrl || undefined, // Use first image as thumbnail
-              feedItemType: FeedItemType.IMAGE_SLIDE,
-            };
-            console.log("ImageSlideItem metadata:", {
-              id: imageSlideItem.id,
-              likes: imageSlideItem.likes,
-              comments: imageSlideItem.comments,
-              shares: imageSlideItem.shares,
-              backendLikeCount: feedItem.likeCount,
-            });
-            return imageSlideItem;
-          }
-
-          return null;
-        })
-        .filter(
-          (item): item is VideoItem => item !== null && item !== undefined
-        ) || [];
-
-    const videoListResponse: VideoListResponse<VideoItem> = {
-      videos: videoItems,
-      totalElements: data.result?.totalElements || 0,
-      totalPages: data.result?.totalPages || 0,
-    };
+    const videoListResponse = buildVideoListResponse(data.result);
 
     return {
       ...data,
@@ -217,6 +209,47 @@ export const uploadFeedItem = async (
 
     throw new Error(
       error.response?.data?.message || "Failed to upload feed item"
+    );
+  }
+};
+
+export const fetchLovedFeedItems = async (
+  page: number = 0,
+  size: number = 50
+): Promise<ApiResponse<VideoListResponse<VideoItem>>> => {
+  try {
+    const { data } = await api.get<ApiResponse<PageResponse<FeedItemResponse>>>(
+      "/feed-items/loved",
+      {
+        params: { page, size },
+      }
+    );
+
+    const videoListResponse = buildVideoListResponse(data.result);
+
+    return {
+      ...data,
+      result: videoListResponse,
+    };
+  } catch (error: any) {
+    console.error("API Fetch Loved Feed Items Error:", error);
+
+    if (error.config) {
+      console.log("Request URL:", error.config.url);
+      console.log("Request Method:", error.config.method);
+      console.log(
+        "Request Headers:",
+        JSON.stringify(error.config.headers, null, 2)
+      );
+    }
+
+    if (error.response) {
+      console.log("Response Status:", error.response.status);
+      console.log("Response Data:", error.response.data);
+    }
+
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch loved feed items"
     );
   }
 };

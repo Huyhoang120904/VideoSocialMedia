@@ -1,6 +1,5 @@
 package com.hehe.thesocial.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -40,6 +39,14 @@ public class UserDetail extends BaseDocument {
 
     @Field("shown_name")
     String shownName;
+
+    @Field("show_loved")
+    @Builder.Default
+    boolean showLoved = false;
+
+    @Field("private_profile")
+    @Builder.Default
+    boolean privateProfile = false;
 
     @DBRef
     @Field("following_ref")

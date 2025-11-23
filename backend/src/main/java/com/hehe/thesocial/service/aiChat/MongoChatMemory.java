@@ -1,22 +1,16 @@
 package com.hehe.thesocial.service.aiChat;
 
 
-import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
 import com.hehe.thesocial.entity.ChatMessage;
 import com.hehe.thesocial.entity.Conversation;
 import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
-import com.hehe.thesocial.entity.enums.EventType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
-import com.hehe.thesocial.mapper.chatMessage.ChatMessageMapper;
 import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
-import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
-import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
-
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +22,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,28 +35,17 @@ public class MongoChatMemory implements ChatMemory {
     int maxMessages;
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
-    ChatMessageMapper chatMessageMapper;
-    MessageDeliveryService messageDeliveryService;
-    NewestMessageBroadcastService newestMessageBroadcastService;
-
 
     public MongoChatMemory(ChatMessageRepository chatMessageRepository,
                            ConversationRepository conversationRepository,
                            UserDetailRepository userDetailRepository,
-                           UserRepository userRepository,
-                           ChatMessageMapper chatMessageMapper,
-                           MessageDeliveryService messageDeliveryService,
-                           NewestMessageBroadcastService newestMessageBroadcastService
-) {
+                           UserRepository userRepository
+    ) {
         this.chatMessageRepository = chatMessageRepository;
         this.conversationRepository = conversationRepository;
         this.maxMessages = 10;
         this.userDetailRepository = userDetailRepository;
         this.userRepository = userRepository;
-        this.chatMessageMapper = chatMessageMapper;
-        this.messageDeliveryService = messageDeliveryService;
-        this.newestMessageBroadcastService = newestMessageBroadcastService;
-
     }
 
     @Override
@@ -76,7 +56,7 @@ public class MongoChatMemory implements ChatMemory {
         // 
         // For now, we'll skip saving here since messages are explicitly saved in the service layer.
         // The advisor is primarily used for retrieving conversation history via the get() method.
-        
+
         // Validate conversation exists
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
@@ -93,7 +73,7 @@ public class MongoChatMemory implements ChatMemory {
         conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
 
-        // Retrieve messages from the conversation (limited by maxMessages)
+        // Retrieve messages from the conversation (limited by lastN or maxMessages)
         List<ChatMessage> chatMessages = chatMessageRepository
                 .findByConversationIdOrderByCreatedAtDesc(conversationId);
 

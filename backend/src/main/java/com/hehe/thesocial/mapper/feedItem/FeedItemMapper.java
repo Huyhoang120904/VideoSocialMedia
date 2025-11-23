@@ -33,6 +33,7 @@ public interface FeedItemMapper {
     @Mapping(target = "likeCount", ignore = true)
     @Mapping(target = "commentCount", ignore = true)
     @Mapping(target = "shareCount", ignore = true)
+    @Mapping(target = "viewCount", ignore = true)
     @Mapping(target = "loved", ignore = true)
     @Mapping(target = "uploader", ignore = true)
     FeedItemResponse toFeedItemResponse(FeedItem feedItem, 
@@ -76,6 +77,9 @@ public interface FeedItemMapper {
         // Set counts from metadata
         long likeCount = 0;
         long commentCount = 0;
+        long viewCount = 0;
+        long shareCount = 0;
+
         if (feedItem.getMetaData() != null) {
             if (feedItem.getMetaData().getLoveCount() != null) {
                 likeCount = feedItem.getMetaData().getLoveCount();
@@ -83,11 +87,18 @@ public interface FeedItemMapper {
             if (feedItem.getMetaData().getCommentsCount() != null) {
                 commentCount = feedItem.getMetaData().getCommentsCount();
             }
+            if (feedItem.getMetaData().getViewsCount() != null) {
+                viewCount = feedItem.getMetaData().getViewsCount();
+            }
+            if (feedItem.getMetaData().getSharesCount() != null) {
+                shareCount = feedItem.getMetaData().getSharesCount();
+            }
         }
 
         response.setLikeCount(likeCount);
         response.setCommentCount(commentCount);
-        response.setShareCount(0L); // Share count not yet implemented
+        response.setViewCount(viewCount);
+        response.setShareCount(shareCount);
 
         // Check if current user has loved this feed item
         boolean isLoved = false;

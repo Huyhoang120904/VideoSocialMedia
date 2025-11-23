@@ -6,14 +6,23 @@ import { ProfileFeedItem } from "./ProfileFeedItem";
 interface ProfileFeedGridProps {
   feedItems: VideoItem[];
   isLoading: boolean;
-  onFeedItemPress: (feedItemId: string) => void;
+  onFeedItemPress: (feedItem: VideoItem) => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }
 
 export const ProfileFeedGrid: React.FC<ProfileFeedGridProps> = ({
   feedItems,
   isLoading,
   onFeedItemPress,
+  emptyTitle,
+  emptyDescription,
 }) => {
+  const noPostsTitle = emptyTitle ?? "No posts yet";
+  const noPostsDescription =
+    emptyDescription ??
+    "When you post videos or images, they'll appear here";
+
   if (isLoading) {
     return (
       <View className="items-center justify-center py-20">
@@ -29,9 +38,9 @@ export const ProfileFeedGrid: React.FC<ProfileFeedGridProps> = ({
         <View className="w-16 h-16 bg-gray-200 rounded-full justify-center items-center mb-4">
           <Text className="text-gray-600 text-2xl">📹</Text>
         </View>
-        <Text className="text-gray-600 text-lg mb-2">No posts yet</Text>
+        <Text className="text-gray-600 text-lg mb-2">{noPostsTitle}</Text>
         <Text className="text-gray-500 text-sm text-center">
-          When you post videos or images, they'll appear here
+          {noPostsDescription}
         </Text>
       </View>
     );
@@ -45,10 +54,7 @@ export const ProfileFeedGrid: React.FC<ProfileFeedGridProps> = ({
         keyExtractor={(item) => item.id}
         scrollEnabled={false}
         renderItem={({ item }) => (
-          <ProfileFeedItem
-            item={item}
-            onPress={() => onFeedItemPress(item.id)}
-          />
+          <ProfileFeedItem item={item} onPress={() => onFeedItemPress(item)} />
         )}
       />
     </View>

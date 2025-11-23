@@ -4,6 +4,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.mapping.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Document(collection = "comments")
@@ -23,27 +24,32 @@ public class Comment extends BaseDocument {
     @Field("content")
     String content;
 
+    @Builder.Default
     @Field("like_count")
-    long loveCount;
+    long loveCount = 0L;
 
+    @Builder.Default
     @Field("dislike_count")
-    long dislikeCount;
+    long dislikeCount = 0L;
 
+    @Builder.Default
     @Field("reply_count")
-    int replyCount;
+    int replyCount = 0;
 
+    @Builder.Default
     @Field("love_by")
-    Set<String> lovedBy;
+    Set<String> lovedBy = new HashSet<>();
 
+    @Builder.Default
     @Field("disliked_by")
-    Set<String> dislikedBy;
+    Set<String> dislikedBy = new HashSet<>();
 
     @Field("user_detail_id")
     String userDetailId;
 
-    @Field("avatar_url")
-    String avatarUrl;
-
     @Field("feed_item_id")
     String feedItemId;
+
+    @Field("avatar_url")
+    String avatarUrl;
 }

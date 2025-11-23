@@ -22,34 +22,19 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecuritySetting {
 
-    @Value("${server.cors}")
-    private String CORS_URL;
-
-    static String[] PUBLIC_GET_ENDPOINTS = {
-            "/v3/api-docs/**",
-            "/swagger-ui/**", "/swagger-ui.html",
-            "/swagger-resources/**", "/webjars/**", "/files/**",
-            "/videos/**"
-    };
-
-    static String[] PUBLIC_POST_ENDPOINTS = {
-           "/users/**", "/files/**"
-    };
-
-    static String[] PUBLIC_PUT_ENDPOINTS = {
-
-    };
-
-    static String[] PUBLIC_DELETE_ENDPOINTS = {
-
-    };
-
-    static String[] ADMIN_ENDPOINTS = {
-
-    };
-
     static String[] PUBLIC_ENDPOINTS = {
-            "/auth/**","/ws-native/**", "/feed/**"
+            "/auth/**",
+            "/ws-native/**",
+            "/feed/**",
+            "/v3/**",                    // Broader pattern
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/swagger-resources/**",
+            "/webjars/**",
+            "/files/**",
+            "/videos/**",
+            "/configuration/**",         // Add this
+            "/swagger-config/**"         // Add this
     };
 
 
@@ -58,11 +43,6 @@ public class SecuritySetting {
         return httpSecurity
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.PUT, PUBLIC_PUT_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.DELETE, PUBLIC_DELETE_ENDPOINTS).permitAll()
-                        .requestMatchers(ADMIN_ENDPOINTS).hasRole(PredefinedRoles.ADMIN_ROLE)
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2Security ->

@@ -22,6 +22,13 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
+import org.springframework.ai.rag.retrieval.search.DocumentRetriever;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
+import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -29,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -45,6 +53,7 @@ public class AiChatService {
     ChatMessageMapper chatMessageMapper;
     MessageDeliveryService messageDeliveryService;
     NewestMessageBroadcastService newestMessageBroadcastService;
+    QdrantVectorStore vectorStore;
 
     /**
      * Process AI chat request and return AI response.
@@ -79,16 +88,26 @@ public class AiChatService {
         messageDeliveryService.deliverMessageToConversation(conversationId, userMessageResponse);
         newestMessageBroadcastService.broadcastNewestMessage(conversationId, userMessageResponse);
 
-        // Set up chat memory advisor for AI response (for context retrieval)
+        //Chat memory
         MessageChatMemoryAdvisor chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(mongoChatMemory)
                 .conversationId(conversationId)
                 .build();
 
-        // Get AI response (memory advisor will retrieve conversation history)
+
+        Advisor retrievalAugmentationAdvisor = RetrievalAugmentationAdvisor.builder()
+                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        .similarityThreshold(0.50)
+                        .vectorStore(vectorStore)
+                        .build())
+                .queryAugmenter(ContextualQueryAugmenter.builder()
+                        .allowEmptyContext(true)
+                        .build())
+                .build();
+
         String aiResponse = chatClient
                 .prompt()
                 .user(request.getMessage())
-                .advisors(List.of(chatMemoryAdvisor))
+                .advisors(List.of(chatMemoryAdvisor, retrievalAugmentationAdvisor))
                 .call()
                 .content();
 
@@ -153,7 +172,7 @@ public class AiChatService {
         throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
-    private UserDetail getOrCreateAiUser() {
+    public UserDetail getOrCreateAiUser() {
         // Try to find existing AI user
         return userDetailRepository.findByUserId("ai-system")
                 .orElseGet(() -> {
