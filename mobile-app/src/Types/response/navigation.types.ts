@@ -35,6 +35,11 @@ export type AuthedStackParamList = {
     userDetailId: string;
     userDisplayName?: string;
   };
+  UserFeed: {
+    userDetailId: string;
+    initialFeedItemId?: string;
+    userDisplayName?: string;
+  };
   FollowersList: {
     userDetailId: string;
     initialTab?: "followers" | "following";
@@ -47,6 +52,11 @@ export type AuthedStackParamList = {
     userName: string;
     userAvatar?: string;
   };
+  LikedFeed:
+    | undefined
+    | {
+        initialFeedItemId?: string;
+      };
 };
 
 // Define the type for the unauthenticated stack navigation

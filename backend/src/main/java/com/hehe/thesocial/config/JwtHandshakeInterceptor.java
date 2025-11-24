@@ -11,20 +11,15 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.security.Principal;
 import java.util.Map;
 
@@ -33,10 +28,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
-    @NonFinal
-    @Value("${jwt.secret}")
-    String jwtSecret;
-
     AuthenticationService authenticationService;
     UserRepository userRepository;
     UserDetailRepository userDetailRepository;
@@ -49,6 +40,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             String token = extractToken(request);
             if (token == null) {
                 log.warn("No JWT token found in WebSocket handshake");
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;
             }
 
@@ -58,23 +50,29 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
             if (!introspectResponse.isValid()) {
                 log.warn("Invalid JWT token in WebSocket handshake");
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;
             }
 
-            // Decode JWT to get user information
-            Jwt jwt = decodeToken(token);
-            String userId = jwt.getSubject(); // Assuming subject contains user ID
+            String userId = introspectResponse.getUserId();
+            if (userId == null) {
+                log.warn("Token is valid but subject is missing");
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                return false;
+            }
 
             // Get UserDetail from database
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) {
                 log.warn("User not found for ID: {}", userId);
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;
             }
 
             UserDetail userDetail = userDetailRepository.findByUser(user).orElse(null);
             if (userDetail == null) {
                 log.warn("UserDetail not found for user ID: {}", userId);
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;
             }
 
@@ -116,14 +114,6 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         return null;
-    }
-
-    private Jwt decodeToken(String token) {
-        SecretKeySpec secretKeySpec = new SecretKeySpec(jwtSecret.getBytes(), "HS512");
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
-                .macAlgorithm(MacAlgorithm.HS512)
-                .build();
-        return decoder.decode(token);
     }
 
     // Simple Principal implementation for UserDetail ID

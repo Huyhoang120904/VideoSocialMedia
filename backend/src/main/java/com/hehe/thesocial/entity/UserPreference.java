@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,4 +50,9 @@ public class UserPreference {
     //Watched Feed Item List
     @Field("watched_list")
     Set<String> watchedList;
+
+    //Liked feed items
+    @Field("liked_list")
+    @Builder.Default
+    Set<String> likedVideos = new HashSet<>();
 }

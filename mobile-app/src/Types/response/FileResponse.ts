@@ -15,6 +15,7 @@ export default interface FileResponse {
   height?: number; // Added to match backend
   etag?: string; // Added to match backend
   resourceType: string;
+  duration?: number;
   title?: string;
   description?: string;
   thumbnailUrl?: string;

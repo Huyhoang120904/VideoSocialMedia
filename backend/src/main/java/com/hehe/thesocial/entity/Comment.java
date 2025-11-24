@@ -46,4 +46,11 @@ public class Comment extends BaseDocument {
 
     @Field("feed_item_id")
     String feedItemId;
+
+    @Field("parent_comment_id")
+    String parentCommentId; // null for top-level comments
+
+    @Field("reply_ids")
+    Set<String> replyIds; // IDs of direct reply comments
+
 }

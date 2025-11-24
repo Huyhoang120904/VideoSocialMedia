@@ -374,22 +374,7 @@ Create group chat message.
 
 **Response** (`201 Created`): ChatMessageResponse
 
-#### POST /chat-messages/ai
-
-Create AI chat message.
-
-**Request Body**:
-
-```json
-{
-  "recipientId": "ai_assistant_id",
-  "message": "What is the weather?",
-  "role": "user",
-  "content": "What is the weather?"
-}
-```
-
-**Response** (`201 Created`): ChatMessageResponse with AI response
+---
 
 #### PUT /chat-messages/{messageId}
 
@@ -547,6 +532,75 @@ Delete conversation.
 - `conversationId` (string): Conversation ID
 
 **Response** (`204 No Content`)
+
+---
+
+### AI Chat Endpoints
+
+#### POST /ai-chat/messages
+
+Send a message to AI and receive a response.
+
+**Request Body**:
+
+```json
+{
+  "message": "What is the weather today?"
+}
+```
+
+**Headers**: Requires authentication
+
+**Response** (`201 Created`):
+
+```json
+{
+  "code": 1000,
+  "message": "AI message sent successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "id": "message_id",
+    "conversationId": "conversation_id",
+    "senderId": "ai_assistant_id",
+    "message": "The weather today is sunny with a temperature of 72°F.",
+    "createdAt": "2025-01-27T12:00:00Z",
+    "edited": false,
+    "readParticipantsId": []
+  }
+}
+```
+
+#### GET /ai-chat/conversation
+
+Get or create the AI conversation for the current authenticated user.
+
+**Headers**: Requires authentication
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "AI conversation retrieved successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "conversationId": "conversation_id",
+    "conversationType": "DIRECT",
+    "conversationName": "AI Assistant",
+    "participants": [
+      {
+        "id": "user_detail_id",
+        "displayName": "John Doe"
+      },
+      {
+        "id": "ai_assistant_id",
+        "displayName": "AI Assistant"
+      }
+    ],
+    "createdAt": "2025-01-27T12:00:00Z"
+  }
+}
+```
 
 ---
 
@@ -744,6 +798,110 @@ Get feed items (videos, image slides).
     ],
     "totalElements": 100,
     "totalPages": 10,
+    "currentPage": 0,
+    "pageSize": 10
+  }
+}
+```
+
+---
+
+#### GET /feed/personal
+
+Get personalized recommendations for the authenticated user.
+
+**Headers**: Requires authentication
+
+**Query Parameters**: Same as `GET /feed`
+
+**Response** (`200 OK`): `Page<FeedItemResponse>`
+
+---
+
+#### GET /feed/explore
+
+Get trending content for discovery (non-personalized but filtered to exclude items you've already consumed).
+
+**Headers**: Requires authentication
+
+**Query Parameters**: Same as `GET /feed`
+
+**Response** (`200 OK`): `Page<FeedItemResponse>`
+
+---
+
+#### GET /feed/following
+
+Get posts created by creators the user follows, sorted by recency.
+
+**Headers**: Requires authentication
+
+**Query Parameters**: Same as `GET /feed`
+
+**Response** (`200 OK`): `Page<FeedItemResponse>`
+
+---
+
+#### POST /feed-items/{feedItemId}/view
+
+Record a view for a feed item and add it to the authenticated user's watched list.
+
+**Path Parameters**:
+
+- `feedItemId` (string): ID of the feed item being viewed
+
+**Headers**: Requires authentication
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "View recorded successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "feedItemId": "feed_item_id",
+    "viewsCount": 123,
+    "watched": true
+  }
+}
+```
+
+---
+
+#### GET /feed-items/loved
+
+Get the authenticated user's loved feed items.
+
+**Headers**: Requires authentication
+
+**Query Parameters**:
+
+- `page` (int, default: 0)
+- `size` (int, default: 10)
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "Loved feed items retrieved successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "content": [
+      {
+        "id": "feed_item_id",
+        "feedItemType": "VIDEO",
+        "loved": true,
+        "likeCount": 123,
+        "uploader": {
+          "id": "user_detail_id",
+          "displayName": "Creator"
+        }
+      }
+    ],
+    "totalElements": 5,
+    "totalPages": 1,
     "currentPage": 0,
     "pageSize": 10
   }

@@ -5,21 +5,22 @@ import {
   getAuthToken,
   setAuthToken,
 } from "../Services/HttpClient";
-import { LoginRequest } from "../Services/AuthService";
-import { useConversations } from "./ConversationProvider";
+import { IntrospectTokenRequest, LoginRequest } from "../Services/AuthService";
 
 type AuthContextType = {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  user: { imageUrl?: string } | null;
 };
 
 const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
-  login: async () => {},
-  logout: async () => {},
+  login: async () => { },
+  logout: async () => { },
+  user: null,
 });
 
 const TOKEN_KEY = "APP_TOKEN";
@@ -30,19 +31,32 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [hasSession, setHasSession] = useState<boolean>(false);
+  const [user, setUser] = useState<{ imageUrl?: string } | null>(null);
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
         const raw = await SecureStore.getItemAsync(TOKEN_KEY);
         if (raw) {
-          const token = raw; // Token is already a string, no need to parse
+          const token = raw;
           setAuthToken(token);
-          setHasSession(true);
-          setIsAuthenticated(true); // Set authenticated if we have a valid token
+
+          const response = await IntrospectTokenRequest({ token });
+          if (response.result?.valid) {
+            setHasSession(true);
+            setIsAuthenticated(true);
+            // Ideally fetch user details here
+            // const userDetails = await fetchMyDetails();
+            // setUser(userDetails);
+          } else {
+            await SecureStore.deleteItemAsync(TOKEN_KEY);
+            clearAuthToken();
+          }
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        console.warn("Failed to restore session:", error);
+        clearAuthToken();
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -64,6 +78,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       setAuthToken(token);
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       setHasSession(true);
+      // Fetch user details after login
     } catch (error) {
       // Rethrow the error so it can be caught and displayed in the Login component
       throw error;
@@ -74,6 +89,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setHasSession(false);
     setIsAuthenticated(false);
+    setUser(null);
   };
 
   const value = useMemo(
@@ -83,8 +99,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       // isAuthenticated: true,
       login,
       logout,
+      user,
     }),
-    [isLoading, hasSession]
+    [isLoading, hasSession, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,9 @@
 package com.hehe.thesocial.service.metadata.love;
 
+import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.metadata.LoveResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface LoveService {
     /**

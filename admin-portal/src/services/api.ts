@@ -135,3 +135,7 @@ export const videoService = new VideoService();
 
 // Export feedItemService
 export { feedItemService } from "./admin/feedItemService";
+// Export documentIngestionService
+export { documentIngestionService } from "./admin/documentIngestionService";
+// Export ragService
+export { ragService } from "./admin/ragService";

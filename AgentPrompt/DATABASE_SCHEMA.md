@@ -475,6 +475,28 @@ db.invalid_tokens.createIndex({ token_id: 1 }, { unique: true });
 db.invalid_tokens.createIndex({ expire_at: 1 }, { expireAfterSeconds: 0 });
 ```
 
+### 15. notifications
+
+**Description**: User-facing notifications for social interactions
+
+| Field            | Type              | Constraints | Description                                         |
+| ---------------- | ----------------- | ----------- | --------------------------------------------------- |
+| `_id`            | String            | Primary Key | MongoDB ObjectId                                    |
+| `recipient_id`   | String            | Required    | Target user detail ID                               |
+| `actor_id`       | String            |             | User detail ID that triggered the notification      |
+| `notification_type` | Enum          | Required    | `COMMENT`, `LIKE`, or `MESSAGE`                     |
+| `title`          | String            |             | Notification title                                  |
+| `body`           | String            |             | Human-readable body text                            |
+| `preview_text`   | String            |             | Optional snippet (comment text, message preview)    |
+| `feed_item_id`   | String            |             | Related feed item/video ID                          |
+| `comment_id`     | String            |             | Related comment ID (for comment notifications)      |
+| `conversation_id`| String            |             | Conversation ID for message notifications           |
+| `message_id`     | String            |             | Chat message ID                                     |
+| `is_read`        | Boolean           | Default: false | Read state                                       |
+| `read_at`        | LocalDateTime     |             | Timestamp when notification was read                |
+| `created_at`     | LocalDateTime     | Auto        | Creation timestamp (from `BaseDocument`)            |
+| `updated_at`     | LocalDateTime     | Auto        | Last modification timestamp                         |
+
 ### Index Creation Strategy
 
 **Automatic Creation**: `auto-index-creation: true` in config

@@ -1,6 +1,7 @@
 package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
+import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.metadata.LoveResponse;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
@@ -9,11 +10,22 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.access.prepost.PreAuthorize;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Tag(name = "Love", description = "Like/love feed items - requires authentication")
 public class LoveController {
 
     LoveService loveService;
@@ -30,6 +43,7 @@ public class LoveController {
      * POST /feed-items/{id}/love
      */
     @PostMapping("/{id}/love")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<LoveResponse>> addLove(@PathVariable String id) {
         log.info("Received request to add love for feedItem: {}", id);
 
@@ -50,6 +64,7 @@ public class LoveController {
      * DELETE /feed-items/{id}/love
      */
     @DeleteMapping("/{id}/love")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<LoveResponse>> removeLove(@PathVariable String id) {
         log.info("Received request to remove love for feedItem: {}", id);
 
@@ -69,6 +84,7 @@ public class LoveController {
      * GET /feed-items/{id}/love
      */
     @GetMapping("/{id}/love")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<LoveResponse>> checkLoveStatus(@PathVariable String id) {
         log.info("Received request to check love status for feedItem: {}", id);
 

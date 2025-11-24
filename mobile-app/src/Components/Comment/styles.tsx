@@ -6,7 +6,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         justifyContent: "flex-end",
-        backgroundColor: 'transparent', // Transparent để thấy video phía sau
+        backgroundColor: 'transparent',
     },
     modalContainer: {
         backgroundColor: "#ffffff",
@@ -127,6 +127,16 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 12,
     },
+    initialAvatar: {
+        backgroundColor: "#E5E7EB",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    initialAvatarText: {
+        color: "#374151",
+        fontSize: 18,
+        fontWeight: "700",
+    },
     commentContent: {
         flex: 1,
     },
@@ -161,6 +171,17 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         fontFamily: "TikTokSans-Regular",
         marginBottom: 8,
+    },
+    commentGifWrapper: {
+        marginBottom: 8,
+        borderRadius: 14,
+        overflow: "hidden",
+        backgroundColor: "#000",
+        alignSelf: "flex-start",
+    },
+    commentGif: {
+        width: width * 0.45,
+        aspectRatio: 1,
     },
     commentMeta: {
         flexDirection: "row",
@@ -210,11 +231,13 @@ const styles = StyleSheet.create({
     inputContainer: {
         borderTopWidth: 1,
         borderTopColor: "rgba(0, 0, 0, 0.08)",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
         backgroundColor: "#ffffff",
+    },
+    inputRow: {
         flexDirection: "row",
         alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
     userAvatar: {
         width: 36,
@@ -356,6 +379,79 @@ const styles = StyleSheet.create({
     addCommentContent: {
         flexDirection: "row",
         alignItems: "center",
+    },
+    repliesContainer: {
+        marginTop: 12,
+        marginLeft: 52, // Indent replies
+        paddingLeft: 12,
+        borderLeftWidth: 2,
+        borderLeftColor: "rgba(0, 0, 0, 0.08)",
+    },
+    replyItem: {
+        flexDirection: "row",
+        paddingVertical: 12,
+        paddingRight: 0,
+    },
+    replyAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 10,
+    },
+    replyContent: {
+        flex: 1,
+    },
+    repliesLoading: {
+        paddingVertical: 12,
+        alignItems: "center",
+    },
+    replyingToContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: "#f5f5f5",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderTopWidth: 1,
+        borderTopColor: "rgba(0, 0, 0, 0.08)",
+    },
+    replyingToText: {
+        fontSize: 13,
+        color: "#666",
+        fontFamily: "TikTokSans-Regular",
+    },
+    replyingToUsername: {
+        fontWeight: "600",
+        color: "#FE2C55",
+        fontFamily: "TikTokSans-SemiBold",
+    },
+    cancelReplyButton: {
+        padding: 4,
+    },
+    replyBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: '#F8F8F8',
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(0, 0, 0, 0.05)",
+    },
+    replyBarText: {
+        fontSize: 13,
+        color: '#666',
+        fontFamily: "TikTokSans-Regular",
+        flex: 1,
+    },
+    replyBarName: {
+        fontWeight: '600',
+        color: '#000',
+        fontFamily: "TikTokSans-SemiBold",
+    },
+    closeReplyButton: {
+        padding: 4,
+        marginLeft: 8,
     },
 });
 

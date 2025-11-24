@@ -12,4 +12,5 @@ export interface ChatMessageResponse {
   readParticipantsId?: string[];
   isReadByCurrentUser?: boolean;
   readCount?: number;
+  feedItemId?: string;
 }

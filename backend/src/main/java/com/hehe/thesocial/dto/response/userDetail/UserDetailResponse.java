@@ -1,8 +1,8 @@
 package com.hehe.thesocial.dto.response.userDetail;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.dto.response.user.UserResponse;
-import com.hehe.thesocial.entity.FileDocument;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -15,7 +15,7 @@ import lombok.experimental.FieldDefaults;
 public class UserDetailResponse {
     String id;
     UserResponse user;
-    FileDocument avatar;
+    FileResponse avatar;
     String displayName;
     String bio;
 

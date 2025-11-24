@@ -2,14 +2,20 @@ package com.hehe.thesocial.service.feedItem;
 
 import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
+import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
+import com.hehe.thesocial.dto.response.reportTicket.ReportTicketResponse;
 import com.hehe.thesocial.entity.*;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
+import com.hehe.thesocial.mapper.feedItem.FeedItemMapper;
 import com.hehe.thesocial.mapper.file.FileMapper;
+import com.hehe.thesocial.mapper.reportTicket.ReportTicketMapper;
+import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.*;
 import com.hehe.thesocial.service.file.FileService;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -18,8 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,9 +50,15 @@ public class FeedItemServiceImpl implements FeedItemService {
     FileRepository fileRepository;
     FileService fileService;
     FileMapper fileMapper;
+    FeedItemMapper feedItemMapper;
+    UserDetailMapper userDetailMapper;
     UserDetailRepository userDetailRepository;
     MetaDataRepository metaDataRepository;
     HashTagRepository hashTagRepository;
+    AuthenticationHelper authenticationHelper;
+    UserPreferenceRepository userPreferenceRepository;
+    ReportTicketRepository reportTicketRepository;
+    ReportTicketMapper reportTicketMapper;
 
     @NonFinal
     @Value("${file.upload-dir:uploads}")
@@ -93,16 +103,26 @@ public class FeedItemServiceImpl implements FeedItemService {
     }
 
     @Override
-    public Page<FeedItemUploadResponse> getFeedItemsByUserId(String userId, Pageable pageable) {
-        log.info("Getting feed items for user ID: {} with page: {}, size: {}", userId, pageable.getPageNumber(), pageable.getPageSize());
+    public Page<FeedItemResponse> getFeedItemsByUserDetailId(String userDetailId, Pageable pageable) {
+        log.info("Getting feed items for user detail ID: {} with page: {}, size: {}", userDetailId, pageable.getPageNumber(), pageable.getPageSize());
 
-        UserDetail userDetail = userDetailRepository.findById(userId)
+        UserDetail userDetail = userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Page<FeedItem> feedItems = feedItemRepository.findByUploader(userDetail, pageable);
         log.info("Found {} feed items for user: {}", feedItems.getTotalElements(), userDetail.getDisplayName());
 
-        return feedItems.map(this::toFeedItemUploadResponse);
+        String currentUserDetailId = null;
+        try {
+            currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
+        } catch (Exception ex) {
+            log.debug("Could not determine current user detail id while fetching feed items for user {}", userDetailId);
+        }
+
+        String finalCurrentUserDetailId = currentUserDetailId;
+        return feedItems.map(feedItem ->
+                feedItemMapper.toFeedItemResponse(feedItem, fileMapper, userDetailMapper, finalCurrentUserDetailId)
+        );
     }
 
     @Override
@@ -113,6 +133,79 @@ public class FeedItemServiceImpl implements FeedItemService {
         log.info("Found {} feed items of type {}", feedItems.getTotalElements(), feedItemType);
 
         return feedItems.map(this::toFeedItemUploadResponse);
+    }
+
+    @Override
+    public FeedItemResponse getFeedItemById(String feedItemId) {
+        log.info("Fetching feed item by id {}", feedItemId);
+        FeedItem feedItem = feedItemRepository.findById(feedItemId)
+                .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
+
+        String currentUserDetailId = null;
+        try {
+            currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
+        } catch (Exception ex) {
+            log.debug("Could not determine current user detail id while fetching feed item {}", feedItemId);
+        }
+
+        return feedItemMapper.toFeedItemResponse(feedItem, fileMapper, userDetailMapper, currentUserDetailId);
+    }
+
+    @Override
+    public Page<FeedItemResponse> getLovedFeedItems(String userDetailId, Pageable pageable) {
+        UserPreference userPreference = userPreferenceRepository.findByUserDetailId(userDetailId)
+                .orElse(null);
+
+        if (userPreference == null || userPreference.getLikedVideos() == null || userPreference.getLikedVideos().isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        Page<FeedItem> lovedFeedItems = feedItemRepository.findByIdIn(userPreference.getLikedVideos(), pageable);
+
+        return lovedFeedItems.map(feedItem ->
+                feedItemMapper.toFeedItemResponse(feedItem, fileMapper, userDetailMapper, userDetailId)
+        );
+    }
+
+    @Override
+    public List<ReportTicketResponse> getReportsByFeedItemId(String feedItemId) {
+        log.info("Fetching all reports for feedItem ID: {}", feedItemId);
+
+        // Verify feedItem exists
+        FeedItem feedItem = feedItemRepository.findById(feedItemId)
+                .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
+
+        // Get all reports for this feedItem
+        List<ReportTicket> reportTickets = reportTicketRepository.findByFeedItemId(feedItemId);
+        log.info("Found {} reports for feedItem ID: {}", reportTickets.size(), feedItemId);
+
+        // Map to response DTOs
+        return reportTickets.stream()
+                .map(reportTicket -> {
+                    ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(reportTicket);
+                    // Set feedItemType from the feedItem
+                    if (feedItem.getFeedItemType() != null) {
+                        response.setFeedItemType(feedItem.getFeedItemType());
+                    }
+                    return response;
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void disableFeedItemByViolation(String feedItemId) {
+        log.info("Disabling feedItem ID: {} due to violation", feedItemId);
+
+        FeedItem feedItem = feedItemRepository.findById(feedItemId)
+                .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
+
+        // Set violated flag and disable the feedItem
+        feedItem.setViolated(true);
+        feedItem.setActive(false);
+
+        feedItemRepository.save(feedItem);
+        log.info("FeedItem ID: {} has been disabled due to violation", feedItemId);
     }
 
     // Private helper methods
@@ -321,7 +414,6 @@ public class FeedItemServiceImpl implements FeedItemService {
                     .fileName(thumbnail.getOriginalFilename())
                     .size(thumbnail.getSize())
                     .url(thumbnailUrl)
-                    .format(fileExtension.substring(1))
                     .resourceType("image")
                     .build();
 
@@ -389,44 +481,30 @@ public class FeedItemServiceImpl implements FeedItemService {
             builder.captions(feedItem.getDescription());
         }
 
+        // Populate metadata fields
+        if (feedItem.getMetaData() != null) {
+            MetaData metaData = feedItem.getMetaData();
+            builder.likeCount(metaData.getLoveCount() != null ? metaData.getLoveCount() : 0L);
+            builder.commentCount(metaData.getCommentsCount() != null ? metaData.getCommentsCount() : 0L);
+            builder.shareCount(metaData.getSharesCount() != null ? metaData.getSharesCount() : 0L);
+            builder.viewCount(metaData.getViewsCount() != null ? metaData.getViewsCount() : 0L);
+        } else {
+            // Set default values if metadata is null
+            builder.likeCount(0L);
+            builder.commentCount(0L);
+            builder.shareCount(0L);
+            builder.viewCount(0L);
+        }
+
         return builder.build();
     }
 
     private UserDetail getCurrentUser() {
-        var authentication = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            String userDetailId = jwt.getClaim("userDetailId");
-
-            if (userDetailId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            return userDetailRepository.findById(userDetailId)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        }
-
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
+        return authenticationHelper.getCurrentUserDetail();
     }
 
     private String getCurrentUserId() {
-        var authentication = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            Jwt jwt = jwtAuth.getToken();
-            String userDetailId = jwt.getClaim("userDetailId");
-
-            if (userDetailId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
-
-            return userDetailId;
-        }
-
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
+        return authenticationHelper.getCurrentUserDetail().getId();
     }
 
     private String getFileExtension(String filename) {

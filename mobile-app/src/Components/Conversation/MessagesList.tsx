@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Animated } from "react-native";
@@ -8,6 +8,8 @@ import MessageBubble from "./MessageBubble";
 interface MessagesListProps {
   messages: ChatMessageResponse[];
   isMessagesLoading: boolean;
+  isLoadingMore?: boolean;
+  hasMoreMessages?: boolean;
   editingMessage: ChatMessageResponse | null;
   editText: string;
   currentUserDetail: any;
@@ -18,13 +20,61 @@ interface MessagesListProps {
   onCancelEditing: () => void;
   onSaveEdit: () => void;
   onDeleteMessage: (messageId: string) => void;
+  onLoadMore?: () => void;
   isLoading: boolean;
   conversationName: string;
+  isAiConversation?: boolean;
 }
+
+interface MessageWithDateSeparator {
+  type: "message" | "date";
+  message?: ChatMessageResponse;
+  date?: string;
+}
+
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const isToday =
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
+
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isToday) {
+    return "Today";
+  } else if (isYesterday) {
+    return "Yesterday";
+  } else {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+};
+
+const isSameDay = (date1: string, date2: string): boolean => {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return (
+    d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear()
+  );
+};
 
 export default function MessagesList({
   messages,
   isMessagesLoading,
+  isLoadingMore = false,
+  hasMoreMessages = false,
   editingMessage,
   editText,
   currentUserDetail,
@@ -35,17 +85,68 @@ export default function MessagesList({
   onCancelEditing,
   onSaveEdit,
   onDeleteMessage,
+  onLoadMore,
   isLoading,
   conversationName,
+  isAiConversation = false,
 }: MessagesListProps) {
-  const renderMessageItem = ({ item }: { item: ChatMessageResponse }) => {
-    const isEditing = editingMessage?.id === item.id;
-    const isMyMessage =
-      item.sender === "me" || currentUserDetail?.id === item.sender;
+  const messagesWithDateSeparators = useMemo(() => {
+    const result: MessageWithDateSeparator[] = [];
+    let previousMessageDate: string | null = null;
+
+    messages.forEach((message) => {
+      const messageDate = message.createdAt;
+      const shouldShowDateSeparator =
+        previousMessageDate === null ||
+        !isSameDay(messageDate, previousMessageDate);
+
+      if (shouldShowDateSeparator) {
+        result.push({
+          type: "date",
+          date: formatDate(messageDate),
+        });
+      }
+
+      result.push({
+        type: "message",
+        message,
+      });
+
+      previousMessageDate = messageDate;
+    });
+
+    return result;
+  }, [messages]);
+
+  const renderItem = ({ item }: { item: MessageWithDateSeparator }) => {
+    if (item.type === "date") {
+      return (
+        <View className="items-center my-4">
+          <View className="bg-gray-200 px-4 py-1.5 rounded-full">
+            <Text className="text-gray-600 text-xs font-medium">
+              {item.date}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (!item.message) return null;
+
+    const isEditing = editingMessage?.id === item.message.id;
+    let isMyMessage: boolean;
+    if (isAiConversation) {
+      isMyMessage = item.message.sender === "me";
+    } else {
+      isMyMessage =
+        item.message.sender === "me" ||
+        (currentUserDetail?.id &&
+          currentUserDetail.id === item.message.senderId);
+    }
 
     return (
       <MessageBubble
-        message={item}
+        message={item.message}
         isMyMessage={isMyMessage}
         isEditing={isEditing}
         editText={editText}
@@ -56,6 +157,28 @@ export default function MessagesList({
         onDeleteMessage={onDeleteMessage}
         isLoading={isLoading}
       />
+    );
+  };
+
+  const keyExtractor = (item: MessageWithDateSeparator, index: number) => {
+    if (item.type === "date") {
+      return `date-${item.date}-${index}`;
+    }
+    return item.message?.id || `message-${index}`;
+  };
+
+  const handleEndReached = () => {
+    if (hasMoreMessages && !isLoadingMore && onLoadMore) {
+      onLoadMore();
+    }
+  };
+
+  const renderFooter = () => {
+    if (!isLoadingMore) return null;
+    return (
+      <View className="items-center py-4">
+        <ActivityIndicator size="small" color="#EC4899" />
+      </View>
     );
   };
 
@@ -111,16 +234,23 @@ export default function MessagesList({
       }}
     >
       <FlatList
-        className="flex-1 px-4 pt-4"
-        data={messages}
-        renderItem={renderMessageItem}
-        keyExtractor={(item) => item.id}
+        data={messagesWithDateSeparators}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 16,
+        }}
         inverted={true}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        style={{ flexGrow: 1 }}
+        style={{ flex: 1 }}
+        removeClippedSubviews={false}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
       />
     </Animated.View>
   );
