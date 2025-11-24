@@ -152,7 +152,6 @@ public class ReportTicketServiceImpl implements ReportTicketService {
 
         // Update status
         if (request.getStatus() != null) {
-            reportTicket.setStatus(request.getStatus());
             log.info("Report ticket {} status updated to: {}", id, request.getStatus());
         }
 

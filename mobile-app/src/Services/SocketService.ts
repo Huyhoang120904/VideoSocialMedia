@@ -27,16 +27,29 @@ export class SocketService {
 
     this.currentToken = token;
 
-    // Determine WebSocket URL (prefer env, fall back to API host)
-    const resolvedApiBase = API_URL.replace(/\/api\/v\d+$/, "");
-    const normalizedApiBase = resolvedApiBase.endsWith("/")
-      ? resolvedApiBase.slice(0, -1)
-      : resolvedApiBase;
-    const baseUrl =
-      process.env.EXPO_PUBLIC_WS_URL || `${normalizedApiBase}/ws-native`;
+    // Determine WebSocket URL (prefer env, fall back to API host + context path)
+    const envWsUrl = process.env.EXPO_PUBLIC_WS_URL?.replace(/\/$/, "");
+
+    const deriveBaseFromApi = () => {
+      try {
+        const parsed = new URL(API_URL);
+        const normalizedPath = parsed.pathname.endsWith("/")
+          ? parsed.pathname.slice(0, -1)
+          : parsed.pathname;
+        return `${parsed.origin}${normalizedPath}`;
+      } catch {
+        // If API_URL is not a valid URL, fall back to trimming trailing slash only
+        return API_URL.replace(/\/$/, "");
+      }
+    };
+
+    const fallbackBase = deriveBaseFromApi();
+    const baseUrl = envWsUrl || `${fallbackBase}/ws-native`;
 
     // Add auth token as query parameter
     const url = `${baseUrl}?token=${encodeURIComponent(token)}`;
+
+    console.log(`url`, url);
 
     this.isConnecting = true;
 

@@ -7,12 +7,9 @@ import {
   LayoutDashboard,
   Users,
   Video,
-  BarChart3,
-  Settings,
   ChevronDown,
   UserCog,
   Shield,
-  MessageSquare,
   Flag,
   FileText,
   Brain,
@@ -20,8 +17,6 @@ import {
   Key,
   Lock,
   FileImage,
-  Heart,
-  Eye,
   Activity,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -56,7 +51,6 @@ const menuItems = [
     icon: Video,
     submenu: [
       { title: "Feed Items", href: "/admin/feed-items", icon: Video },
-      { title: "Comments", href: "/admin/comments", icon: MessageSquare },
     ],
   },
   {
@@ -70,7 +64,7 @@ const menuItems = [
     submenu: [
       { title: "Reports Dashboard", href: "/admin/reports", icon: Ticket },
       { title: "Report Tickets", href: "/admin/report-tickets", icon: Ticket },
-      { title: "Flagged Content", href: "/admin/videos/flagged", icon: Flag },
+      { title: "Violated Feed Items", href: "/admin/violated-feed-items", icon: Flag },
     ],
   },
   {
@@ -97,14 +91,7 @@ const menuItems = [
         href: "/admin/user-interactions",
         icon: Activity,
       },
-      { title: "Views", href: "/admin/views", icon: Eye },
-      { title: "Likes", href: "/admin/likes", icon: Heart },
     ],
-  },
-  {
-    title: "Analytics",
-    href: "/admin/analytics",
-    icon: BarChart3,
   },
   {
     title: "AI & Documents",
@@ -121,11 +108,6 @@ const menuItems = [
         icon: Brain,
       },
     ],
-  },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
   },
 ];
 

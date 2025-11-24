@@ -19,6 +19,8 @@ import {
   XCircle,
   ArrowRight,
   MessageSquare,
+  Ban,
+  Eye,
 } from "lucide-react";
 import {
   reportTicketService,
@@ -29,6 +31,8 @@ import { PageHeader, StatsCard, EmptyState } from "@/components/molecules";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ModerationGuard } from "@/components/admin/ModerationGuard";
 import useAuthStore from "@/hooks/useAuthStore";
+import { useViolatedFeedItems } from "@/hooks/queries";
+import { FeedItemUploadResponse } from "@/types";
 
 export default function ModerationPage() {
   const { user } = useAuthStore();
@@ -39,10 +43,18 @@ export default function ModerationPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [resolvedCount, setResolvedCount] = useState(0);
   const [rejectedCount, setRejectedCount] = useState(0);
+  const [violatedPage, setViolatedPage] = useState(0);
 
   // Check if user has moderation access
   const hasModerationAccess =
     user?.role === "admin" || user?.role === "moderator";
+
+  // Fetch violated feed items
+  const {
+    data: violatedFeedItemsData,
+    isLoading: isLoadingViolated,
+    error: violatedError,
+  } = useViolatedFeedItems(violatedPage, 10);
 
   useEffect(() => {
     if (!hasModerationAccess) {
@@ -194,6 +206,126 @@ export default function ModerationPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Violated Feed Items */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Ban className="h-5 w-5 text-destructive" />
+                Violated Feed Items
+              </CardTitle>
+              <CardDescription>
+                Feed items that have been flagged and disabled due to violations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingViolated ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-muted-foreground">
+                    Loading violated feed items...
+                  </div>
+                </div>
+              ) : violatedError ? (
+                <EmptyState
+                  icon={Ban}
+                  title="Error loading violated items"
+                  description="Failed to fetch violated feed items. Please try again."
+                />
+              ) : !violatedFeedItemsData?.result ||
+                violatedFeedItemsData.result.feedItems.content.length === 0 ? (
+                <EmptyState
+                  icon={Ban}
+                  title="No violated feed items"
+                  description="There are no feed items that have been flagged as violated"
+                />
+              ) : (
+                <div className="space-y-4">
+                  {violatedFeedItemsData.result.feedItems.content.map(
+                    (feedItem: FeedItemUploadResponse) => (
+                      <div
+                        key={feedItem.feedItemId}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">
+                              {feedItem.feedItemType}
+                            </span>
+                            <Badge variant="destructive">Violated</Badge>
+                            {feedItem.title && (
+                              <Badge variant="outline">{feedItem.title}</Badge>
+                            )}
+                          </div>
+                          {feedItem.description && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {feedItem.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 mt-2">
+                            <p className="text-xs text-muted-foreground">
+                              ID: {feedItem.feedItemId.substring(0, 8)}...
+                            </p>
+                            {feedItem.likeCount !== undefined && (
+                              <p className="text-xs text-muted-foreground">
+                                Likes: {feedItem.likeCount}
+                              </p>
+                            )}
+                            {feedItem.viewCount !== undefined && (
+                              <p className="text-xs text-muted-foreground">
+                                Views: {feedItem.viewCount}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Link href={`/admin/reports/${feedItem.feedItemId}`}>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </Link>
+                      </div>
+                    )
+                  )}
+                  {violatedFeedItemsData.result.totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Page {violatedPage + 1} of{" "}
+                        {violatedFeedItemsData.result.totalPages} (
+                        {violatedFeedItemsData.result.totalElements} total items)
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViolatedPage((p) => Math.max(0, p - 1))}
+                          disabled={violatedPage === 0}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setViolatedPage((p) =>
+                              p < violatedFeedItemsData.result.totalPages - 1
+                                ? p + 1
+                                : p
+                            )
+                          }
+                          disabled={
+                            violatedPage >=
+                            violatedFeedItemsData.result.totalPages - 1
+                          }
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Recent Reports */}
           <Card>

@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +35,7 @@ import java.util.Map;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Document Ingestion", description = "Document ingestion for RAG system - ADMIN only")
-public class DocumentIngestionController {
+public class DocumentIngestionController extends BaseController {
 
     DocumentIngestionService documentIngestionService;
 
@@ -61,11 +60,7 @@ public class DocumentIngestionController {
         try {
             DocumentIngestionResponse response = documentIngestionService.ingest(file, metadataJson);
             
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.<DocumentIngestionResponse>builder()
-                            .result(response)
-                            .message(response.getMessage())
-                            .build());
+            return created(response, response.getMessage());
         } catch (IOException e) {
             log.error("Error ingesting document: {}", file.getOriginalFilename(), e);
             throw new AppException(ErrorCode.DOCUMENT_INGESTION_FAILED);
@@ -90,11 +85,7 @@ public class DocumentIngestionController {
         try {
             BatchIngestionResponse response = documentIngestionService.ingestBatch(files, metadataJson);
             
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.<BatchIngestionResponse>builder()
-                            .result(response)
-                            .message(response.getMessage())
-                            .build());
+            return created(response, response.getMessage());
         } catch (IOException e) {
             log.error("Error ingesting batch documents", e);
             throw new AppException(ErrorCode.DOCUMENT_INGESTION_FAILED);
@@ -112,10 +103,7 @@ public class DocumentIngestionController {
         
         Map<String, Object> formats = documentIngestionService.getSupportedFormats();
         
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                .result(formats)
-                .message("Supported formats retrieved successfully")
-                .build());
+        return ok(formats, "Supported formats retrieved successfully");
     }
 }
 

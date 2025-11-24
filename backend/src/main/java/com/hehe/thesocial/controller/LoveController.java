@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Love", description = "Like/love feed items - requires authentication")
-public class LoveController {
+public class LoveController extends BaseController {
 
     LoveService loveService;
 
@@ -53,10 +53,7 @@ public class LoveController {
 
         LoveResponse response = loveService.addLove(id, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<LoveResponse>builder()
-                .result(response)
-                .message("Love added successfully")
-                .build());
+        return ok(response, "Love added successfully");
     }
 
     /**
@@ -73,10 +70,7 @@ public class LoveController {
 
         LoveResponse response = loveService.removeLove(id, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<LoveResponse>builder()
-                .result(response)
-                .message("Love removed successfully")
-                .build());
+        return ok(response, "Love removed successfully");
     }
 
     /**
@@ -93,10 +87,7 @@ public class LoveController {
 
         LoveResponse response = loveService.checkLoveStatus(id, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<LoveResponse>builder()
-                .result(response)
-                .message("Love status retrieved successfully")
-                .build());
+        return ok(response, "Love status retrieved successfully");
     }
 
     /**

@@ -1,9 +1,10 @@
 package com.hehe.thesocial.service.feedItem;
 
+import com.hehe.thesocial.dto.request.feedItem.FeedItemSearchRequest;
 import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
-import com.hehe.thesocial.dto.response.reportTicket.ReportTicketResponse;
+import com.hehe.thesocial.dto.response.reportTicket.FeedItemReportSummaryResponse;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,15 +32,31 @@ public interface FeedItemService {
 
     /**
      * Lấy tất cả các báo cáo của một feedItem
+     * đồng thời trả về top 5 danh mục báo cáo theo số lượng
      * @param feedItemId ID của feedItem
-     * @return Danh sách các ReportTicketResponse
+     * @return thông tin tổng hợp các báo cáo
      */
-    List<ReportTicketResponse> getReportsByFeedItemId(String feedItemId);
+    FeedItemReportSummaryResponse getReportsByFeedItemId(String feedItemId);
 
     /**
      * Vô hiệu hóa feedItem do vi phạm
      * @param feedItemId ID của feedItem cần vô hiệu hóa
      */
     void disableFeedItemByViolation(String feedItemId);
+
+    /**
+     * Get all violated feed items
+     * @param pageable Pagination parameters
+     * @return Page of violated feed items
+     */
+    Page<FeedItemUploadResponse> getViolatedFeedItems(Pageable pageable);
+
+    /**
+     * Search feed items using dynamic filters
+     * @param request Search filters
+     * @param pageable Pagination parameters
+     * @return Page of feed items matching filters
+     */
+    Page<FeedItemUploadResponse> searchFeedItems(FeedItemSearchRequest request, Pageable pageable);
 }
 

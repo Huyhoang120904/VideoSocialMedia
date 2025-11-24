@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Tag(name = "Authentication", description = "Authentication and authorization endpoints")
-public class AuthenticationController {
+public class AuthenticationController extends BaseController {
 
     AuthenticationService authenticationService;
 
@@ -44,9 +44,7 @@ public class AuthenticationController {
     })
     @PostMapping("/token")
     public ResponseEntity<ApiResponse<AuthenticateResponse>> authenticate(@RequestBody AuthenticateRequest request) {
-        return ResponseEntity.ok(ApiResponse.<AuthenticateResponse>builder()
-                .result(authenticationService.authenticate(request))
-                .build());
+        return ok(authenticationService.authenticate(request));
     }
 
     @Operation(
@@ -59,10 +57,8 @@ public class AuthenticationController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid refresh token")
     })
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<RefreshResponse>> authenticate(@RequestBody RefreshRequest request) {
-        return ResponseEntity.ok(ApiResponse.<RefreshResponse>builder()
-                .result(authenticationService.refreshToken(request))
-                .build());
+    public ResponseEntity<ApiResponse<RefreshResponse>> refresh(@RequestBody RefreshRequest request) {
+        return ok(authenticationService.refreshToken(request));
     }
 
     @Operation(
@@ -76,9 +72,7 @@ public class AuthenticationController {
     })
     @PostMapping("/introspect")
     public ResponseEntity<ApiResponse<IntrospectResponse>> introspectToken(@RequestBody IntrospectRequest request) {
-        return ResponseEntity.ok(ApiResponse.<IntrospectResponse>builder()
-                .result(authenticationService.introspectToken(request))
-                .build());
+        return ok(authenticationService.introspectToken(request));
     }
 
     @Operation(
@@ -91,10 +85,8 @@ public class AuthenticationController {
     })
     @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> authenticate(@RequestBody LogoutRequest request) {
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestBody LogoutRequest request) {
         authenticationService.logout(request);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .message("Logout successful")
-                .build());
+        return okMessage("Logout successful");
     }
 }

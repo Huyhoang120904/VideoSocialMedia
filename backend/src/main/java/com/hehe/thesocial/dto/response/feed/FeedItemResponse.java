@@ -29,6 +29,10 @@ public class FeedItemResponse {
     long commentCount;
     long shareCount;
     long viewCount;
+    boolean active;
+    boolean violated;
+    LocalDateTime disabledAt;
+    UserDetailResponse disabledBy;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     boolean loved;

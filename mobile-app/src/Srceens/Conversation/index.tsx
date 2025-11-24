@@ -110,6 +110,8 @@ const ConversationScreen = () => {
     conversationType,
   });
 
+  console.log(`conversationId : `, conversationId);
+
   useConversationWebSocket({
     conversationId: conversationId || "",
     isAiConversation,

@@ -12,7 +12,9 @@ import {
   RegisterRequest,
   UserUpdateRequest,
   RoleResponse,
+  HateoasPagedModel,
 } from "@/types";
+import { normalizePagedResult } from "@/lib/pagination";
 
 class AuthService {
   async authenticate(
@@ -47,8 +49,18 @@ class UserService {
     page: number = 0,
     size: number = 12
   ): Promise<ApiResponse<PagedResponse<UserResponse>>> {
-    const response = await apiClient.get(`/users?page=${page}&size=${size}`);
-    return response.data;
+    const response = await apiClient.get<
+      ApiResponse<
+        PagedResponse<UserResponse> | HateoasPagedModel<UserResponse>
+      >
+    >(`/users?page=${page}&size=${size}`);
+
+    const data = response.data;
+
+    return {
+      ...data,
+      result: normalizePagedResult<UserResponse>(data.result),
+    };
   }
 
   async getUserById(userId: string): Promise<ApiResponse<UserResponse>> {
@@ -151,14 +163,10 @@ export { conversationService } from "./admin/conversationService";
 export { chatMessageService } from "./admin/chatMessageService";
 // Export notificationService
 export { notificationService } from "./admin/notificationService";
-// Export fileAdminService
-export { fileAdminService } from "./admin/fileAdminService";
+// Export fileManagementService
+export { fileManagementService } from "./admin/fileManagementService";
 // Export userInteractionService
 export { userInteractionService } from "./admin/userInteractionService";
-// Export viewService
-export { viewService } from "./admin/viewService";
-// Export likeService
-export { likeService } from "./admin/likeService";
 // Export commentService
 export { commentService } from "./admin/commentService";
 // Export aiChatService

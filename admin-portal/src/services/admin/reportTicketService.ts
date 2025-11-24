@@ -1,5 +1,5 @@
 import apiClient from "@/config/axios";
-import { ApiResponse, PagedResponse } from "@/types";
+import { ApiResponse, FeedItemType, PagedResponse } from "@/types";
 
 export interface ReportTicketResponse {
   id: string;
@@ -16,6 +16,19 @@ export interface ReportTicketResponse {
 export interface ReportTicketUpdateRequest {
   status: string;
   reason?: string;
+}
+
+export interface ReportCategorySummary {
+  category: string;
+  count: number;
+}
+
+export interface FeedItemReportSummaryResponse {
+  feedItemId: string;
+  feedItemType: FeedItemType;
+  totalReports: number;
+  topCategories: ReportCategorySummary[];
+  reports: ReportTicketResponse[];
 }
 
 class ReportTicketService {
@@ -62,7 +75,7 @@ class ReportTicketService {
 
   async getReportTicketsByFeedItemId(
     feedItemId: string
-  ): Promise<ApiResponse<ReportTicketResponse[]>> {
+  ): Promise<ApiResponse<FeedItemReportSummaryResponse>> {
     const response = await apiClient.get(
       `/feed-items/${feedItemId}/reports`
     );

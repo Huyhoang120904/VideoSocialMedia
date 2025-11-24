@@ -22,7 +22,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
@@ -93,21 +95,39 @@ public class AiChatService {
                 .conversationId(conversationId)
                 .build();
 
+        String permissiveRagPrompt = """
+            This is the user's query :
+            
+            {query}
+            
+            Context information is below.
+            ---------------------
+            {context}
+            ---------------------
+            Answer the user's question based on the context provided above.
+            
+            CRITICAL INSTRUCTION:
+            If the context is empty or does not contain the answer,
+            IGNORE the context and answer using your own general knowledge and conversational abilities.
+            """;
 
         Advisor retrievalAugmentationAdvisor = RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
-                        .similarityThreshold(0.50)
+                        .similarityThreshold(0.5)
                         .vectorStore(vectorStore)
                         .build())
                 .queryAugmenter(ContextualQueryAugmenter.builder()
                         .allowEmptyContext(true)
+                        .promptTemplate(PromptTemplate.builder()
+                                .template(permissiveRagPrompt)
+                                .build())
                         .build())
                 .build();
 
         String aiResponse = chatClient
                 .prompt()
                 .user(request.getMessage())
-                .advisors(List.of(chatMemoryAdvisor, retrievalAugmentationAdvisor))
+                .advisors(List.of(chatMemoryAdvisor, retrievalAugmentationAdvisor, new SimpleLoggerAdvisor()))
                 .call()
                 .content();
 

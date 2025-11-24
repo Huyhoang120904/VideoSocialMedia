@@ -6,7 +6,6 @@ import com.hehe.thesocial.dto.response.comment.CommentResponse;
 import com.hehe.thesocial.dto.response.metadata.CommentActionResponse;
 import com.hehe.thesocial.entity.Comment;
 import com.hehe.thesocial.entity.FeedItem;
-import com.hehe.thesocial.entity.MetaData;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.UserInteraction;
 import com.hehe.thesocial.entity.enums.InteractionType;
@@ -14,9 +13,9 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.repository.CommentRepository;
 import com.hehe.thesocial.repository.FeedItemRepository;
-import com.hehe.thesocial.repository.MetaDataRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserInteractionRepository;
+import com.hehe.thesocial.service.feed.FeedEngagementService;
 import com.hehe.thesocial.service.notification.NotificationService;
 import com.hehe.thesocial.util.TimeFormatter;
 import lombok.AccessLevel;
@@ -50,10 +49,10 @@ public class CommentServiceImpl implements CommentService {
 
     CommentRepository commentRepository;
     FeedItemRepository feedItemRepository;
-    MetaDataRepository metaDataRepository;
     UserDetailRepository userDetailRepository;
     UserInteractionRepository userInteractionRepository;
     NotificationService notificationService;
+    FeedEngagementService feedEngagementService;
 
     @Override
     @Transactional
@@ -71,7 +70,7 @@ public class CommentServiceImpl implements CommentService {
                 .avatarUrl(commenter.getAvatar() != null ? commenter.getAvatar().getUrl() : null)
                 .build());
 
-        long totalComments = updateCommentCount(feedItem.getMetaData(), 1);
+        long totalComments = feedEngagementService.updateCommentCount(feedItem, 1);
         recordCommentInteraction(feedItemId, request.getUserDetailId());
         notificationService.notifyCommentOnFeedItem(feedItem, comment, commenter);
 
@@ -96,7 +95,7 @@ public class CommentServiceImpl implements CommentService {
         FeedItem feedItem = feedItemRepository.findById(comment.getFeedItemId())
                 .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
 
-        updateCommentCount(feedItem.getMetaData(), -1);
+        feedEngagementService.updateCommentCount(feedItem, -1);
         commentRepository.delete(comment);
         return true;
     }
@@ -214,19 +213,6 @@ public class CommentServiceImpl implements CommentService {
     private Comment getCommentOrThrow(String commentId) {
         return commentRepository.findById(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
-    }
-
-    private long updateCommentCount(MetaData metaData, int delta) {
-        if (metaData == null) {
-            log.warn("Feed item metadata missing when updating comments count, skipping update");
-            return 0L;
-        }
-
-        long current = metaData.getCommentsCount() != null ? metaData.getCommentsCount() : 0L;
-        long updated = Math.max(0, current + delta);
-        metaData.setCommentsCount(updated);
-        metaDataRepository.save(metaData);
-        return updated;
     }
 
     private void recordCommentInteraction(String feedItemId, String userDetailId) {

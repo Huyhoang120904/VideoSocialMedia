@@ -32,41 +32,33 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "User Details", description = "User profile and social interaction endpoints")
-public class UserDetailController {
+public class UserDetailController extends BaseController {
     UserDetailService userDetailService;
 
     // READ - Get current user's detail
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getMyDetail() {
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.getMyDetail())
-                .build());
+        return ok(userDetailService.getMyDetail());
     }
 
     // READ - Get user detail by ID
     @GetMapping("/{userDetailId}")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getUserDetailById(@PathVariable String userDetailId) {
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.getUserDetailById(userDetailId))
-                .build());
+        return ok(userDetailService.getUserDetailById(userDetailId));
     }
 
     // READ - Get user detail by User ID
     @GetMapping("/by-user/{userId}")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getUserDetailByUserId(@PathVariable String userId) {
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.getUserDetailByUserId(userId))
-                .build());
+        return ok(userDetailService.getUserDetailByUserId(userId));
     }
 
     // READ - Get all user details
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getAllUserDetails() {
-        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
-                .result(userDetailService.getAllUserDetails())
-                .build());
+        return ok(userDetailService.getAllUserDetails());
     }
 
     // READ - Get paginated user details
@@ -83,27 +75,21 @@ public class UserDetailController {
                 : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        return ResponseEntity.ok(ApiResponse.<Page<UserDetailResponse>>builder()
-                .result(userDetailService.getUserDetailsPaginated(pageable))
-                .build());
+        return ok(userDetailService.getUserDetailsPaginated(pageable));
     }
 
     // READ - Search user details by display name
     @GetMapping("/search/display-name")
     public ResponseEntity<ApiResponse<List<UserDetailResponse>>> searchByDisplayName(
             @RequestParam String displayName) {
-        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
-                .result(userDetailService.searchUserDetailsByDisplayName(displayName))
-                .build());
+        return ok(userDetailService.searchUserDetailsByDisplayName(displayName));
     }
 
     // READ - Search user details by username
     @GetMapping("/search/username")
     public ResponseEntity<ApiResponse<List<UserDetailResponse>>> searchByUsername(
             @RequestParam String username) {
-        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
-                .result(userDetailService.searchUserDetailsByUsername(username))
-                .build());
+        return ok(userDetailService.searchUserDetailsByUsername(username));
     }
 
     // UPDATE - Update user detail
@@ -123,9 +109,7 @@ public class UserDetailController {
                 .shownName(shownName)
                 .build();
 
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.updateUserDetail(userDetailId, request))
-                .build());
+        return ok(userDetailService.updateUserDetail(userDetailId, request));
     }
 
     // UPDATE - Update avatar only
@@ -139,9 +123,7 @@ public class UserDetailController {
                 .avatar(avatar)
                 .build();
 
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.updateUserDetail(userDetailId, request))
-                .build());
+        return ok(userDetailService.updateUserDetail(userDetailId, request));
     }
 
     // DELETE - Delete user detail
@@ -149,43 +131,33 @@ public class UserDetailController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUserDetail(@PathVariable String userDetailId) {
         userDetailService.deleteUserDetail(userDetailId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
-                .message("User detail deleted successfully")
-                .build());
+        return respond(HttpStatus.NO_CONTENT, "User detail deleted successfully");
     }
 
     // SOCIAL - Follow a user
     @PostMapping("/follow/{targetUserDetailId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> followUser(@PathVariable String targetUserDetailId) {
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.followUser(targetUserDetailId))
-                .build());
+        return ok(userDetailService.followUser(targetUserDetailId));
     }
 
     // SOCIAL - Unfollow a user
     @DeleteMapping("/unfollow/{targetUserDetailId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> unfollowUser(@PathVariable String targetUserDetailId) {
-        return ResponseEntity.ok(ApiResponse.<UserDetailResponse>builder()
-                .result(userDetailService.unfollowUser(targetUserDetailId))
-                .build());
+        return ok(userDetailService.unfollowUser(targetUserDetailId));
     }
 
     // SOCIAL - Get followers
     @GetMapping("/{userDetailId}/followers")
     public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getFollowers(@PathVariable String userDetailId) {
-        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
-                .result(userDetailService.getFollowers(userDetailId))
-                .build());
+        return ok(userDetailService.getFollowers(userDetailId));
     }
 
     // SOCIAL - Get following
     @GetMapping("/{userDetailId}/following")
     public ResponseEntity<ApiResponse<List<UserDetailResponse>>> getFollowing(@PathVariable String userDetailId) {
-        return ResponseEntity.ok(ApiResponse.<List<UserDetailResponse>>builder()
-                .result(userDetailService.getFollowing(userDetailId))
-                .build());
+        return ok(userDetailService.getFollowing(userDetailId));
     }
 
     // SOCIAL - Check if following
@@ -193,8 +165,6 @@ public class UserDetailController {
     public ResponseEntity<ApiResponse<Boolean>> isFollowing(
             @PathVariable String userDetailId,
             @PathVariable String targetUserDetailId) {
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
-                .result(userDetailService.isFollowing(userDetailId, targetUserDetailId))
-                .build());
+        return ok(userDetailService.isFollowing(userDetailId, targetUserDetailId));
     }
 }

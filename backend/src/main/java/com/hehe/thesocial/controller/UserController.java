@@ -30,14 +30,12 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Tag(name = "Users", description = "User management endpoints")
-public class UserController {
+public class UserController extends BaseController {
     UserService userService;
 
     @GetMapping("/{userId}")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable String userId) {
-        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
-                .result(userService.findUserById(userId))
-                .build());
+        return ok(userService.findUserById(userId));
     }
 
     @Operation(
@@ -54,23 +52,17 @@ public class UserController {
     public ResponseEntity<ApiResponse<PagedModel<EntityModel<UserResponse>>>> getUserByPage(
             @Parameter(description = "Pagination parameters") @PageableDefault(size = 12, page = 0) Pageable pageable,
             PagedResourcesAssembler<UserResponse> assembler) {
-        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<UserResponse>>>builder()
-                .result(assembler.toModel(userService.findAllUserBypage(pageable)))
-                .build());
+        return ok(assembler.toModel(userService.findAllUserBypage(pageable)));
     }
 
     @PostMapping()
     public ResponseEntity<ApiResponse<UserResponse>> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<UserResponse>builder()
-                .result(userService.register(request))
-                .build());
+        return created(userService.register(request));
     }
 
     @PutMapping("/{userId}")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(@RequestBody UserUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
-                .result(userService.updateUser(request))
-                .build());
+        return ok(userService.updateUser(request));
     }
 
     @Operation(
@@ -90,8 +82,6 @@ public class UserController {
 
         userService.deleteUser(userId);
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
-                .message("User deleted successfully")
-                .build());
+        return respond(HttpStatus.NO_CONTENT, "User deleted successfully");
     }
 }

@@ -1,6 +1,7 @@
 package com.hehe.thesocial.service.userInteractions;
 
 import com.hehe.thesocial.dto.request.userInteraction.UserInteractionRequest;
+import com.hehe.thesocial.dto.response.userInteraction.UserInteractionResponse;
 import com.hehe.thesocial.entity.UserInteraction;
 import com.hehe.thesocial.entity.enums.InteractionType;
 import com.hehe.thesocial.mapper.userInteraction.UserInteractionMapper;
@@ -9,6 +10,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,4 +77,17 @@ public class UserInteractionServiceImpl implements UserInteractionService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserInteractionResponse> getUserInteractions(Pageable pageable) {
+        return userInteractionRepository.findAll(pageable)
+                .map(userInteractionMapper::toUserInteractionResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserInteractionResponse> getUserInteractionsByUser(String userDetailId, Pageable pageable) {
+        return userInteractionRepository.findByUserDetailId(userDetailId, pageable)
+                .map(userInteractionMapper::toUserInteractionResponse);
+    }
 }

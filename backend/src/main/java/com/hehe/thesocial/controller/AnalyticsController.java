@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Slf4j
 @Tag(name = "Analytics", description = "Analytics and dashboard endpoints - ADMIN only")
-public class AnalyticsController {
+public class AnalyticsController extends BaseController {
     
     AnalyticsService analyticsService;
 
@@ -41,10 +42,7 @@ public class AnalyticsController {
     public ResponseEntity<ApiResponse<AnalyticsResponse>> getDashboardAnalytics() {
         log.info("Fetching dashboard analytics");
         AnalyticsResponse analytics = analyticsService.getDashboardAnalytics();
-        return ResponseEntity.ok(ApiResponse.<AnalyticsResponse>builder()
-                .result(analytics)
-                .message("Analytics retrieved successfully")
-                .build());
+        return ok(analytics, "Analytics retrieved successfully");
     }
 
     @Operation(
@@ -58,12 +56,9 @@ public class AnalyticsController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<?>> getUserAnalytics() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserAnalytics() {
         log.info("Fetching user analytics");
-        return ResponseEntity.ok(ApiResponse.builder()
-                .result(analyticsService.getUserAnalytics())
-                .message("User analytics retrieved successfully")
-                .build());
+        return ok(analyticsService.getUserAnalytics(), "User analytics retrieved successfully");
     }
 
     @Operation(
@@ -77,12 +72,9 @@ public class AnalyticsController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/videos")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<?>> getVideoAnalytics() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getVideoAnalytics() {
         log.info("Fetching video analytics");
-        return ResponseEntity.ok(ApiResponse.builder()
-                .result(analyticsService.getVideoAnalytics())
-                .message("Video analytics retrieved successfully")
-                .build());
+        return ok(analyticsService.getVideoAnalytics(), "Video analytics retrieved successfully");
     }
 }
 

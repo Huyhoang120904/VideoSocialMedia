@@ -2,10 +2,12 @@ package com.hehe.thesocial.dto.response.feedItem;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.dto.response.file.FileResponse;
+import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -36,6 +38,9 @@ public class FeedItemUploadResponse {
     Long commentCount;
     Long shareCount;
     Long viewCount;
-
+    Boolean active;
+    Boolean violated;
+    LocalDateTime disabledAt;
+    UserDetailResponse disabledBy;
 }
 

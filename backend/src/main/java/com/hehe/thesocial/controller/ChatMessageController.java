@@ -15,7 +15,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Chat Messages", description = "Chat message management endpoints - requires authentication")
-public class ChatMessageController {
+public class ChatMessageController extends BaseController {
     ChatMessageService chatMessageService;
 
     @GetMapping("/conversation/{conversationId}")
@@ -37,9 +36,7 @@ public class ChatMessageController {
 
         Page<ChatMessageResponse> messages = chatMessageService.getAllChatMessageByConversationId(conversationId, pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
-                .result(messages)
-                .build());
+        return ok(messages);
     }
 
 
@@ -51,10 +48,7 @@ public class ChatMessageController {
 
         ChatMessageResponse message = chatMessageService.createDirectChatMessage(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ChatMessageResponse>builder()
-                        .result(message)
-                        .build());
+        return created(message);
     }
 
     @PostMapping("/group")
@@ -64,10 +58,7 @@ public class ChatMessageController {
 
         ChatMessageResponse message = chatMessageService.createGroupChatMessage(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ChatMessageResponse>builder()
-                        .result(message)
-                        .build());
+        return created(message);
     }
 
     @PutMapping("/{messageId}")
@@ -78,9 +69,7 @@ public class ChatMessageController {
 
         ChatMessageResponse updatedMessage = chatMessageService.updateChatMessage(messageId, request);
 
-        return ResponseEntity.ok(ApiResponse.<ChatMessageResponse>builder()
-                .result(updatedMessage)
-                .build());
+        return ok(updatedMessage);
     }
 
     @DeleteMapping("/{messageId}")
@@ -88,9 +77,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<Void>> deleteMessage(@PathVariable String messageId) {
         chatMessageService.deleteChatMessage(messageId);
 
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .message("Message deleted successfully")
-                .build());
+        return okMessage("Message deleted successfully");
     }
 
     @PostMapping("/{messageId}/read")
@@ -98,10 +85,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<ChatMessageResponse>> markMessageAsRead(@PathVariable String messageId) {
         ChatMessageResponse message = chatMessageService.markMessageAsRead(messageId);
 
-        return ResponseEntity.ok(ApiResponse.<ChatMessageResponse>builder()
-                .result(message)
-                .message("Message marked as read")
-                .build());
+        return ok(message, "Message marked as read");
     }
 
     @PostMapping("/conversation/{conversationId}/read-all")
@@ -109,9 +93,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<Void>> markConversationAsRead(@PathVariable String conversationId) {
         chatMessageService.markConversationMessagesAsRead(conversationId);
 
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .message("All messages marked as read")
-                .build());
+        return okMessage("All messages marked as read");
     }
 
     @PostMapping("/attachment")
@@ -122,9 +104,6 @@ public class ChatMessageController {
 
         ChatMessageResponse message = chatMessageService.sendAttachment(conversationId, file);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ChatMessageResponse>builder()
-                        .result(message)
-                        .build());
+        return created(message);
     }
 }

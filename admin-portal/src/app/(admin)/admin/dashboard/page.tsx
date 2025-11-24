@@ -16,8 +16,6 @@ import {
   MessageSquare,
   AlertTriangle,
   Activity,
-  BarChart3,
-  Settings,
   Shield,
   ArrowUpRight,
   ArrowDownRight,
@@ -393,28 +391,6 @@ function DashboardContent() {
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
                   Review and manage feed items
-                </div>
-              </button>
-            </Link>
-            <Link href="/admin/analytics">
-              <button className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  <div className="font-medium">Analytics</div>
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  View detailed platform statistics
-                </div>
-              </button>
-            </Link>
-            <Link href="/admin/settings">
-              <button className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors">
-                <div className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  <div className="font-medium">Settings</div>
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Configure platform settings
                 </div>
               </button>
             </Link>

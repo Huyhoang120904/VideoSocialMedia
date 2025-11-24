@@ -1,36 +1,30 @@
 import apiClient from "@/config/axios";
-import { ApiResponse } from "@/types";
+import { ApiResponse, FileResponse } from "@/types";
+import { ChatMessageResponse } from "./chatMessageService";
 
 export interface AiChatMessageRequest {
   message: string;
 }
 
-export interface ChatMessageResponse {
+export interface ConversationParticipantResponse {
   id: string;
-  content: string;
-  conversationId: string;
-  senderId: string;
-  senderName?: string;
-  messageType: string;
-  isRead: boolean;
-  createdAt: string;
-  updatedAt: string;
+  displayName?: string;
+  shownName?: string;
+  username?: string;
+  avatar?: FileResponse;
+  user?: {
+    id: string;
+    username: string;
+  };
 }
 
 export interface ConversationResponse {
-  id: string;
-  name?: string;
-  type: string;
-  participants: ParticipantResponse[];
-  lastMessage?: ChatMessageResponse;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ParticipantResponse {
-  id: string;
-  username: string;
-  avatar?: string;
+  conversationId: string;
+  conversationName?: string;
+  conversationType?: string;
+  participantIds?: string[];
+  userDetails?: ConversationParticipantResponse[];
+  newestChatMessage?: ChatMessageResponse;
 }
 
 class AiChatService {

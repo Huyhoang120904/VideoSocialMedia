@@ -2,7 +2,6 @@ package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
-import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
 import com.hehe.thesocial.service.feed.FeedService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Feed", description = "Feed endpoints for browsing content")
-public class FeedController {
+public class FeedController extends BaseController {
     
     FeedService feedService;
 
@@ -50,10 +49,8 @@ public class FeedController {
         
         Page<FeedItemResponse> feedItems = feedService.getAllFeedItems(pageable);
         
-        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
-                .result(feedItems)
-                .message(feedItems.getTotalElements() == 0 ? "No feed items found" : "Feed items retrieved successfully")
-                .build());
+        return ok(feedItems,
+                feedItems.getTotalElements() == 0 ? "No feed items found" : "Feed items retrieved successfully");
     }
     @Operation(
             summary = "Get personalized feed",
@@ -74,9 +71,8 @@ public class FeedController {
 
         Page<FeedItemResponse> feedItems = feedService.getPersonalizedFeed(pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
-                .result(feedItems)
-                .build());
+        return ok(feedItems,
+                feedItems.isEmpty() ? "No personalized feed items found" : "Personalized feed retrieved successfully");
     }
 
     @Operation(
@@ -98,11 +94,10 @@ public class FeedController {
 
 //        Page<FeedItemResponse> feedItems = feedService.getExploreFeed(pageable);
 
-        Page<FeedItemResponse> feedItems = feedService.getPersonalizedFeed(pageable);
+        Page<FeedItemResponse> feedItems = feedService.getExploreFeed(pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
-                .result(feedItems)
-                .build());
+        return ok(feedItems,
+                feedItems.isEmpty() ? "No explore feed items found" : "Explore feed retrieved successfully");
     }
 
     @Operation(
@@ -124,9 +119,8 @@ public class FeedController {
 
         Page<FeedItemResponse> feedItems = feedService.getFollowingFeed(pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
-                .result(feedItems)
-                .build());
+        return ok(feedItems,
+                feedItems.isEmpty() ? "No following feed items found" : "Following feed retrieved successfully");
     }
 
 }
