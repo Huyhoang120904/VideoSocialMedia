@@ -107,7 +107,9 @@ public class ReportTicketServiceImpl implements ReportTicketService {
         ReportTicket reportTicket = reportTicketRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.REPORT_TICKET_NOT_FOUND));
 
-        return reportTicketMapper.toReportTicketResponse(reportTicket);
+        ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(reportTicket);
+        setFeedItemType(response, reportTicket);
+        return response;
     }
 
     @Override
@@ -118,7 +120,11 @@ public class ReportTicketServiceImpl implements ReportTicketService {
         Page<ReportTicket> reportTickets = reportTicketRepository.findAll(pageable);
         log.info("Found {} report tickets", reportTickets.getTotalElements());
 
-        return reportTickets.map(reportTicketMapper::toReportTicketResponse);
+        return reportTickets.map(ticket -> {
+            ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(ticket);
+            setFeedItemType(response, ticket);
+            return response;
+        });
     }
 
     @Override
@@ -129,24 +135,39 @@ public class ReportTicketServiceImpl implements ReportTicketService {
         Page<ReportTicket> reportTickets = reportTicketRepository.findByReportCategory(category, pageable);
         log.info("Found {} report tickets for category: {}", reportTickets.getTotalElements(), category);
 
-        return reportTickets.map(reportTicketMapper::toReportTicketResponse);
+        return reportTickets.map(ticket -> {
+            ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(ticket);
+            setFeedItemType(response, ticket);
+            return response;
+        });
     }
 
     @Override
     @Transactional
     public ReportTicketResponse updateReportTicket(String id, ReportTicketUpdateRequest request) {
-        log.info("Updating report ticket with ID: {}", id);
+        log.info("Updating report ticket with ID: {} to status: {}", id, request.getStatus());
 
         ReportTicket reportTicket = reportTicketRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.REPORT_TICKET_NOT_FOUND));
 
-        // ReportTicketUpdateRequest hiện tại không có field nào để update
-        // Có thể thêm các field khác nếu cần trong tương lai
+        // Update status
+        if (request.getStatus() != null) {
+            reportTicket.setStatus(request.getStatus());
+            log.info("Report ticket {} status updated to: {}", id, request.getStatus());
+        }
+
+        // Update violation content if reason is provided
+        if (request.getReason() != null && !request.getReason().isEmpty()) {
+            reportTicket.setViolationContent(request.getReason());
+            log.info("Report ticket {} reason updated", id);
+        }
 
         reportTicket = reportTicketRepository.save(reportTicket);
         log.info("Report ticket updated with ID: {}", id);
 
-        return reportTicketMapper.toReportTicketResponse(reportTicket);
+        ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(reportTicket);
+        setFeedItemType(response, reportTicket);
+        return response;
     }
 
     @Override
@@ -175,6 +196,24 @@ public class ReportTicketServiceImpl implements ReportTicketService {
         }
         if (request.getFeedItemType() == FeedItemType.USER_DETAIL && request.getTargetId() == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    /**
+     * Sets the feedItemType in the response by looking up the FeedItem
+     */
+    private void setFeedItemType(ReportTicketResponse response, ReportTicket reportTicket) {
+        if (reportTicket.getFeedItemId() != null && !reportTicket.getFeedItemId().isEmpty()) {
+            try {
+                FeedItem feedItem = feedItemRepository.findById(reportTicket.getFeedItemId())
+                        .orElse(null);
+                if (feedItem != null && feedItem.getFeedItemType() != null) {
+                    response.setFeedItemType(feedItem.getFeedItemType());
+                }
+            } catch (Exception e) {
+                log.warn("Could not retrieve FeedItem {} for report ticket {}: {}",
+                        reportTicket.getFeedItemId(), reportTicket.getId(), e.getMessage());
+            }
         }
     }
 }

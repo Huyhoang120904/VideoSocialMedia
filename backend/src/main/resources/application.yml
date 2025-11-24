@@ -49,7 +49,3 @@ jwt:
 # Local file storage configuration
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads}
-
-logging:
-  level:
-    org.springframework.security: DEBUG

@@ -19,7 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableMethodSecurity
+//@EnableMethodSecurity
 public class SecuritySetting {
 
     static String[] PUBLIC_ENDPOINTS = {
@@ -37,12 +37,12 @@ public class SecuritySetting {
             "/swagger-config/**"         // Add this
     };
 
-
     @Bean
     SecurityFilterChain httpSecurity(HttpSecurity httpSecurity, CustomJwtDecoder customJwtDecoder) throws Exception {
         return httpSecurity
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers( HttpMethod.POST, "/users").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2Security ->

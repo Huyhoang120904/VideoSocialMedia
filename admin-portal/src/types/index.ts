@@ -213,6 +213,36 @@ export interface FeedItemUploadResponse {
   description?: string;
 }
 
+export interface ImageSlideResponse {
+  id: string;
+  images: FileResponse[];
+  captions?: string;
+}
+
+export interface FeedItemResponse {
+  id: string;
+  feedItemType: FeedItemType;
+  video?: FileResponse;
+  imageSlide?: ImageSlideResponse;
+  title?: string;
+  description?: string;
+  hashTagIds?: string[];
+  commentIds?: string[];
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+  loved: boolean;
+  hashTags?: string[];
+  uploader?: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
+}
+
 export interface FeedItemListResponse {
   feedItems: PagedResponse<FeedItemUploadResponse>;
   message: string;
