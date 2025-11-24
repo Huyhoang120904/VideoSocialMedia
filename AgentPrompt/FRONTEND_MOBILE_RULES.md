@@ -385,8 +385,391 @@ test("should display login screen", () => {
 - [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
 - [AUTHENTICATION_FLOW.md](./AUTHENTICATION_FLOW.md)
 
+## Code Quality Patterns and Best Practices
+
+### Service Layer Best Practices
+
+**Always use service layer for API calls:**
+
+```typescript
+// ✅ Good - Use service
+const response = await ConversationService.createConversation(request);
+
+// ❌ Bad - Direct API call in component
+const response = await api.post("/conversations", request);
+```
+
+**Service methods should return `ApiResponse<T>`:**
+
+```typescript
+// ✅ Good
+const ConversationService = {
+  getMyConversations: async (): Promise<
+    ApiResponse<Page<ConversationResponse>>
+  > => {
+    const response = await api.get("/conversations/me");
+    return response.data;
+  },
+};
+```
+
+**Services should not handle UI concerns:**
+
+```typescript
+// ❌ Bad - Service with UI logic
+const ConversationService = {
+  createConversation: async (request) => {
+    const response = await api.post("/conversations", request);
+    Alert.alert("Success", "Conversation created"); // Don't do this
+    return response.data;
+  },
+};
+
+// ✅ Good - Service only handles API
+const ConversationService = {
+  createConversation: async (request) => {
+    const response = await api.post("/conversations", request);
+    return response.data;
+  },
+};
+```
+
+### Context Provider Patterns
+
+**Always memoize context values:**
+
+```typescript
+// ✅ Good - Memoized value
+const value = useMemo(
+  () => ({
+    isLoading,
+    conversations,
+    getMyConversations,
+    refreshConversations,
+  }),
+  [isLoading, conversations, getMyConversations, refreshConversations]
+);
+
+// ❌ Bad - New object on every render
+const value = {
+  isLoading,
+  conversations,
+  getMyConversations,
+  refreshConversations,
+};
+```
+
+**Provide default values:**
+
+```typescript
+// ✅ Good - Default values provided
+const ConversationContext = createContext<ConversationsContextType>({
+  isLoading: false,
+  conversations: [],
+  getMyConversations: () => {},
+  clearConversations: () => {},
+});
+```
+
+**Clear state on logout:**
+
+```typescript
+// ✅ Good - Cleanup on logout
+useEffect(() => {
+  if (!isAuthenticated) {
+    clearConversations();
+    setUserDetailId(null);
+  }
+}, [isAuthenticated]);
+```
+
+### Component State Management
+
+**Prevent duplicate API calls:**
+
+```typescript
+// ✅ Good - Loading flag prevents duplicates
+const handleUserSelect = async (user: UserSearchResult) => {
+  if (isCreatingConversation || isAddingMember) return;
+
+  setIsCreatingConversation(true);
+  try {
+    // API call
+  } finally {
+    setIsCreatingConversation(false);
+  }
+};
+```
+
+**Use proper dependency arrays:**
+
+```typescript
+// ✅ Good - Correct dependencies
+useEffect(() => {
+  if (searchQuery.trim()) {
+    searchUsers(searchQuery);
+  }
+}, [searchQuery]);
+
+// ❌ Bad - Missing dependency
+useEffect(() => {
+  searchUsers(searchQuery);
+}, []); // Missing searchQuery dependency
+```
+
+**Clean up effects:**
+
+```typescript
+// ✅ Good - Cleanup subscription
+useEffect(() => {
+  const subscription = socket.on("message", handleMessage);
+  return () => {
+    subscription.off("message", handleMessage);
+  };
+}, []);
+```
+
+### Error Handling Patterns
+
+**Always handle errors with user-friendly messages:**
+
+```typescript
+// ✅ Good - Comprehensive error handling
+try {
+  const response = await ConversationService.createConversation(request);
+  // Success handling
+} catch (error) {
+  console.error("Error creating conversation:", error);
+  setError(
+    "Failed to create conversation. Please check your connection and try again."
+  );
+} finally {
+  setIsCreatingConversation(false);
+}
+```
+
+**Show error states in UI:**
+
+```typescript
+// ✅ Good - Error state component
+{
+  error ? (
+    <View className="flex-1 justify-center items-center py-20">
+      <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+      <Text className="text-red-500 text-lg mt-4">Error</Text>
+      <Text className="text-gray-400 text-sm mt-2 text-center px-8">
+        {error}
+      </Text>
+      <TouchableOpacity onPress={handleRetry}>
+        <Text className="text-white font-semibold">Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+}
+```
+
+### Navigation Best Practices
+
+**Use typed navigation:**
+
+```typescript
+// ✅ Good - Typed navigation
+type UserSearchNavigationProp = StackNavigationProp<
+  InboxStackParamList,
+  "UserSearch"
+>;
+
+const navigation = useNavigation<UserSearchNavigationProp>();
+navigation.navigate("Conversation", { conversationId: "123" });
+```
+
+**Access parent navigator when needed:**
+
+```typescript
+// ✅ Good - Parent navigation
+const parentNavigation =
+  navigation.getParent<StackNavigationProp<AuthedStackParamList>>();
+if (parentNavigation) {
+  parentNavigation.navigate("UserProfile", { userDetailId: user.id });
+}
+```
+
+**Handle route params safely:**
+
+```typescript
+// ✅ Good - Safe param access
+const params =
+  (route.params as { mode?: string; conversationId?: string }) || {};
+const isAddMemberMode = params.mode === "addMember";
+const conversationId = params.conversationId;
+```
+
+### Image and URL Handling
+
+**Always use utility functions:**
+
+```typescript
+// ✅ Good - Use utility
+import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
+
+const avatarUrl =
+  userDetail.avatar?.fileName && userDetail.id
+    ? getAvatarUrl(userDetail.id, userDetail.avatar.fileName)
+    : null;
+
+// ❌ Bad - Hardcoded URL construction
+const avatarUrl = `http://192.168.239.147:8082/api/v1/files/${id}/${fileName}`;
+```
+
+**Handle null/undefined URLs:**
+
+```typescript
+// ✅ Good - Null check
+{
+  avatarUrl ? (
+    <Image source={{ uri: avatarUrl }} />
+  ) : (
+    <Image source={UNKNOWN_AVATAR} />
+  );
+}
+```
+
+### Data Filtering and Mapping
+
+**Filter current user from lists:**
+
+```typescript
+// ✅ Good - Filter current user
+const mappedResults = (apiResponse.result || [])
+  .map(mapUserDetailToSearchResult)
+  .filter((user) => currentUserDetail && user.id !== currentUserDetail.id);
+```
+
+**Use helper functions for mapping:**
+
+```typescript
+// ✅ Good - Mapping helper
+const mapUserDetailToSearchResult = (
+  userDetail: UserDetailResponse
+): UserSearchResult => {
+  const avatarUrl =
+    userDetail.avatar?.fileName && userDetail.id
+      ? getAvatarUrl(userDetail.id, userDetail.avatar.fileName)
+      : null;
+
+  return {
+    id: userDetail.id,
+    displayName:
+      userDetail.displayName || userDetail.shownName || "Unknown User",
+    username: userDetail.shownName || userDetail.displayName,
+    avatar: avatarUrl ? { url: avatarUrl } : undefined,
+  };
+};
+```
+
+### Loading States
+
+**Show loading indicators:**
+
+```typescript
+// ✅ Good - Loading state
+{isLoading ? (
+  <View className="flex-1 justify-center items-center">
+    <ActivityIndicator size="large" color="#EC4899" />
+    <Text className="text-gray-500 mt-2">Searching users...</Text>
+  </View>
+) : (
+  // Content
+)}
+```
+
+**Overlay loading for blocking operations:**
+
+```typescript
+// ✅ Good - Overlay loading
+{
+  (isCreatingConversation || isAddingMember) && (
+    <View className="absolute inset-0 bg-black bg-opacity-50 flex-1 justify-center items-center z-50">
+      <View className="bg-white p-6 rounded-lg items-center">
+        <ActivityIndicator size="large" color="#EC4899" />
+        <Text className="text-gray-600 mt-3">
+          {isAddingMember ? "Adding member..." : "Creating conversation..."}
+        </Text>
+      </View>
+    </View>
+  );
+}
+```
+
+### Empty States
+
+**Always provide empty states:**
+
+```typescript
+// ✅ Good - Empty state
+const renderEmptyState = () => (
+  <View className="flex-1 justify-center items-center py-20">
+    <Ionicons name="search-outline" size={64} color="#9CA3AF" />
+    <Text className="text-gray-500 text-lg mt-4">
+      {searchQuery ? "No users found" : "Search for users to chat with"}
+    </Text>
+    <Text className="text-gray-400 text-sm mt-2">
+      {searchQuery
+        ? "Try searching with a different name"
+        : "Enter a display name or username to get started"}
+    </Text>
+  </View>
+);
+
+<FlatList
+  data={users}
+  renderItem={renderUserItem}
+  ListEmptyComponent={renderEmptyState}
+/>;
+```
+
+### Type Safety
+
+**Use proper TypeScript types:**
+
+```typescript
+// ✅ Good - Proper types
+import { UserDetailResponse } from "../../Types/response/UserDetailResponse";
+import { ConversationRequest } from "../../Types/request/ConversationRequest";
+
+const [currentUserDetail, setCurrentUserDetail] =
+  useState<UserDetailResponse | null>(null);
+
+// ❌ Bad - Using any
+const [currentUserDetail, setCurrentUserDetail] = useState<any>(null);
+```
+
+**Create helper types when needed:**
+
+```typescript
+// ✅ Good - Helper type
+type UserSearchResult = UserItemData;
+
+// ✅ Good - Type from component
+import UserItem, { UserItemData } from "../../Components/UserItem";
+```
+
+### Common Pitfalls to Avoid
+
+1. **Don't call APIs directly in components** - Always use service layer
+2. **Don't forget loading states** - Users need feedback
+3. **Don't forget error handling** - Always catch and display errors
+4. **Don't use hardcoded URLs** - Use utility functions
+5. **Don't forget to clean up effects** - Prevent memory leaks
+6. **Don't mutate state directly** - Always use setState
+7. **Don't forget to filter current user** - When showing user lists
+8. **Don't use `any` type** - Use proper TypeScript types
+9. **Don't forget navigation type safety** - Use typed navigation
+10. **Don't forget empty states** - Provide helpful empty states
+
 ## Change Log
 
-| Version | Date       | Changes         | Author      |
-| ------- | ---------- | --------------- | ----------- |
-| 1.0     | 2025-01-27 | Initial version | Mobile Team |
+| Version | Date       | Changes                                        | Author      |
+| ------- | ---------- | ---------------------------------------------- | ----------- |
+| 1.0     | 2025-01-27 | Initial version                                | Mobile Team |
+| 1.1     | 2025-01-27 | Added code quality patterns and best practices | Mobile Team |

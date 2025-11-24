@@ -3,6 +3,7 @@ import { api } from './HttpClient';
 export interface Comment {
     id: string;
     content: string;
+    type?: "TEXT" | "GIF";
     likeCount: number;
     username: string;
     avatarUrl?: string;
@@ -10,6 +11,8 @@ export interface Comment {
     updatedAt: string;
     isLikedByCurrentUser?: boolean;  // Add this field from backend
     timeAgo?: string;  // Thời gian đã format từ backend: "vừa xong", "3 phút trước", "25/7"
+    replyCount?: number;  // Số lượng replies của comment
+    parentCommentId?: string; // ID của comment cha (nếu có)
 }
 
 export interface CommentCreateResponse {
@@ -35,14 +38,36 @@ export interface CommentPageResponse {
 class CommentService {
     async addComment(
         feedItemId: string,
-        content: string
+        content: string,
+        parentCommentId?: string,
+        type: "TEXT" | "GIF" = "TEXT"
     ): Promise<CommentCreateResponse> {
         const response = await api.post(
             `/feed-items/${feedItemId}/comments`,
-            { content }
+            {
+                content,
+                type,
+                ...(parentCommentId && { parentCommentId })
+            }
         );
         // Backend wraps response in { code, result, message }
         return response.data.result || response.data;
+    }
+
+    /**
+     * Reply to a comment
+     * @param feedItemId - ID of the feed item
+     * @param parentCommentId - ID of the parent comment to reply to
+     * @param content - Reply content
+     * @returns CommentCreateResponse
+     */
+    async replyComment(
+        feedItemId: string,
+        parentCommentId: string,
+        content: string,
+        type: "TEXT" | "GIF" = "TEXT"
+    ): Promise<CommentCreateResponse> {
+        return this.addComment(feedItemId, content, parentCommentId, type);
     }
 
     async getComments(
@@ -107,6 +132,30 @@ class CommentService {
     async removeComment(commentId: string): Promise<boolean> {
         const response = await api.delete(
             `/feed-items/comments/${commentId}`
+        );
+        return response.data.result || response.data;
+    }
+
+    /**
+     * Get replies of a comment
+     * @param commentId - ID of the parent comment
+     * @param page - Page number (default: 0)
+     * @param size - Page size (default: 20)
+     * @returns CommentPageResponse
+     */
+    async getReplies(
+        commentId: string,
+        page: number = 0,
+        size: number = 20
+    ): Promise<CommentPageResponse> {
+        const response = await api.get(
+            `/feed-items/comments/${commentId}/replies`,
+            {
+                params: {
+                    page,
+                    size,
+                },
+            }
         );
         return response.data.result || response.data;
     }

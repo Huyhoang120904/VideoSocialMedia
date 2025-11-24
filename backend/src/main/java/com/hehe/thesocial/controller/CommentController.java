@@ -8,11 +8,15 @@ import com.hehe.thesocial.dto.response.metadata.CommentActionResponse;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.service.metadata.comment.CommentService;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -27,7 +31,7 @@ import org.springframework.data.domain.Page;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class CommentController {
-
+    AuthenticationHelper authenticationHelper;
     CommentService commentService;
 
     /**
@@ -170,18 +174,39 @@ public class CommentController {
      * GET /feed-items/{feedItemId}/comments
      */
     @GetMapping("/{feedItemId}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<CommentResponse>>> getCommentsByFeedItem(
             @PathVariable String feedItemId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("Received request to get comments for feedItem: {}, page: {}, size: {}", feedItemId, page, size);
+            @PageableDefault(page = 0, size = 20) Pageable pageable) {
+        log.info("Received request to get comments for feedItem: {}, page: {}, size: {}", feedItemId,
+                pageable.getPageNumber(), pageable.getPageSize());
 
-        String userDetailId = getCurrentUserDetailId();
-        Page<CommentResponse> response = commentService.getCommentsByFeedItem(feedItemId, userDetailId, page, size);
+        String userDetailId = authenticationHelper.getCurrentUserDetail().getId();
+        Page<CommentResponse> response = commentService.getCommentsByFeedItem(feedItemId, userDetailId, pageable);
 
         return ResponseEntity.ok(ApiResponse.<Page<CommentResponse>>builder()
                 .result(response)
                 .message("Comments retrieved successfully")
+                .build());
+    }
+
+    /**
+     * Lấy danh sách replies của một comment
+     * GET /feed-items/comments/{commentId}/replies
+     */
+    @GetMapping("/comments/{commentId}/replies")
+    public ResponseEntity<ApiResponse<Page<CommentResponse>>> getRepliesByCommentId(
+            @PathVariable String commentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Received request to get replies for comment: {}, page: {}, size: {}", commentId, page, size);
+
+        String userDetailId = getCurrentUserDetailId();
+        Page<CommentResponse> response = commentService.getRepliesByCommentId(commentId, userDetailId, page, size);
+
+        return ResponseEntity.ok(ApiResponse.<Page<CommentResponse>>builder()
+                .result(response)
+                .message("Replies retrieved successfully")
                 .build());
     }
 

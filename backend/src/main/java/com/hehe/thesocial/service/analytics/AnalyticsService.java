@@ -105,7 +105,7 @@ public class AnalyticsService {
                     .filter(file -> file.getResourceType() != null &&
                             file.getResourceType().equalsIgnoreCase("video"))
                     .collect(Collectors.groupingBy(
-                            file -> file.getFormat() != null ? file.getFormat().toUpperCase() : "UNKNOWN",
+                            file -> file.getResourceType().toUpperCase(),
                             Collectors.counting()
                     ));
 

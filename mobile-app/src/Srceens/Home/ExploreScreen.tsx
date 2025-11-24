@@ -1,107 +1,137 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
-  ScrollView,
   Image,
   TouchableOpacity,
   Dimensions,
   StyleSheet,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { FeedItem } from "../../Store/feedSlice";
+import { FeedItemType } from "../../Types/response/FeedItemResponse";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = (width - 18) / 2; // 2 columns with spacing
+const BASE_ITEM_HEIGHT = 240;
 
-interface ExploreVideo {
+interface ExploreVideoCard {
   id: string;
   thumbnail: string;
   title: string;
   author: string;
   likes: string;
-  isMultiImage?: boolean;
-  isVideo?: boolean; // true for video, false for post
+  isMultiImage: boolean;
+  isVideo: boolean;
 }
 
-export default function ExploreScreen() {
-  const exploreItems: ExploreVideo[] = [
-    {
-      id: "1",
-      thumbnail: "https://picsum.photos/400/600?random=1",
-      title: "một là em, hai là một, ba thì bye..",
-      author: "Alana",
-      likes: "1.431",
-      isVideo: true,
-    },
-    {
-      id: "2",
-      thumbnail: "https://picsum.photos/400/600?random=2",
-      title: "#CapCut thỏi em cúp máy đây",
-      author: "Hoàng Linh Anh",
-      likes: "2.596",
-      isVideo: true,
-    },
-    {
-      id: "3",
-      thumbnail: "https://picsum.photos/400/600?random=3",
-      title: "Xung quanh đây hỏn bế đều là thính... Bình tĩnh như em...",
-      author: "Ngoc Lan",
-      likes: "417",
-      isMultiImage: true,
-      isVideo: false, // This is a post with multiple images
-    },
-    {
-      id: "4",
-      thumbnail: "https://picsum.photos/400/600?random=4",
-      title: "Không biết nói gì nuôn 🤣",
-      author: "Huong Quynh 💕",
-      likes: "21,8 N",
-      isVideo: false, // This is a regular post
-    },
-    {
-      id: "5",
-      thumbnail: "https://picsum.photos/400/600?random=5",
-      title: "Trending dance challenge",
-      author: "Dancing Queen",
-      likes: "15.2K",
-      isVideo: true,
-    },
-    {
-      id: "6",
-      thumbnail: "https://picsum.photos/400/600?random=6",
-      title: "Makeup tutorial vibes",
-      author: "Beauty Guru",
-      likes: "8.9K",
-      isVideo: false, // This is a makeup post
-    },
-    {
-      id: "7",
-      thumbnail: "https://picsum.photos/400/600?random=7",
-      title: "Food challenge gone wrong",
-      author: "Foodie Life",
-      likes: "25.3K",
-      isVideo: true,
-    },
-    {
-      id: "8",
-      thumbnail: "https://picsum.photos/400/600?random=8",
-      title: "Pet compilation so cute",
-      author: "Animal Lover",
-      likes: "32.1K",
-      isVideo: false, // This is a photo post
-    },
-  ];
+interface ExploreScreenProps {
+  data: FeedItem[];
+  loading: boolean;
+  error?: string | null;
+  refreshing?: boolean;
+  onRefresh: () => void | Promise<void>;
+  onRetry: () => void;
+}
+
+const formatCount = (value: number): string => {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return value.toString();
+};
+
+const getThumbnailForFeedItem = (item: FeedItem): string | null => {
+  if (item.feedItemType === FeedItemType.VIDEO && item.video) {
+    return (
+      item.video.thumbnailUrl || item.video.secureUrl || item.video.url || null
+    );
+  }
+
+  if (item.feedItemType === FeedItemType.IMAGE_SLIDE && item.imageSlide) {
+    const coverImage = item.imageSlide.images?.[0];
+    return coverImage?.secureUrl || coverImage?.url || null;
+  }
+
+  return null;
+};
+
+export default function ExploreScreen({
+  data,
+  loading,
+  error,
+  refreshing,
+  onRefresh,
+  onRetry,
+}: ExploreScreenProps) {
+  const exploreItems = useMemo(() => {
+    return data
+      .map<ExploreVideoCard | null>((item) => {
+        const thumbnail = getThumbnailForFeedItem(item);
+        if (!thumbnail) {
+          return null;
+        }
+
+        return {
+          id: item.id,
+          thumbnail,
+          title: item.title || item.description || "Nội dung",
+          author:
+            item.uploader?.displayName ||
+            item.uploader?.shownName ||
+            item.uploader?.user?.username ||
+            "Người dùng",
+          likes: formatCount(item.likes || 0),
+          isMultiImage:
+            item.feedItemType === FeedItemType.IMAGE_SLIDE &&
+            (item.imageSlide?.images?.length || 0) > 1,
+          isVideo: item.feedItemType === FeedItemType.VIDEO,
+        };
+      })
+      .filter((card): card is ExploreVideoCard => card !== null);
+  }, [data]);
+
+  const renderEmptyState = () => {
+    if (loading) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="small" color="#000" />
+          <Text style={styles.loadingText}>Đang tải nội dung...</Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.retryText} onPress={onRetry}>
+            Thử lại
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.emptyText}>Không có nội dung để khám phá</Text>
+      </View>
+    );
+  };
 
   const renderItem = ({
     item,
     index,
   }: {
-    item: ExploreVideo;
+    item: ExploreVideoCard;
     index: number;
   }) => {
-    const itemHeight = Math.random() * 100 + 250; // Random height between 250-350
+    const itemHeight = BASE_ITEM_HEIGHT + (index % 3) * 40;
 
     return (
       <TouchableOpacity
@@ -142,7 +172,7 @@ export default function ExploreScreen() {
             <View style={styles.authorInfo}>
               <Image
                 source={{
-                  uri: `https://picsum.photos/30/30?random=${item.id}`,
+                  uri: `https://i.pravatar.cc/150?u=${item.id}`,
                 }}
                 style={styles.authorAvatar}
               />
@@ -162,15 +192,25 @@ export default function ExploreScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Content Grid - No header, use topVideo header */}
       <FlatList
         data={exploreItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.flatListContent}
+        contentContainerStyle={[
+          styles.flatListContent,
+          exploreItems.length === 0 && styles.emptyContentContainer,
+        ]}
         columnWrapperStyle={styles.row}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        ListEmptyComponent={renderEmptyState}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
       />
     </View>
   );
@@ -203,6 +243,36 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "70%",
     resizeMode: "cover",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  emptyContentContainer: {
+    flexGrow: 1,
+  },
+  loadingText: {
+    marginTop: 8,
+    color: "#444",
+    fontSize: 14,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#c0392b",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  retryText: {
+    fontSize: 15,
+    color: "#111",
+    fontWeight: "600",
   },
   playButtonOverlay: {
     position: "absolute",

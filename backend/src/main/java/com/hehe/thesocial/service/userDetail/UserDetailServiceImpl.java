@@ -7,13 +7,18 @@ import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
 import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.entity.UserInteraction;
+import com.hehe.thesocial.entity.enums.InteractionType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
+import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.repository.UserInteractionRepository;
 import com.hehe.thesocial.repository.UserRepository;
 import com.hehe.thesocial.service.file.FileService;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,9 +42,12 @@ import java.util.stream.Collectors;
 public class UserDetailServiceImpl implements UserDetailService {
     UserDetailRepository userDetailRepository;
     UserDetailMapper userDetailMapper;
+    FileMapper fileMapper;
     FileService fileService;
     FileRepository fileRepository;
     UserRepository userRepository;
+    UserInteractionRepository userInteractionRepository;
+    AuthenticationHelper authenticationHelper;
 
     @Transactional
     public UserDetailResponse createUserDetail(UserDetailCreateRequest request) {
@@ -72,7 +80,7 @@ public class UserDetailServiceImpl implements UserDetailService {
                 .build();
 
         userDetail = userDetailRepository.save(userDetail);
-        return userDetailMapper.toUserDetailResponse(userDetail);
+        return userDetailMapper.toUserDetailResponse(userDetail, fileMapper);
     }
 
     @Override
@@ -90,7 +98,7 @@ public class UserDetailServiceImpl implements UserDetailService {
             UserDetail userDetail = userDetailRepository.findById(userDetailId)
                     .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-            return userDetailMapper.toUserDetailResponse(userDetail);
+            return userDetailMapper.toUserDetailResponse(userDetail, fileMapper);
         }
 
         throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -100,7 +108,7 @@ public class UserDetailServiceImpl implements UserDetailService {
     public UserDetailResponse getUserDetailById(String userDetailId) {
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
-        return userDetailMapper.toUserDetailResponse(userDetail);
+        return userDetailMapper.toUserDetailResponse(userDetail, fileMapper);
     }
 
     @Override
@@ -108,28 +116,28 @@ public class UserDetailServiceImpl implements UserDetailService {
 
         UserDetail userDetail = userDetailRepository.findById(userDetailId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
-        return userDetailMapper.toUserDetailResponse(userDetail);
+        return userDetailMapper.toUserDetailResponse(userDetail, fileMapper);
     }
 
     @Override
     public List<UserDetailResponse> getAllUserDetails() {
         List<UserDetail> userDetails = userDetailRepository.findAll();
         return userDetails.stream()
-                .map(userDetailMapper::toUserDetailResponse)
+                .map(userDetail -> userDetailMapper.toUserDetailResponse(userDetail, fileMapper))
                 .collect(Collectors.toList());
     }
 
     @Override
     public Page<UserDetailResponse> getUserDetailsPaginated(Pageable pageable) {
         Page<UserDetail> userDetailsPage = userDetailRepository.findAll(pageable);
-        return userDetailsPage.map(userDetailMapper::toUserDetailResponse);
+        return userDetailsPage.map(userDetail -> userDetailMapper.toUserDetailResponse(userDetail, fileMapper));
     }
 
     @Override
     public List<UserDetailResponse> searchUserDetailsByDisplayName(String displayName) {
         List<UserDetail> userDetails = userDetailRepository.findByDisplayNameContainingIgnoreCase(displayName);
         return userDetails.stream()
-                .map(userDetailMapper::toUserDetailResponse)
+                .map(userDetail -> userDetailMapper.toUserDetailResponse(userDetail, fileMapper))
                 .collect(Collectors.toList());
     }
 
@@ -137,7 +145,7 @@ public class UserDetailServiceImpl implements UserDetailService {
     public List<UserDetailResponse> searchUserDetailsByUsername(String username) {
         List<UserDetail> userDetails = userDetailRepository.findByUserUsernameContainingIgnoreCase(username);
         return userDetails.stream()
-                .map(userDetailMapper::toUserDetailResponse)
+                .map(userDetail -> userDetailMapper.toUserDetailResponse(userDetail, fileMapper))
                 .collect(Collectors.toList());
     }
 
@@ -176,7 +184,7 @@ public class UserDetailServiceImpl implements UserDetailService {
         userDetailMapper.updateUserDetail(request, userDetail);
         userDetail.setAvatar(fileDocument);
         userDetail = userDetailRepository.save(userDetail);
-        return userDetailMapper.toUserDetailResponse(userDetail);
+        return userDetailMapper.toUserDetailResponse(userDetail, fileMapper);
     }
 
     @Transactional
@@ -226,14 +234,8 @@ public class UserDetailServiceImpl implements UserDetailService {
     @Transactional
     @Override
     public UserDetailResponse followUser(String targetUserDetailId) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        Jwt jwt = jwtAuth.getToken();
-        String currentUserDetailId = jwt.getClaim("userDetailId");
+        String currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
 
         if (currentUserDetailId == null) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -276,20 +278,19 @@ public class UserDetailServiceImpl implements UserDetailService {
         userDetailRepository.save(currentUserDetail);
         userDetailRepository.save(targetUserDetail);
 
-        return userDetailMapper.toUserDetailResponse(currentUserDetail);
+        userInteractionRepository.save(UserInteraction.builder()
+                .interactionType(InteractionType.FOLLOW_CREATOR)
+                .userDetailId(currentUserDetailId)
+                .creatorId(targetUserDetailId)
+                .build());
+
+        return userDetailMapper.toUserDetailResponse(currentUserDetail, fileMapper);
     }
 
     @Transactional
     @Override
     public UserDetailResponse unfollowUser(String targetUserDetailId) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        Jwt jwt = jwtAuth.getToken();
-        String currentUserDetailId = jwt.getClaim("userDetailId");
+        String currentUserDetailId = authenticationHelper.getCurrentUserDetail().getId();
 
         if (currentUserDetailId == null) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -319,7 +320,7 @@ public class UserDetailServiceImpl implements UserDetailService {
         userDetailRepository.save(currentUserDetail);
         userDetailRepository.save(targetUserDetail);
 
-        return userDetailMapper.toUserDetailResponse(currentUserDetail);
+        return userDetailMapper.toUserDetailResponse(currentUserDetail, fileMapper);
     }
 
     @Override
@@ -332,7 +333,7 @@ public class UserDetailServiceImpl implements UserDetailService {
         }
 
         return userDetail.getFollower().stream()
-                .map(userDetailMapper::toUserDetailResponse)
+                .map(userDetailItem -> userDetailMapper.toUserDetailResponse(userDetailItem, fileMapper))
                 .collect(Collectors.toList());
     }
 
@@ -346,7 +347,7 @@ public class UserDetailServiceImpl implements UserDetailService {
         }
 
         return userDetail.getFollowing().stream()
-                .map(userDetailMapper::toUserDetailResponse)
+                .map(userDetail1 -> userDetailMapper.toUserDetailResponse(userDetail1, fileMapper))
                 .collect(Collectors.toList());
     }
 

@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
   useRef,
+  useCallback,
 } from "react";
 import { ChatMessageResponse } from "../Types/response/ChatMessageResponse";
 import { useAuth } from "./AuthProvider";
@@ -15,9 +16,12 @@ import UserDetailService from "../Services/UserDetailService";
 
 type ChatMessageContextType = {
   isMessagesLoading: boolean;
+  isLoadingMore: boolean;
+  hasMoreMessages: boolean;
   messages: ChatMessageResponse[];
   currentConversationId: string | null;
   getChatMessagesByConversationId: (conversationId: string) => void;
+  loadMoreMessages: () => Promise<void>;
   clearCurrentConversation: () => void;
   addMessage: (message: ChatMessageResponse) => void;
   updateMessage: (
@@ -35,9 +39,12 @@ type ChatMessageContextType = {
 
 const ChatMessageContext = createContext<ChatMessageContextType>({
   isMessagesLoading: false,
+  isLoadingMore: false,
+  hasMoreMessages: false,
   messages: [],
   currentConversationId: null,
   getChatMessagesByConversationId: () => {},
+  loadMoreMessages: async () => {},
   clearCurrentConversation: () => {},
   addMessage: () => {},
   updateMessage: () => {},
@@ -51,6 +58,9 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
 }) => {
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState<number>(0);
   const [userDetailId, setUserDetailId] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
   const { isConnected, subscribe, unsubscribe } = useSocket();
@@ -64,11 +74,67 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
 
   function addMessage(message: ChatMessageResponse) {
     setMessages((prev) => {
-      // Check if message already exists to avoid duplicates
-      const exists = prev.some((msg) => msg.id === message.id);
-      if (exists) {
+      // Check if message already exists by ID to avoid duplicates
+      const existsById = prev.some((msg) => msg.id === message.id);
+      if (existsById) {
         return prev;
       }
+
+      // For messages with temp IDs (optimistic), also check by content and sender
+      // to prevent duplicates when real message arrives
+      if (message.id.startsWith("temp-")) {
+        // This is an optimistic message, check if real version already exists
+        const realVersionExists = prev.some(
+          (msg) =>
+            !msg.id.startsWith("temp-") &&
+            msg.message === message.message &&
+            msg.senderId === message.senderId &&
+            msg.conversationId === message.conversationId
+        );
+        if (realVersionExists) {
+          console.log(
+            "⏭️ Real message already exists, skipping optimistic:",
+            message.id
+          );
+          return prev;
+        }
+      } else {
+        // This is a real message, check if optimistic version exists and replace it
+        const optimisticVersion = prev.find((msg) => {
+          if (!msg.id.startsWith("temp-")) return false;
+          if (msg.message !== message.message) return false;
+          if (msg.conversationId !== message.conversationId) return false;
+
+          // Check if senders match
+          const msgIsUser =
+            msg.sender === "me" || msg.senderId === userDetailId;
+          const newMsgIsUser =
+            message.sender === "me" || message.senderId === userDetailId;
+
+          // Both should be user messages or both should match by senderId
+          return (
+            (msgIsUser && newMsgIsUser) ||
+            msg.senderId === message.senderId ||
+            (msg.sender === "me" &&
+              message.senderId === userDetailId &&
+              userDetailId)
+          );
+        });
+
+        if (optimisticVersion) {
+          // Replace optimistic message with real one
+          console.log(
+            "🔄 Replacing optimistic message in provider:",
+            optimisticVersion.id,
+            "->",
+            message.id
+          );
+          return prev.map((msg) =>
+            msg.id === optimisticVersion.id ? message : msg
+          );
+        }
+      }
+
       return [message, ...prev];
     });
   }
@@ -222,51 +288,132 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
     }
   }
 
-  async function getChatMessagesByConversationId(conversationId: string) {
-    setIsMessagesLoading(true);
-    try {
-      // Validate conversationId
-      if (!conversationId || conversationId.trim() === "") {
-        console.log("⚠️ No conversation ID provided, skipping message load");
-        setMessages([]);
-        setIsMessagesLoading(false);
+  const getChatMessagesByConversationId = useCallback(
+    async (conversationId: string) => {
+      // Prevent loading if already loading the same conversation
+      if (
+        currentConversationId.current === conversationId &&
+        isMessagesLoading
+      ) {
         return;
       }
 
-      // Set current conversation ID for WebSocket subscriptions
-      currentConversationId.current = conversationId;
+      setIsMessagesLoading(true);
+      setCurrentPage(0);
+      setHasMoreMessages(true);
+      try {
+        // Validate conversationId
+        if (!conversationId || conversationId.trim() === "") {
+          console.log("⚠️ No conversation ID provided, skipping message load");
+          setMessages([]);
+          setIsMessagesLoading(false);
+          return;
+        }
 
-      const response =
-        await ChatMessageService.getMessagesByConversationId(conversationId);
-      setMessages(response.result.content);
-      console.log("📥 Loaded", response.result.content.length, "messages");
-      setIsMessagesLoading(false);
+        // Set current conversation ID for WebSocket subscriptions
+        currentConversationId.current = conversationId;
 
-      // Mark conversation as read when user opens it
-      markConversationAsRead(conversationId);
+        const response = await ChatMessageService.getMessagesByConversationId(
+          conversationId,
+          { page: 0, size: 20 }
+        );
 
-      // Subscribe to real-time messages for this conversation
-      subscribeToConversationMessages(conversationId);
-    } catch (error: any) {
-      console.error("❌ Error loading messages:", error.message);
-      setIsMessagesLoading(false);
+        if (!response.result) {
+          console.error("❌ Invalid response structure:", response);
+          setMessages([]);
+          setIsMessagesLoading(false);
+          return;
+        }
 
-      // Handle specific error cases
-      if (error.response?.status === 404) {
-        console.error("Conversation not found or access denied");
-        setMessages([]);
-        // Don't throw the error, just log it and continue
-      } else if (error.response?.status === 401) {
-        console.error("Authentication failed");
-        setMessages([]);
-      } else {
-        setMessages([]);
+        const messages = response.result.content || [];
+        const pageNumber = response.result.number ?? 0;
+        const totalPages = response.result.totalPages ?? 1;
+
+        setMessages(messages);
+        setCurrentPage(0);
+        setHasMoreMessages(pageNumber < totalPages - 1);
+
+        console.log("📥 Loaded", messages.length, "messages");
+        setIsMessagesLoading(false);
+
+        // Mark conversation as read when user opens it
+        markConversationAsRead(conversationId);
+
+        // Subscribe to real-time messages for this conversation
+        subscribeToConversationMessages(conversationId);
+      } catch (error: any) {
+        console.error("❌ Error loading messages:", error.message);
+        console.error("Error details:", error);
+        if (error.response?.data) {
+          console.error(
+            "Response data:",
+            JSON.stringify(error.response.data, null, 2)
+          );
+        }
+        setIsMessagesLoading(false);
+
+        // Handle specific error cases
+        if (error.response?.status === 404) {
+          console.error("Conversation not found or access denied");
+          setMessages([]);
+          // Don't throw the error, just log it and continue
+        } else if (error.response?.status === 401) {
+          console.error("Authentication failed");
+          setMessages([]);
+        } else {
+          setMessages([]);
+        }
       }
+    },
+    [isMessagesLoading, markConversationAsRead]
+  );
+
+  const loadMoreMessages = useCallback(async () => {
+    if (
+      !currentConversationId.current ||
+      isLoadingMore ||
+      !hasMoreMessages ||
+      isMessagesLoading
+    ) {
+      return;
     }
-  }
+
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const response = await ChatMessageService.getMessagesByConversationId(
+        currentConversationId.current,
+        { page: nextPage, size: 20 }
+      );
+
+      if (!response.result) {
+        console.error("❌ Invalid response structure:", response);
+        setHasMoreMessages(false);
+        setIsLoadingMore(false);
+        return;
+      }
+
+      const newMessages = response.result.content || [];
+      const pageNumber = response.result.number ?? nextPage;
+      const totalPages = response.result.totalPages ?? 1;
+
+      if (newMessages.length > 0) {
+        setMessages((prev) => [...prev, ...newMessages]);
+        setCurrentPage(nextPage);
+        setHasMoreMessages(pageNumber < totalPages - 1);
+        console.log("📥 Loaded", newMessages.length, "more messages");
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (error: any) {
+      console.error("❌ Error loading more messages:", error.message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, isLoadingMore, hasMoreMessages, isMessagesLoading]);
 
   // Refresh messages when user returns to a conversation
-  async function refreshMessages() {
+  const refreshMessages = useCallback(async () => {
     if (currentConversationId.current) {
       console.log(
         "🔄 Refreshing messages for conversation:",
@@ -274,9 +421,9 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
       );
       await getChatMessagesByConversationId(currentConversationId.current);
     }
-  }
+  }, [getChatMessagesByConversationId]);
 
-  function clearCurrentConversation() {
+  const clearCurrentConversation = useCallback(() => {
     // Unsubscribe from current conversation
     if (currentConversationId.current) {
       unsubscribeFromConversationMessages(currentConversationId.current);
@@ -285,7 +432,9 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
     // Clear current conversation state
     currentConversationId.current = null;
     setMessages([]);
-  }
+    setCurrentPage(0);
+    setHasMoreMessages(true);
+  }, []);
 
   // Fetch userDetailId when authenticated
   useEffect(() => {
@@ -361,9 +510,12 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
   const value = useMemo(
     () => ({
       isMessagesLoading,
+      isLoadingMore,
+      hasMoreMessages,
       messages,
       currentConversationId: currentConversationId.current,
       getChatMessagesByConversationId,
+      loadMoreMessages,
       clearCurrentConversation,
       addMessage,
       updateMessage,
@@ -373,8 +525,11 @@ export const ChatMessageProvider: React.FC<React.PropsWithChildren> = ({
     }),
     [
       isMessagesLoading,
+      isLoadingMore,
+      hasMoreMessages,
       messages,
       getChatMessagesByConversationId,
+      loadMoreMessages,
       clearCurrentConversation,
       addMessage,
       updateMessage,

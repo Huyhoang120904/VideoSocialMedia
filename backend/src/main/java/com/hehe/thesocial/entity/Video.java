@@ -27,4 +27,7 @@ public class Video extends BaseDocument {
 
     @Field("duration")
     double duration;
+
+    @Field("thumbnail_url")
+    String thumbnailUrl;
 }

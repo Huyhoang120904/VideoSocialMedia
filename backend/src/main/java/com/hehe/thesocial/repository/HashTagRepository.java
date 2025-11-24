@@ -8,9 +8,10 @@ import java.util.List;
 
 @Repository
 public interface HashTagRepository extends MongoRepository<HashTag, String> {
-    
-    HashTag findByName(String name);
-    
-    List<HashTag> findByNameIn(List<String> names);
-}
 
+    HashTag findByName(String name);
+
+    List<HashTag> findByNameIn(List<String> names);
+
+    List<HashTag> findByNameContainingIgnoreCase(String name);
+}

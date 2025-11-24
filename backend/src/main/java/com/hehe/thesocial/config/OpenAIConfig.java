@@ -3,7 +3,6 @@ package com.hehe.thesocial.config;
 import com.hehe.thesocial.service.aiChat.MongoChatMemory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
@@ -11,8 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
-
-import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
@@ -35,7 +32,7 @@ public class OpenAIConfig {
     public OpenAiChatModel openAiChatModel(OpenAiApi openAiApi) {
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .temperature(0.7)
-                .maxTokens(150)
+                .maxTokens(4000)
                 .model("gpt-3.5-turbo")
                 .build();
 
@@ -48,6 +45,5 @@ public class OpenAIConfig {
                 .defaultSystem(promptSystemSpec -> promptSystemSpec.text(defaultSystemPromptResource))
                 .build();
     }
-
 
 }

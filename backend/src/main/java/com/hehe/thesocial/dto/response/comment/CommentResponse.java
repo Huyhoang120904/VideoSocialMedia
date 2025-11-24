@@ -23,4 +23,5 @@ public class CommentResponse {
     Instant updatedAt;
     boolean isLikedByCurrentUser;
     String timeAgo; // Thời gian đã format: "vừa xong", "3 phút trước", "12 giờ trước", "25/7"
+    String parentCommentId;
 }

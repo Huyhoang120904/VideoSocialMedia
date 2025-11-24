@@ -400,3 +400,32 @@ export interface ThemeConfig {
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }
+
+// ============================================================================
+// DOCUMENT INGESTION TYPES
+// ============================================================================
+
+export interface DocumentIngestionResponse {
+  message: string;
+  filename: string;
+  chunksCreated: number;
+  fileSize: number;
+  contentType: string;
+}
+
+export interface BatchIngestionResponse {
+  message: string;
+  totalFiles: number;
+  successCount: number;
+  failureCount: number;
+  totalChunksCreated: number;
+  failures?: Record<string, string> | null;
+}
+
+export interface DocumentIngestionProgress {
+  status: "uploading" | "processing" | "complete" | "error";
+  progress: number;
+  message: string;
+  fileName?: string;
+  chunksCreated?: number;
+}

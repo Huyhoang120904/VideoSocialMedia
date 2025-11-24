@@ -147,6 +147,42 @@ const ChatMessageService = {
   },
 
   /**
+   * Send a shared video to a direct conversation
+   */
+  sendSharedVideoToDirectConversation: async (
+    receiverId: string,
+    feedItemId: string,
+    feedItemTitle?: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const request: DirectChatMessageRequest = {
+      receiverId,
+      message: feedItemTitle || "Shared a video",
+      messageType: ChatMessageType.SHARED_VIDEO,
+      feedItemId,
+    };
+
+    return ChatMessageService.createDirectChatMessage(request);
+  },
+
+  /**
+   * Send a shared video to a group conversation
+   */
+  sendSharedVideoToGroupConversation: async (
+    groupId: string,
+    feedItemId: string,
+    feedItemTitle?: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const request: GroupChatMessageRequest = {
+      groupId,
+      message: feedItemTitle || "Shared a video",
+      messageType: ChatMessageType.SHARED_VIDEO,
+      feedItemId,
+    };
+
+    return ChatMessageService.createGroupChatMessage(request);
+  },
+
+  /**
    * Send a message to AI chat
    * POST /chat-messages/ai
    */

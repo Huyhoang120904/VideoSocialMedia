@@ -5,6 +5,8 @@ import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
 import com.hehe.thesocial.entity.*;
 import com.hehe.thesocial.entity.enums.InteractionType;
 import com.hehe.thesocial.mapper.feedItem.FeedItemMapper;
+import com.hehe.thesocial.mapper.file.FileMapper;
+import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.FeedItemRepository;
 import com.hehe.thesocial.repository.UserInteractionRepository;
 import com.hehe.thesocial.repository.UserPreferenceRepository;
@@ -34,6 +36,8 @@ public class RecommendationServiceImpl {
     UserPreferenceRepository userPreferenceRepository;
     UserInteractionRepository userInteractionRepository;
     FeedItemMapper feedItemMapper;
+    FileMapper fileMapper;
+    UserDetailMapper userDetailMapper;
 
     public static int PREFERENCE_CUT = 7;
     static Double TRENDING_DECAY_HOURS = 48D;
@@ -76,6 +80,9 @@ public class RecommendationServiceImpl {
                 watchedList, pageable
         ));
 
+        // Get current user's userDetailId for loved status check
+        String currentUserDetailId = userDetail.getId();
+
         // Combine and sort by score
         List<FeedItemResponse> recommendations = scoredItems.stream()
                 .collect(Collectors.groupingBy(
@@ -88,12 +95,39 @@ public class RecommendationServiceImpl {
                 .distinct()
                 .skip(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .map(feedItemMapper::toFeedItemResponse)
+                .map(item -> feedItemMapper.toFeedItemResponse(item, fileMapper, userDetailMapper, currentUserDetailId))
                 .collect(Collectors.toList());
 
         log.info("Generated {} recommendations for user: {}", recommendations.size(), userDetail.getId());
 
         return new PageImpl<>(recommendations, pageable, recommendations.size());
+    }
+
+    public Page<FeedItemResponse> exploreFeed(Pageable pageable) {
+        UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
+        log.info("Generating explore feed for user: {} with page: {}, size: {}",
+                currentUser.getId(), pageable.getPageNumber(), pageable.getPageSize());
+
+        Set<String> watchedList = userPreferenceRepository.findByUserDetailId(currentUser.getId())
+                .map(UserPreference::getWatchedList)
+                .orElse(Collections.emptySet());
+
+        int fetchSize = Math.max(pageable.getPageSize(), (pageable.getPageNumber() + 1) * pageable.getPageSize());
+        Pageable trendingPageable = PageRequest.of(0, fetchSize);
+
+        List<ScoredFeedItem> trendingItems = getTrendingRecommendations(
+                watchedList,
+                trendingPageable
+        );
+
+        List<FeedItemResponse> content = trendingItems.stream()
+                .skip(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .map(ScoredFeedItem::getFeedItem)
+                .map(item -> feedItemMapper.toFeedItemResponse(item, fileMapper, userDetailMapper, currentUser.getId()))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(content, pageable, trendingItems.size());
     }
 
     private List<ScoredFeedItem> getPreferenceRecommendations(UserPreference userPreference, Set<String> watchedList) {
