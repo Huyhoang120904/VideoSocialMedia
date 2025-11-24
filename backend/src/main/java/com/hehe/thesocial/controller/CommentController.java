@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Comments", description = "Comment management endpoints - requires authentication")
-public class CommentController {
+public class CommentController extends BaseController {
 
     CommentService commentService;
     AuthenticationHelper authenticationHelper;
@@ -49,10 +49,7 @@ public class CommentController {
 
         CommentCreateResponse response = commentService.addComment(feedItemId, request);
 
-        return ResponseEntity.ok(ApiResponse.<CommentCreateResponse>builder()
-                .result(response)
-                .message("Comment added successfully")
-                .build());
+        return ok(response, "Comment added successfully");
     }
 
     /**
@@ -69,10 +66,7 @@ public class CommentController {
 
         boolean result = commentService.removeComment(commentId, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
-                .result(result)
-                .message("Comment removed successfully")
-                .build());
+        return ok(result, "Comment removed successfully");
     }
 
     /**
@@ -89,10 +83,7 @@ public class CommentController {
 
         CommentActionResponse response = commentService.likeComment(commentId, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<CommentActionResponse>builder()
-                .result(response)
-                .message("Comment liked successfully")
-                .build());
+        return ok(response, "Comment liked successfully");
     }
 
     /**
@@ -109,10 +100,7 @@ public class CommentController {
 
         CommentActionResponse response = commentService.unlikeComment(commentId, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<CommentActionResponse>builder()
-                .result(response)
-                .message("Comment unliked successfully")
-                .build());
+        return ok(response, "Comment unliked successfully");
     }
 
     /**
@@ -129,10 +117,7 @@ public class CommentController {
 
         CommentActionResponse response = commentService.dislikeComment(commentId, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<CommentActionResponse>builder()
-                .result(response)
-                .message("Comment disliked successfully")
-                .build());
+        return ok(response, "Comment disliked successfully");
     }
 
     /**
@@ -149,10 +134,7 @@ public class CommentController {
 
         CommentActionResponse response = commentService.undislikeComment(commentId, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<CommentActionResponse>builder()
-                .result(response)
-                .message("Comment undisliked successfully")
-                .build());
+        return ok(response, "Comment undisliked successfully");
     }
 
     /**
@@ -167,10 +149,7 @@ public class CommentController {
         String userDetailId = authenticationHelper.getCurrentUserDetail().getId();
         CommentResponse response = commentService.getComment(commentId, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<CommentResponse>builder()
-                .result(response)
-                .message("Comment retrieved successfully")
-                .build());
+        return ok(response, "Comment retrieved successfully");
     }
 
     /**
@@ -188,10 +167,7 @@ public class CommentController {
         String userDetailId = authenticationHelper.getCurrentUserDetail().getId();
         Page<CommentResponse> response = commentService.getCommentsByFeedItem(feedItemId, userDetailId, pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<CommentResponse>>builder()
-                .result(response)
-                .message("Comments retrieved successfully")
-                .build());
+        return ok(response, "Comments retrieved successfully");
     }
 
 }

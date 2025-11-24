@@ -109,13 +109,16 @@ public interface FeedItemMapper {
     }
 
     @AfterMapping
-    default void mapUploader(@MappingTarget FeedItemResponse response,
-                             FeedItem feedItem,
-                             @Context UserDetailMapper userDetailMapper,
-                             @Context FileMapper fileMapper) {
-        // Set uploader information
+    default void mapUserDetails(@MappingTarget FeedItemResponse response,
+                                FeedItem feedItem,
+                                @Context UserDetailMapper userDetailMapper,
+                                @Context FileMapper fileMapper) {
         if (feedItem.getUploader() != null) {
             response.setUploader(userDetailMapper.toUserDetailResponse(feedItem.getUploader(), fileMapper));
+        }
+
+        if (feedItem.getDisabledBy() != null) {
+            response.setDisabledBy(userDetailMapper.toUserDetailResponse(feedItem.getDisabledBy(), fileMapper));
         }
     }
 

@@ -19,7 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-//@EnableMethodSecurity
+@EnableMethodSecurity
 public class SecuritySetting {
 
     static String[] PUBLIC_ENDPOINTS = {

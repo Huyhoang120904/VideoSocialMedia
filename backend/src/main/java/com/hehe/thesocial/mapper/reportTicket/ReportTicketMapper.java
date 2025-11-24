@@ -14,7 +14,6 @@ public interface ReportTicketMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userDetail", ignore = true) // Set manually in service
-    @Mapping(target = "status", ignore = true) // Default to PENDING
     ReportTicket toReportTicket(ReportTicketRequest request);
 
     @Mapping(target = "videoId", ignore = true) // ReportTicket không có video nữa

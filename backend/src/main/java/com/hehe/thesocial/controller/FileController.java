@@ -1,5 +1,10 @@
 package com.hehe.thesocial.controller;
 
+import com.hehe.thesocial.dto.ApiResponse;
+import com.hehe.thesocial.dto.request.file.FileActionRequest;
+import com.hehe.thesocial.dto.request.file.FileSearchRequest;
+import com.hehe.thesocial.dto.response.file.FileListResponse;
+import com.hehe.thesocial.dto.response.file.FileMetricsResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.service.file.FileService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
 
 import java.net.MalformedURLException;
 import java.nio.file.Files;
@@ -35,7 +41,7 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @Tag(name = "Files", description = "File upload and management endpoints")
-public class FileController {
+public class FileController extends BaseController {
 
     private final FileService fileService;
 
@@ -44,116 +50,140 @@ public class FileController {
 
     @PostMapping("/upload")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<FileResponse> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ApiResponse<FileResponse>> uploadFile(@RequestParam("file") MultipartFile file) {
         log.info("Uploading file: {}", file.getOriginalFilename());
         FileResponse response = fileService.storeFile(file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return created(response, "File uploaded successfully");
     }
 
     @PostMapping("/upload-multiple")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<FileResponse>> uploadMultipleFiles(
+    public ResponseEntity<ApiResponse<List<FileResponse>>> uploadMultipleFiles(
             @RequestParam("files") MultipartFile[] files) {
         log.info("Uploading {} files", files.length);
         List<FileResponse> responses = fileService.storeMultipleFile(files);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+        return created(responses, "Files uploaded successfully");
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<FileResponse> getFileById(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<FileResponse>> getFileById(@PathVariable String id) {
         FileResponse response = fileService.findDocumentById(id);
-        return ResponseEntity.ok(response);
+        return ok(response, "File retrieved successfully");
     }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<FileResponse>> getAllFiles(Pageable pageable) {
+    public ResponseEntity<ApiResponse<Page<FileResponse>>> getAllFiles(Pageable pageable) {
         Page<FileResponse> responses = fileService.findAllDocument(pageable);
-        return ResponseEntity.ok(responses);
+        return ok(responses, "Files retrieved successfully");
+    }
+
+    @Operation(
+            summary = "Search files",
+            description = "Search files with keyword, filters, pagination"
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Files retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = FileListResponse.class)))
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<FileListResponse>> searchFiles(
+            @Valid @RequestBody(required = false) FileSearchRequest request) {
+        FileListResponse response = fileService.searchFiles(request);
+        return ok(response, response.getMessage());
+    }
+
+    @Operation(
+            summary = "Get file metrics",
+            description = "Retrieve aggregated metrics for file dashboard"
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/metrics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<FileMetricsResponse>> getFileMetrics() {
+        FileMetricsResponse metrics = fileService.getFileMetrics();
+        return ok(metrics, "File metrics retrieved successfully");
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteFile(@PathVariable String id) {
-        fileService.deleteFile(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<FileResponse>> deleteFile(
+            @PathVariable String id,
+            @Valid @RequestBody FileActionRequest request) {
+        FileResponse response = fileService.deleteFile(id, request);
+        return ok(response, "File soft-deleted successfully");
+    }
+
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<FileResponse>> restoreFile(
+            @PathVariable String id,
+            @Valid @RequestBody(required = false) FileActionRequest request) {
+        FileResponse response = fileService.restoreFile(id, request);
+        return ok(response, "File restored successfully");
+    }
+
+    @PutMapping("/{id}/flag")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<FileResponse>> flagFile(
+            @PathVariable String id,
+            @Valid @RequestBody FileActionRequest request) {
+        FileResponse response = fileService.flagFile(id, request);
+        return ok(response, "File flagged successfully");
+    }
+
+    @PutMapping("/{id}/unflag")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<FileResponse>> unflagFile(
+            @PathVariable String id,
+            @Valid @RequestBody(required = false) FileActionRequest request) {
+        FileResponse response = fileService.unflagFile(id, request);
+        return ok(response, "File unflagged successfully");
     }
 
     @GetMapping("/thumbnailImage/{uploader}/{filename:.+}")
     public ResponseEntity<Resource> serveThumbnail(@PathVariable String uploader, @PathVariable String filename) {
-        try {
-            log.info("Serving thumbnail request - uploader: {}, filename: {}", uploader, filename);
-            
-            Path filePath = Paths.get(uploadDir, "thumbnailImage", uploader, filename);
-            log.info("Attempting to serve thumbnail: {}", filePath.toAbsolutePath());
-            
-            // Check if file exists
-            if (!Files.exists(filePath)) {
-                log.warn("Thumbnail does not exist: {}", filePath);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (resource.exists() && resource.isReadable()) {
-                log.info("Thumbnail found and readable: {}", filePath);
-                // Determine content type
-                String contentType = determineContentType(filename);
-                log.info("Content type determined as: {}", contentType);
-
-                return ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                        .body(resource);
-            } else {
-                log.warn("Thumbnail not found or not readable: {}", filePath);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-        } catch (MalformedURLException e) {
-            log.error("Error serving thumbnail: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (Exception e) {
-            log.error("Unexpected error serving thumbnail: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        Path filePath = Paths.get(uploadDir, "thumbnailImage", uploader, filename);
+        return serveStaticResource(filePath, filename, "thumbnail");
     }
 
     @GetMapping("/{uploader}/{filename:.+}")
     public ResponseEntity<Resource> serveFile(@PathVariable String uploader, @PathVariable String filename) {
+        Path filePath = Paths.get(uploadDir).resolve(uploader).resolve(filename);
+        return serveStaticResource(filePath, filename, "file");
+    }
+
+    private ResponseEntity<Resource> serveStaticResource(Path filePath, String filename, String contextLabel) {
         try {
-            log.info("Serving file request - uploader: {}, filename: {}", uploader, filename);
-            log.info("Upload directory: {}", uploadDir);
-            
-            Path filePath = Paths.get(uploadDir).resolve(uploader).resolve(filename);
-            log.info("Attempting to serve file: {}", filePath.toAbsolutePath());
-            
-            // Check if file exists
+            log.info("Serving {} request for path: {}", contextLabel, filePath.toAbsolutePath());
             if (!Files.exists(filePath)) {
-                log.warn("File does not exist: {}", filePath);
+                log.warn("{} does not exist: {}", contextLabel, filePath);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            
+
             Resource resource = new UrlResource(filePath.toUri());
-
             if (resource.exists() && resource.isReadable()) {
-                log.info("File found and readable: {}", filePath);
-                // Determine content type
                 String contentType = determineContentType(filename);
-                log.info("Content type determined as: {}", contentType);
-
+                log.info("Content type for {} determined as: {}", filename, contentType);
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
                         .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                         .body(resource);
-            } else {
-                log.warn("File not found or not readable: {}", filePath);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
+
+            log.warn("{} not readable: {}", contextLabel, filePath);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (MalformedURLException e) {
-            log.error("Error serving file: {}", e.getMessage());
+            log.error("Error serving {}: {}", contextLabel, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
-            log.error("Unexpected error serving file: {}", e.getMessage(), e);
+            log.error("Unexpected error serving {}: {}", contextLabel, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "AI Chat", description = "AI chat assistant endpoints - requires authentication")
-public class AiChatController {
+public class AiChatController extends BaseController {
     AiChatService aiChatService;
 
     /**
@@ -48,11 +48,7 @@ public class AiChatController {
         log.info("Received AI chat message request");
         ChatMessageResponse response = aiChatService.sendAiMessage(request);
         
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ChatMessageResponse>builder()
-                        .result(response)
-                        .message("AI message sent successfully")
-                        .build());
+        return created(response, "AI message sent successfully");
     }
 
     /**
@@ -68,10 +64,7 @@ public class AiChatController {
         log.info("Getting AI conversation for current user");
         ConversationResponse conversation = aiChatService.getAiConversation();
         
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversation)
-                .message("AI conversation retrieved successfully")
-                .build());
+        return ok(conversation, "AI conversation retrieved successfully");
     }
 }
 

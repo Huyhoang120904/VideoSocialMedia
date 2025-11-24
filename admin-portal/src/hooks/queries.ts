@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { userService, videoService, feedItemService } from "@/services/api";
+import {
+  userService,
+  videoService,
+  feedItemService,
+  fileManagementService,
+  userInteractionService,
+} from "@/services/api";
 import { handleApiError } from "@/lib/error-handling";
 import {
   ApiResponse,
@@ -15,7 +21,11 @@ import {
   FeedItemListResponse,
   UploadFeedItemRequest,
   FeedItemType,
+  FileListResponse,
+  FileMetricsResponse,
+  FileSearchRequest,
 } from "@/types";
+import { UserInteractionResponse } from "@/services/admin/userInteractionService";
 
 /**
  * Analytics-related React Query hooks
@@ -39,6 +49,43 @@ export function useAnalytics() {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error) => {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 401) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+interface UseUserInteractionsOptions {
+  page?: number;
+  size?: number;
+  userDetailId?: string;
+}
+
+export function useUserInteractions({
+  page = 0,
+  size = 20,
+  userDetailId,
+}: UseUserInteractionsOptions = {}) {
+  return useQuery({
+    queryKey: ["userInteractions", page, size, userDetailId ?? null],
+    queryFn: async (): Promise<
+      ApiResponse<PagedResponse<UserInteractionResponse>>
+    > => {
+      try {
+        const filter = userDetailId?.trim() || undefined;
+        return userInteractionService.getUserInteractions(page, size, filter);
+      } catch (error) {
+        handleApiError(error, {
+          component: "useUserInteractions",
+          action: "fetchInteractions",
+        });
+        throw error;
+      }
+    },
+    keepPreviousData: true,
+    staleTime: 60 * 1000,
     retry: (failureCount, error) => {
       const err = error as { response?: { status?: number } };
       if (err?.response?.status === 401) return false;
@@ -413,6 +460,73 @@ export function useDeleteFeedItem() {
         component: "useDeleteFeedItem",
         action: "deleteFeedItem",
       });
+    },
+  });
+}
+
+/**
+ * File management hooks
+ */
+
+export function useFileMetrics() {
+  return useQuery({
+    queryKey: ["files", "metrics"],
+    queryFn: async (): Promise<ApiResponse<FileMetricsResponse>> => {
+      try {
+        return await fileManagementService.getFileMetrics();
+      } catch (error) {
+        handleApiError(error, {
+          component: "useFileMetrics",
+          action: "fetchMetrics",
+        });
+        throw error;
+      }
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useFileSearch(searchRequest: FileSearchRequest) {
+  return useQuery({
+    queryKey: ["files", "search", searchRequest],
+    queryFn: async (): Promise<ApiResponse<FileListResponse>> => {
+      try {
+        return await fileManagementService.searchFiles(searchRequest);
+      } catch (error) {
+        handleApiError(error, {
+          component: "useFileSearch",
+          action: "searchFiles",
+        });
+        throw error;
+      }
+    },
+    keepPreviousData: true,
+  });
+}
+
+export function useViolatedFeedItems(page: number = 0, size: number = 10) {
+  return useQuery({
+    queryKey: ["feedItems", "violated", page, size],
+    queryFn: async (): Promise<ApiResponse<FeedItemListResponse>> => {
+      try {
+        const { feedItemService } = await import(
+          "@/services/admin/feedItemService"
+        );
+        const response = await feedItemService.getViolatedFeedItems(page, size);
+        return response;
+      } catch (error) {
+        handleApiError(error, {
+          component: "useViolatedFeedItems",
+          action: "fetchViolatedFeedItems",
+        });
+        throw error;
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes (shorter for moderation data)
+    retry: (failureCount, error) => {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 401) return false;
+      return failureCount < 2;
     },
   });
 }

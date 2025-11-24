@@ -6,8 +6,9 @@ import {
   FeedItemListResponse,
   UploadFeedItemRequest,
   FeedItemType,
-  PagedResponse,
+  FeedItemSearchRequest,
 } from "@/types";
+import type { FeedItemReportSummaryResponse } from "./reportTicketService";
 
 export type { FeedItemResponse };
 
@@ -145,7 +146,44 @@ class FeedItemService {
     const response = await apiClient.put(`/feed-items/${feedItemId}/disable`);
     return response.data;
   }
+
+  /**
+   * Get all violated (flagged) feed items
+   * @param page Page number (0-indexed)
+   * @param size Number of items per page
+   */
+  async getViolatedFeedItems(
+    page: number = 0,
+    size: number = 10
+  ): Promise<ApiResponse<FeedItemListResponse>> {
+    const response = await apiClient.get(
+      `/feed-items/violated?page=${page}&size=${size}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get all report tickets for a specific feed item
+   * @param feedItemId Feed item ID
+   */
+  async getReportsByFeedItemId(
+    feedItemId: string
+  ): Promise<ApiResponse<FeedItemReportSummaryResponse>> {
+    const response = await apiClient.get(`/feed-items/${feedItemId}/reports`);
+    return response.data;
+  }
+
+  async searchFeedItems(
+    filters: FeedItemSearchRequest = {},
+    page: number = 0,
+    size: number = 10
+  ): Promise<ApiResponse<FeedItemListResponse>> {
+    const response = await apiClient.post(
+      `/feed-items/search?page=${page}&size=${size}`,
+      filters
+    );
+    return response.data;
+  }
 }
 
 export const feedItemService = new FeedItemService();
-

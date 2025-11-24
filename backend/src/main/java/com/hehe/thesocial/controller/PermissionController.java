@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Tag(name = "Permissions", description = "Permission management endpoints - ADMIN only")
-public class PermissionController {
+public class PermissionController extends BaseController {
     PermissionService permissionService;
 
     @Operation(
@@ -45,9 +45,7 @@ public class PermissionController {
     @GetMapping("/{permissionId}")
     public ResponseEntity<ApiResponse<PermissionResponse>> getPermissionById(
             @Parameter(description = "Permission ID", required = true) @PathVariable String permissionId) {
-        return ResponseEntity.ok(ApiResponse.<PermissionResponse>builder()
-                .result(permissionService.findPermissionById(permissionId))
-                .build());
+        return ok(permissionService.findPermissionById(permissionId));
     }
 
     @Operation(
@@ -63,9 +61,7 @@ public class PermissionController {
     public ResponseEntity<ApiResponse<PagedModel<EntityModel<PermissionResponse>>>> getPermissionsByPage(
             @Parameter(description = "Pagination parameters") @PageableDefault(size = 12, page = 0) Pageable pageable,
             PagedResourcesAssembler<PermissionResponse> assembler) {
-        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<PermissionResponse>>>builder()
-                .result(assembler.toModel(permissionService.findAllPermissionsByPage(pageable)))
-                .build());
+        return ok(assembler.toModel(permissionService.findAllPermissionsByPage(pageable)));
     }
 
     @Operation(
@@ -81,9 +77,7 @@ public class PermissionController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PermissionResponse>> createPermission(@RequestBody PermissionRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<PermissionResponse>builder()
-                .result(permissionService.createPermission(request))
-                .build());
+        return created(permissionService.createPermission(request));
     }
 
     @Operation(
@@ -101,9 +95,7 @@ public class PermissionController {
     public ResponseEntity<ApiResponse<PermissionResponse>> updatePermission(
             @Parameter(description = "Permission ID", required = true) @PathVariable String permissionId,
             @RequestBody PermissionRequest request) {
-        return ResponseEntity.ok(ApiResponse.<PermissionResponse>builder()
-                .result(permissionService.updatePermission(permissionId, request))
-                .build());
+        return ok(permissionService.updatePermission(permissionId, request));
     }
 
     @Operation(
@@ -121,8 +113,6 @@ public class PermissionController {
     public ResponseEntity<ApiResponse<Void>> deletePermission(
             @Parameter(description = "Permission ID", required = true) @PathVariable String permissionId) {
         permissionService.deletePermission(permissionId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
-                .message("Permission deleted successfully")
-                .build());
+        return respond(HttpStatus.NO_CONTENT, "Permission deleted successfully");
     }
 }

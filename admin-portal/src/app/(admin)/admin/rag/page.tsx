@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +18,14 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/molecules";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { aiChatService, ChatMessageResponse, ConversationResponse } from "@/services/admin/aiChatService";
+import {
+  aiChatService,
+  ConversationParticipantResponse,
+} from "@/services/admin/aiChatService";
+import {
+  chatMessageService,
+  ChatMessageResponse,
+} from "@/services/admin/chatMessageService";
 import { toast } from "sonner";
 
 interface Message {
@@ -28,11 +35,16 @@ interface Message {
   timestamp: Date;
 }
 
+const AI_ASSISTANT_USER_KEY = "ai-system";
+
 function RagPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [query, setQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isConversationLoading, setIsConversationLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [aiUserDetailId, setAiUserDetailId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -43,20 +55,137 @@ function RagPageContent() {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize conversation on mount
-  useEffect(() => {
-    const initializeConversation = async () => {
+  const mapChatMessageToDisplay = useCallback(
+    (
+      message: ChatMessageResponse,
+      assistantIdOverride?: string | null
+    ): Message => {
+      const createdAt = message.createdAt
+        ? new Date(message.createdAt)
+        : new Date();
+      const senderName = message.sender?.toLowerCase() || "";
+      const assistantCandidate =
+        assistantIdOverride ?? aiUserDetailId ?? null;
+      const isAssistant =
+        (assistantCandidate && message.senderId === assistantCandidate) ||
+        senderName.includes("assistant") ||
+        senderName.startsWith("ai");
+
+      return {
+        id: message.id,
+        role: isAssistant ? "assistant" : "user",
+        content: message.message || "",
+        timestamp: createdAt,
+      };
+    },
+    [aiUserDetailId]
+  );
+
+  const loadMessages = useCallback(
+    async (
+      targetConversationId: string | null,
+      assistantIdOverride?: string | null
+    ) => {
+      if (!targetConversationId) {
+        return;
+      }
+      setIsHistoryLoading(true);
       try {
-        const response = await aiChatService.getConversation();
+        const response =
+          await chatMessageService.getChatMessagesByConversation(
+            targetConversationId,
+            0,
+            50
+          );
+
         if (response.code === 1000 && response.result) {
-          setConversationId(response.result.id);
+          const sortedMessages = [...(response.result.content || [])].sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+
+          setMessages(
+            sortedMessages.map((chatMessage) =>
+              mapChatMessageToDisplay(chatMessage, assistantIdOverride)
+            )
+          );
         }
       } catch (error) {
-        console.error("Failed to initialize conversation:", error);
+        console.error("Failed to load AI chat history:", error);
+        toast.error("Failed to load chat history. Please try again.");
+      } finally {
+        setIsHistoryLoading(false);
       }
-    };
-    initializeConversation();
-  }, []);
+    },
+    [mapChatMessageToDisplay]
+  );
+
+  const resolveAiParticipantId = (
+    participants?: ConversationParticipantResponse[]
+  ): string | null => {
+    if (!participants) {
+      return null;
+    }
+
+    const aiParticipant = participants.find((participant) => {
+      const displayName = participant.displayName?.toLowerCase() || "";
+      const shownName = participant.shownName?.toLowerCase() || "";
+      const username =
+        participant.username?.toLowerCase() ||
+        participant.user?.username?.toLowerCase() ||
+        "";
+
+      return (
+        participant.user?.id === AI_ASSISTANT_USER_KEY ||
+        username.includes("assistant") ||
+        username.startsWith("ai") ||
+        displayName.includes("assistant") ||
+        displayName.startsWith("ai") ||
+        shownName.includes("assistant") ||
+        shownName.startsWith("ai")
+      );
+    });
+
+    return aiParticipant?.id || null;
+  };
+
+  const loadConversation = useCallback(async () => {
+    setIsConversationLoading(true);
+    try {
+      const response = await aiChatService.getConversation();
+      if (response.code === 1000 && response.result) {
+        const newConversationId =
+          response.result.conversationId ||
+          // Backward compatibility if API returns id field
+          (response.result as Record<string, string>).id;
+
+        const aiParticipantId = resolveAiParticipantId(
+          response.result.userDetails
+        );
+
+        setAiUserDetailId(aiParticipantId);
+
+        if (newConversationId) {
+          setConversationId(newConversationId);
+          await loadMessages(newConversationId, aiParticipantId);
+        } else {
+          toast.error("AI conversation is missing an identifier.");
+        }
+      } else {
+        toast.error("Unable to start AI conversation.");
+      }
+    } catch (error) {
+      console.error("Failed to initialize conversation:", error);
+      toast.error("Failed to initialize AI chat.");
+    } finally {
+      setIsConversationLoading(false);
+    }
+  }, [loadMessages]);
+
+  // Initialize conversation on mount
+  useEffect(() => {
+    loadConversation();
+  }, [loadConversation]);
 
   const handleQuery = async () => {
     if (!query.trim()) {
@@ -64,8 +193,13 @@ function RagPageContent() {
       return;
     }
 
+    if (!conversationId) {
+      toast.error("Conversation is not ready yet. Please wait a moment.");
+      return;
+    }
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `temp-${Date.now()}`,
       role: "user",
       content: query,
       timestamp: new Date(),
@@ -74,7 +208,7 @@ function RagPageContent() {
     setMessages((prev) => [...prev, userMessage]);
     const currentQuery = query;
     setQuery("");
-    setIsLoading(true);
+    setIsSending(true);
 
     try {
       const response = await aiChatService.sendMessage({
@@ -82,30 +216,47 @@ function RagPageContent() {
       });
 
       if (response.code === 1000 && response.result) {
-        const assistantMessage: Message = {
-          id: response.result.id,
-          role: "assistant",
-          content: response.result.content,
-          timestamp: new Date(response.result.createdAt),
-        };
+        const assistantMessage = mapChatMessageToDisplay(
+          response.result,
+          aiUserDetailId
+        );
         setMessages((prev) => [...prev, assistantMessage]);
+
+        const nextConversationId =
+          response.result.conversationId || conversationId;
+
+        if (!conversationId && nextConversationId) {
+          setConversationId(nextConversationId);
+        }
+
+        await loadMessages(nextConversationId, aiUserDetailId);
+      } else {
+        throw new Error(response.message || "Failed to process query");
       }
     } catch (error: any) {
       console.error("Error sending AI chat message:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to process query. Please try again."
+      setMessages((prev) =>
+        prev.filter((message) => !message.id.startsWith("temp-"))
       );
 
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Error: ${error.response?.data?.message || "Failed to process query"}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to process query. Please try again.";
+
+      toast.error(errorMessage);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: `Error: ${errorMessage}`,
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
@@ -117,9 +268,13 @@ function RagPageContent() {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleQuery();
+      if (!isSending && !isConversationLoading) {
+        handleQuery();
+      }
     }
   };
+
+  const isInitialLoading = isConversationLoading && messages.length === 0;
 
   return (
     <div className="space-y-6">
@@ -155,7 +310,14 @@ function RagPageContent() {
             <CardContent className="space-y-4">
               {/* Messages */}
               <div className="h-[500px] overflow-y-auto space-y-4 rounded-lg border p-4">
-                {messages.length === 0 ? (
+                  {isInitialLoading ? (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading conversation...</span>
+                      </div>
+                    </div>
+                  ) : messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-muted-foreground">
                     <div>
                       <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -185,7 +347,14 @@ function RagPageContent() {
                     </div>
                   ))
                 )}
-                {isLoading && (
+                  {isHistoryLoading && (
+                    <div className="flex justify-center">
+                      <div className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                        Syncing latest messages...
+                      </div>
+                    </div>
+                  )}
+                  {isSending && (
                   <div className="flex justify-start">
                     <div className="rounded-lg bg-muted p-3">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -202,15 +371,17 @@ function RagPageContent() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  disabled={isLoading}
+                  disabled={isSending || isConversationLoading}
                   rows={3}
                 />
                 <div className="flex items-center justify-end">
                   <Button
                     onClick={handleQuery}
-                    disabled={isLoading || !query.trim()}
+                    disabled={
+                      isSending || !query.trim() || isConversationLoading
+                    }
                   >
-                    {isLoading ? (
+                    {isSending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...

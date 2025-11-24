@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Report Tickets", description = "Content reporting and moderation endpoints")
-public class ReportTicketController {
+public class ReportTicketController extends BaseController {
 
     ReportTicketService reportTicketService;
 
@@ -54,11 +54,7 @@ public class ReportTicketController {
 
         ReportTicketResponse response = reportTicketService.createReportTicket(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ReportTicketResponse>builder()
-                        .result(response)
-                        .message("Report ticket created successfully")
-                        .build());
+        return created(response, "Report ticket created successfully");
     }
 
     @Operation(
@@ -79,9 +75,7 @@ public class ReportTicketController {
 
         ReportTicketResponse response = reportTicketService.getReportTicketById(id);
 
-        return ResponseEntity.ok(ApiResponse.<ReportTicketResponse>builder()
-                .result(response)
-                .build());
+        return ok(response);
     }
 
     @Operation(
@@ -102,11 +96,8 @@ public class ReportTicketController {
 
         Page<ReportTicketResponse> response = reportTicketService.getAllReportTickets(pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<ReportTicketResponse>>builder()
-                .result(response)
-                .message(response.getTotalElements() == 0 ?
-                        "No report tickets found" : "Report tickets retrieved successfully")
-                .build());
+        return ok(response,
+                response.getTotalElements() == 0 ? "No report tickets found" : "Report tickets retrieved successfully");
     }
 
     @Operation(
@@ -128,12 +119,10 @@ public class ReportTicketController {
 
         Page<ReportTicketResponse> response = reportTicketService.getReportTicketsByCategory(category, pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<ReportTicketResponse>>builder()
-                .result(response)
-                .message(response.getTotalElements() == 0 ?
-                        "No report tickets found for this category" :
-                        "Report tickets retrieved successfully")
-                .build());
+        return ok(response,
+                response.getTotalElements() == 0
+                        ? "No report tickets found for this category"
+                        : "Report tickets retrieved successfully");
     }
 
     @Operation(
@@ -155,10 +144,7 @@ public class ReportTicketController {
 
         ReportTicketResponse response = reportTicketService.updateReportTicket(id, request);
 
-        return ResponseEntity.ok(ApiResponse.<ReportTicketResponse>builder()
-                .result(response)
-                .message("Report ticket updated successfully")
-                .build());
+        return ok(response, "Report ticket updated successfully");
     }
 
     @Operation(
@@ -179,10 +165,7 @@ public class ReportTicketController {
 
         reportTicketService.deleteReportTicket(id);
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                .body(ApiResponse.<Void>builder()
-                        .message("Report ticket deleted successfully")
-                        .build());
+        return respond(HttpStatus.NO_CONTENT, "Report ticket deleted successfully");
     }
 }
 

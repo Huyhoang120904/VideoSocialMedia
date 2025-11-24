@@ -49,3 +49,9 @@ jwt:
 # Local file storage configuration
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads}
+
+
+logging:
+  level:
+    org.springframework.ai.vectorstore: DEBUG
+    org.springframework.ai.rag: DEBUG

@@ -1,20 +1,27 @@
 import apiClient from "@/config/axios";
-import { ApiResponse, PagedResponse } from "@/types";
+import { ApiResponse, FileResponse, PagedResponse } from "@/types";
+
+export type ChatMessageType = "SHARED_VIDEO" | "TEXT" | "VIDEO" | "IMAGE";
 
 export interface ChatMessageResponse {
   id: string;
-  content: string;
   conversationId: string;
+  sender: string;
   senderId: string;
-  senderName?: string;
-  messageType: string;
-  isRead: boolean;
+  message?: string;
+  messageType: ChatMessageType;
   createdAt: string;
-  updatedAt: string;
+  edited: boolean;
+  avatar?: FileResponse;
+  readParticipantsId?: string[];
+  isReadByCurrentUser?: boolean;
+  readCount?: number;
+  file?: FileResponse;
+  feedItemId?: string;
 }
 
 export interface ChatMessageUpdateRequest {
-  content: string;
+  message: string;
 }
 
 class ChatMessageService {

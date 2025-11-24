@@ -37,8 +37,4 @@ public class ReportTicket extends BaseDocument {
 
     @Field("feed_item_id")
     String feedItemId;
-
-    @Field("status")
-    @Builder.Default
-    ReportStatus status = ReportStatus.PENDING;
 }

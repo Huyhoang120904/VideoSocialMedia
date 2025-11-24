@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -47,37 +48,78 @@ import {
   User,
 } from "lucide-react";
 import { feedItemService } from "@/services/api";
-import { FeedItemUploadResponse, FeedItemType } from "@/types";
+import {
+  FeedItemUploadResponse,
+  FeedItemType,
+  FeedItemSearchRequest,
+} from "@/types";
 import { toast } from "sonner";
 import UploadFeedItemModal from "@/components/admin/upload-feed-item-modal";
+
+type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
+type ViolationFilter = "ALL" | "VIOLATED" | "CLEAR";
+
+interface FilterFormState {
+  keyword: string;
+  type: FeedItemType | "ALL";
+  status: StatusFilter;
+  violation: ViolationFilter;
+  createdFrom: string;
+  createdTo: string;
+}
+
+const defaultFilterForm: FilterFormState = {
+  keyword: "",
+  type: "ALL",
+  status: "ALL",
+  violation: "ALL",
+  createdFrom: "",
+  createdTo: "",
+};
 
 export default function FeedItemsPage() {
   const [feedItems, setFeedItems] = useState<FeedItemUploadResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterForm, setFilterForm] = useState<FilterFormState>(
+    defaultFilterForm
+  );
+  const [appliedFilters, setAppliedFilters] =
+    useState<FeedItemSearchRequest>({});
   const pageSize = 10;
+  const paginationWindow = useMemo(() => {
+    const visiblePages = Math.min(5, totalPages);
+    const startPage = Math.max(
+      0,
+      Math.min(
+        currentPage - Math.floor(visiblePages / 2),
+        Math.max(0, totalPages - visiblePages)
+      )
+    );
 
-  const fetchFeedItems = async (page: number = 0, type?: FeedItemType) => {
+    return { visiblePages, startPage };
+  }, [currentPage, totalPages]);
+
+  const fetchFeedItems = async (
+    page: number = 0,
+    filters: FeedItemSearchRequest = appliedFilters
+  ) => {
     try {
       setLoading(true);
-      let response;
-      
-      if (type && type !== "ALL") {
-        response = await feedItemService.getFeedItemsByType(type as FeedItemType, page, pageSize);
-      } else {
-        response = await feedItemService.getFeedItems(page, pageSize);
-      }
+      const response = await feedItemService.searchFeedItems(
+        filters ?? {},
+        page,
+        pageSize
+      );
 
       if (response.code === 1000 && response.result) {
         const feedItemsPage = response.result.feedItems;
         setFeedItems(feedItemsPage.content);
-        setTotalPages(feedItemsPage.totalPages);
-        setTotalElements(feedItemsPage.totalElements);
+        setTotalPages(response.result.totalPages);
+        setTotalElements(response.result.totalElements);
       }
     } catch (error) {
       console.error("Failed to fetch feed items:", error);
@@ -88,16 +130,15 @@ export default function FeedItemsPage() {
   };
 
   useEffect(() => {
-    const type = filterType === "ALL" ? undefined : (filterType as FeedItemType);
-    fetchFeedItems(currentPage, type);
-  }, [currentPage, filterType]);
+    fetchFeedItems(currentPage, appliedFilters);
+  }, [currentPage, appliedFilters]);
 
   const handleDeleteFeedItem = async (feedItemId: string) => {
     if (window.confirm("Are you sure you want to delete this feed item?")) {
       try {
         await feedItemService.deleteFeedItem(feedItemId);
         toast.success("Feed item deleted successfully");
-        fetchFeedItems(currentPage, filterType === "ALL" ? undefined : (filterType as FeedItemType));
+        fetchFeedItems(currentPage, appliedFilters);
       } catch (error) {
         console.error("Failed to delete feed item:", error);
         toast.error("Failed to delete feed item");
@@ -106,17 +147,79 @@ export default function FeedItemsPage() {
   };
 
   const handleFeedItemUploaded = () => {
-    fetchFeedItems(currentPage, filterType === "ALL" ? undefined : (filterType as FeedItemType));
+    fetchFeedItems(currentPage, appliedFilters);
   };
 
-  const filteredFeedItems = feedItems.filter((item) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      item.title?.toLowerCase().includes(searchLower) ||
-      item.description?.toLowerCase().includes(searchLower) ||
-      item.feedItemId.toLowerCase().includes(searchLower)
-    );
-  });
+  const handleFilterChange = <K extends keyof FilterFormState>(
+    key: K,
+    value: FilterFormState[K]
+  ) => {
+    setFilterForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const buildSearchRequest = (
+    form: FilterFormState
+  ): FeedItemSearchRequest => {
+    const request: FeedItemSearchRequest = {};
+    const trimmedKeyword = form.keyword.trim();
+
+    if (trimmedKeyword) {
+      request.keyword = trimmedKeyword;
+    }
+
+    if (form.type !== "ALL") {
+      request.feedItemType = form.type;
+    }
+
+    if (form.status === "ACTIVE") {
+      request.active = true;
+    } else if (form.status === "INACTIVE") {
+      request.active = false;
+    }
+
+    if (form.violation === "VIOLATED") {
+      request.violated = true;
+    } else if (form.violation === "CLEAR") {
+      request.violated = false;
+    }
+
+    if (form.createdFrom) {
+      request.createdFrom = new Date(
+        `${form.createdFrom}T00:00:00`
+      ).toISOString();
+    }
+
+    if (form.createdTo) {
+      request.createdTo = new Date(
+        `${form.createdTo}T23:59:59`
+      ).toISOString();
+    }
+
+    return request;
+  };
+
+  const handleApplyFilters = () => {
+    if (
+      filterForm.createdFrom &&
+      filterForm.createdTo &&
+      filterForm.createdFrom > filterForm.createdTo
+    ) {
+      toast.error("Start date must be before end date");
+      return;
+    }
+
+    setCurrentPage(0);
+    setAppliedFilters(buildSearchRequest(filterForm));
+  };
+
+  const handleResetFilters = () => {
+    setFilterForm(defaultFilterForm);
+    setCurrentPage(0);
+    setAppliedFilters({});
+  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -172,6 +275,26 @@ export default function FeedItemsPage() {
     return 0;
   };
 
+  const videoCount = useMemo(
+    () =>
+      feedItems.filter((item) => item.feedItemType === FeedItemType.VIDEO)
+        .length,
+    [feedItems]
+  );
+
+  const imageSlideCount = useMemo(
+    () =>
+      feedItems.filter(
+        (item) => item.feedItemType === FeedItemType.IMAGE_SLIDE
+      ).length,
+    [feedItems]
+  );
+
+  const totalStorageUsed = useMemo(
+    () => feedItems.reduce((total, item) => total + getFileSize(item), 0),
+    [feedItems]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -189,32 +312,122 @@ export default function FeedItemsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              type="text"
-              placeholder="Search feed items..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="md:col-span-2 space-y-1">
+              <Label htmlFor="keyword">Keyword</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  id="keyword"
+                  type="text"
+                  placeholder="Search by title, description, or ID"
+                  value={filterForm.keyword}
+                  onChange={(e) => handleFilterChange("keyword", e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Type</Label>
+              <Select
+                value={filterForm.type}
+                onValueChange={(value) =>
+                  handleFilterChange("type", value as FilterFormState["type"])
+                }
+              >
+                <SelectTrigger>
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Types</SelectItem>
+                  <SelectItem value={FeedItemType.VIDEO}>Videos</SelectItem>
+                  <SelectItem value={FeedItemType.IMAGE_SLIDE}>
+                    Image Slides
+                  </SelectItem>
+                  <SelectItem value={FeedItemType.USER_DETAIL}>
+                    User Details
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Status</Label>
+              <Select
+                value={filterForm.status}
+                onValueChange={(value) =>
+                  handleFilterChange("status", value as StatusFilter)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Violation</Label>
+              <Select
+                value={filterForm.violation}
+                onValueChange={(value) =>
+                  handleFilterChange("violation", value as ViolationFilter)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Violation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="CLEAR">No Violations</SelectItem>
+                  <SelectItem value="VIOLATED">Violated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="createdFrom">Created From</Label>
+              <Input
+                id="createdFrom"
+                type="date"
+                value={filterForm.createdFrom}
+                onChange={(e) => handleFilterChange("createdFrom", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="createdTo">Created To</Label>
+              <Input
+                id="createdTo"
+                type="date"
+                value={filterForm.createdTo}
+                onChange={(e) => handleFilterChange("createdTo", e.target.value)}
+              />
+            </div>
           </div>
-        </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[180px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Types</SelectItem>
-            <SelectItem value={FeedItemType.VIDEO}>Videos</SelectItem>
-            <SelectItem value={FeedItemType.IMAGE_SLIDE}>Image Slides</SelectItem>
-            <SelectItem value={FeedItemType.USER_DETAIL}>User Details</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleApplyFilters} disabled={loading}>
+              Apply Filters
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleResetFilters}
+              disabled={loading}
+            >
+              Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -234,9 +447,7 @@ export default function FeedItemsPage() {
             <FileVideo className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {feedItems.filter((item) => item.feedItemType === FeedItemType.VIDEO).length}
-            </div>
+            <div className="text-2xl font-bold">{videoCount}</div>
             <p className="text-xs text-muted-foreground">Video type items</p>
           </CardContent>
         </Card>
@@ -247,9 +458,7 @@ export default function FeedItemsPage() {
             <Image className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {feedItems.filter((item) => item.feedItemType === FeedItemType.IMAGE_SLIDE).length}
-            </div>
+            <div className="text-2xl font-bold">{imageSlideCount}</div>
             <p className="text-xs text-muted-foreground">Image slide items</p>
           </CardContent>
         </Card>
@@ -261,9 +470,7 @@ export default function FeedItemsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatFileSize(
-                feedItems.reduce((total, item) => total + getFileSize(item), 0)
-              )}
+              {formatFileSize(totalStorageUsed)}
             </div>
             <p className="text-xs text-muted-foreground">Total storage used</p>
           </CardContent>
@@ -293,14 +500,14 @@ export default function FeedItemsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredFeedItems.length === 0 ? (
+                  {feedItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground">
                         No feed items found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredFeedItems.map((item) => (
+                    feedItems.map((item) => (
                       <TableRow key={item.feedItemId}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
@@ -375,9 +582,9 @@ export default function FeedItemsPage() {
                       </PaginationItem>
 
                       {Array.from(
-                        { length: Math.min(5, totalPages) },
+                        { length: paginationWindow.visiblePages },
                         (_, i) => {
-                          const page = i;
+                          const page = paginationWindow.startPage + i;
                           return (
                             <PaginationItem key={page}>
                               <PaginationLink
