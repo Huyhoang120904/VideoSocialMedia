@@ -106,7 +106,25 @@ public class InitDataConfig {
             userDetailRepository.save(adminUserDetail);
             log.info("Admin user created successfully");
 
+            // Create moderator user directly with moderator role
+            User moderatorUser = User.builder()
+                    .username("moderator")
+                    .password(passwordEncoder.encode("moderator123"))
+                    .enable(true)
+                    .roles(new HashSet<>(Set.of(moderatorRole)))
+                    .build();
 
+            moderatorUser = userRepository.save(moderatorUser);
+
+            // Create UserDetail for moderator user
+            UserDetail moderatorUserDetail = UserDetail.builder()
+                    .user(moderatorUser)
+                    .displayName(moderatorUser.getUsername())
+                    .shownName("@" + moderatorUser.getUsername())
+                    .build();
+
+            userDetailRepository.save(moderatorUserDetail);
+            log.info("Moderator user created successfully");
 
             // Create first regular user
             userService.register(RegisterRequest.builder()

@@ -2,11 +2,14 @@ import apiClient from "@/config/axios";
 import {
   ApiResponse,
   FeedItemUploadResponse,
+  FeedItemResponse,
   FeedItemListResponse,
   UploadFeedItemRequest,
   FeedItemType,
   PagedResponse,
 } from "@/types";
+
+export type { FeedItemResponse };
 
 class FeedItemService {
   /**
@@ -120,6 +123,26 @@ class FeedItemService {
    */
   async deleteFeedItem(feedItemId: string): Promise<ApiResponse<void>> {
     const response = await apiClient.delete(`/feed-items/${feedItemId}`);
+    return response.data;
+  }
+
+  /**
+   * Get feed item by ID
+   * @param feedItemId Feed item ID
+   */
+  async getFeedItemById(
+    feedItemId: string
+  ): Promise<ApiResponse<FeedItemResponse>> {
+    const response = await apiClient.get(`/feed-items/${feedItemId}`);
+    return response.data;
+  }
+
+  /**
+   * Disable feed item due to violation
+   * @param feedItemId Feed item ID to disable
+   */
+  async disableFeedItem(feedItemId: string): Promise<ApiResponse<void>> {
+    const response = await apiClient.put(`/feed-items/${feedItemId}/disable`);
     return response.data;
   }
 }

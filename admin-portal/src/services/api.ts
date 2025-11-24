@@ -139,3 +139,27 @@ export { feedItemService } from "./admin/feedItemService";
 export { documentIngestionService } from "./admin/documentIngestionService";
 // Export ragService
 export { ragService } from "./admin/ragService";
+// Export roleService
+export { roleService } from "./admin/roleService";
+// Export permissionService
+export { permissionService } from "./admin/permissionService";
+// Export reportTicketService
+export { reportTicketService } from "./admin/reportTicketService";
+// Export conversationService
+export { conversationService } from "./admin/conversationService";
+// Export chatMessageService
+export { chatMessageService } from "./admin/chatMessageService";
+// Export notificationService
+export { notificationService } from "./admin/notificationService";
+// Export fileAdminService
+export { fileAdminService } from "./admin/fileAdminService";
+// Export userInteractionService
+export { userInteractionService } from "./admin/userInteractionService";
+// Export viewService
+export { viewService } from "./admin/viewService";
+// Export likeService
+export { likeService } from "./admin/likeService";
+// Export commentService
+export { commentService } from "./admin/commentService";
+// Export aiChatService
+export { aiChatService } from "./admin/aiChatService";
