@@ -3,7 +3,6 @@ import { FeedItem } from "../../Store/feedSlice";
 import { FeedItemType } from "../../Types/response/FeedItemResponse";
 import VideoCard from "./VideoCard";
 import ImageSlidePost from "./ImageSlidePost";
-import { getVideoUrl } from "../../Utils/ImageUrlHelper";
 
 // Helper function to get valid avatar URL (matching CommentModal logic)
 const getValidAvatarUrl = (avatarUrl?: string): string | undefined => {
@@ -35,8 +34,8 @@ export default function FeedPost({
     return (
       <VideoCard
         video={{
-          id: feedItem.id,
-          uri: getVideoUrl(feedItem.video.uri),
+          id: feedItem.id, // ✅ Đây là FeedItem ID - ĐÚNG
+          uri: feedItem.video.uri,
           duration: feedItem.video.duration,
           title: feedItem.title,
           description: feedItem.description,
