@@ -9,6 +9,7 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.chatMessage.ChatMessageMapper;
 import com.hehe.thesocial.mapper.conversation.ConversationMapper;
+import com.hehe.thesocial.mapper.file.FileMapper;
 import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.FileRepository;
@@ -39,6 +40,7 @@ public class ConversationServiceImpl implements ConversationService {
 
     ConversationRepository conversationRepository;
     ConversationMapper conversationMapper;
+    FileMapper fileMapper;
     UserDetailRepository userDetailRepository;
     FileRepository fileRepository;
     UserRepository userRepository;
@@ -72,7 +74,7 @@ public class ConversationServiceImpl implements ConversationService {
             return conversationRepository.findByParticipantHash(hash)
                     .map(existingConversation -> {
                         log.info("Found existing conversation with ID: {}", existingConversation.getConversationId());
-                        ConversationResponse response = conversationMapper.toConversationResponse(existingConversation);
+                        ConversationResponse response = conversationMapper.toConversationResponse(existingConversation, fileMapper);
                         customizeConversationResponse(response, existingConversation, userDetail);
                         return response;
                     })
@@ -93,7 +95,7 @@ public class ConversationServiceImpl implements ConversationService {
         log.info("Created conversation with ID: {} and {} participants", conversation.getConversationId(),
                 participants.size());
 
-        ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+        ConversationResponse response = conversationMapper.toConversationResponse(conversation, fileMapper);
         customizeConversationResponse(response, conversation, userDetail);
         return response;
     }
@@ -103,7 +105,7 @@ public class ConversationServiceImpl implements ConversationService {
         UserDetail currentUserDetail = authenticationHelper.getCurrentUserDetail();
         Conversation conversation = findConversationById(conversationId);
 
-        ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+        ConversationResponse response = conversationMapper.toConversationResponse(conversation, fileMapper);
         customizeConversationResponse(response, conversation, currentUserDetail);
 
         return response;
@@ -120,7 +122,7 @@ public class ConversationServiceImpl implements ConversationService {
         conversation = conversationRepository.save(conversation);
         log.info("Updated conversation with ID: {}", conversationId);
 
-        return conversationMapper.toConversationResponse(conversation);
+        return conversationMapper.toConversationResponse(conversation, fileMapper);
     }
 
     @Transactional
@@ -141,7 +143,7 @@ public class ConversationServiceImpl implements ConversationService {
         conversation = conversationRepository.save(conversation);
         log.info("Added member {} to conversation {}", newParticipantId, conversationId);
 
-        return conversationMapper.toConversationResponse(conversation);
+        return conversationMapper.toConversationResponse(conversation, fileMapper);
     }
 
     @Transactional
@@ -163,7 +165,7 @@ public class ConversationServiceImpl implements ConversationService {
         conversation = conversationRepository.save(conversation);
         log.info("Removed member {} from conversation {}", participantId, conversationId);
 
-        return conversationMapper.toConversationResponse(conversation);
+        return conversationMapper.toConversationResponse(conversation, fileMapper);
     }
 
     @Override
@@ -174,7 +176,7 @@ public class ConversationServiceImpl implements ConversationService {
                 .findByUserDetailsContaining(Set.of(currentUserDetail), pageable);
 
         return conversations.map(conversation -> {
-            ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+            ConversationResponse response = conversationMapper.toConversationResponse(conversation, fileMapper);
             customizeConversationResponse(response, conversation, currentUserDetail);
             return response;
         });
@@ -237,7 +239,7 @@ public class ConversationServiceImpl implements ConversationService {
                     .filter(userDetail -> !userDetail.getId().equals(currentUserDetail.getId()))
                     .findFirst()
                     .ifPresent(otherUser -> {
-                        response.setAvatar(otherUser.getAvatar());
+                        response.setAvatar(otherUser.getAvatar() != null ? fileMapper.toFileResponse(otherUser.getAvatar()) : null);
                         response.setConversationName(otherUser.getDisplayName());
                     });
         }
@@ -258,7 +260,7 @@ public class ConversationServiceImpl implements ConversationService {
 
                     // Set sender avatar
                     userDetailRepository.findById(latestMessage.getSenderId())
-                            .ifPresent(sender -> messageResponse.setAvatar(sender.getAvatar()));
+                            .ifPresent(sender -> messageResponse.setAvatar(sender.getAvatar() != null ? fileMapper.toFileResponse(sender.getAvatar()) : null));
 
                     // Set sender as "me" or "other"
                     messageResponse.setSender(
@@ -353,7 +355,7 @@ public class ConversationServiceImpl implements ConversationService {
                 .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        ConversationResponse response = conversationMapper.toConversationResponse(conversation);
+        ConversationResponse response = conversationMapper.toConversationResponse(conversation, fileMapper);
         customizeConversationResponse(response, conversation, currentUserDetail);
         return response;
     }

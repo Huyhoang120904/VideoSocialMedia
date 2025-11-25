@@ -22,6 +22,8 @@ import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 
+import com.hehe.thesocial.mapper.file.FileMapper;
+
 import com.hehe.thesocial.service.file.FileService;
 import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
 import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
@@ -50,6 +52,7 @@ import java.util.stream.Collectors;
 public class ChatMessageServiceImpl implements ChatMessageService {
     ChatMessageRepository chatMessageRepository;
     ChatMessageMapper chatMessageMapper;
+    FileMapper fileMapper;
     UserDetailRepository userDetailRepository;
     ConversationRepository conversationRepository;
     FileRepository fileRepository;
@@ -77,7 +80,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         responses.getContent().forEach(response -> {
                 String senderId = response.getSender();
                 UserDetail sender = getUserDetailById(senderId);
-                response.setAvatar(sender.getAvatar());
+                response.setAvatar(sender.getAvatar() != null ? fileMapper.toFileResponse(sender.getAvatar()) : null);
                 response.setSender(senderId.equals(currentUser.getId()) ? "me" : "other");
                 
                 // Set read status information using the message map
@@ -315,7 +318,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         // Create response and broadcast
         ChatMessageResponse response = chatMessageMapper.toChatMessageResponse(lastMessage);
         UserDetail sender = getUserDetailById(lastMessage.getSenderId());
-        response.setAvatar(sender.getAvatar());
+        response.setAvatar(sender.getAvatar() != null ? fileMapper.toFileResponse(sender.getAvatar()) : null);
 
 
 
@@ -480,7 +483,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
         // Add sender's avatar to the response
         UserDetail sender = getUserDetailById(savedMessage.getSenderId());
-        response.setAvatar(sender.getAvatar());
+        response.setAvatar(sender.getAvatar() != null ? fileMapper.toFileResponse(sender.getAvatar()) : null);
 
 
 

@@ -2,8 +2,7 @@ package com.hehe.thesocial.dto.response.conversation;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.hehe.thesocial.entity.FileDocument;
-import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.enums.ConversationType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -20,7 +19,7 @@ import java.util.Set;
 public class ConversationListResponse {
     String conversationId;
 
-    FileDocument avatar;
+    FileResponse avatar;
 
     String conversationName;
     ConversationType conversationType;

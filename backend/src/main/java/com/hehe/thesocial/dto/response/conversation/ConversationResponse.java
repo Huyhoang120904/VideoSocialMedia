@@ -3,8 +3,8 @@ package com.hehe.thesocial.dto.response.conversation;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
+import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
-import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.entity.enums.ConversationType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -23,7 +23,7 @@ public class ConversationResponse {
     Set<UserDetailResponse> userDetails;
     List<String> participantIds;  // Added this field
 
-    FileDocument avatar;
+    FileResponse avatar;
 
     String creatorId;
 

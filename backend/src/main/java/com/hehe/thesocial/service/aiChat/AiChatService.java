@@ -16,6 +16,7 @@ import com.hehe.thesocial.service.chatMessage.ChatMessageService;
 import com.hehe.thesocial.service.conversation.ConversationService;
 import com.hehe.thesocial.service.messageDelivery.MessageDeliveryService;
 import com.hehe.thesocial.service.messageDelivery.NewestMessageBroadcastService;
+import com.hehe.thesocial.mapper.file.FileMapper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -56,6 +57,7 @@ public class AiChatService {
     MessageDeliveryService messageDeliveryService;
     NewestMessageBroadcastService newestMessageBroadcastService;
     QdrantVectorStore vectorStore;
+    FileMapper fileMapper;
 
     /**
      * Process AI chat request and return AI response.
@@ -86,7 +88,7 @@ public class AiChatService {
         // Broadcast user message
         ChatMessageResponse userMessageResponse = chatMessageMapper.toChatMessageResponse(userMessage);
         UserDetail sender = getUserDetailById(userMessage.getSenderId());
-        userMessageResponse.setAvatar(sender.getAvatar());
+        userMessageResponse.setAvatar(sender.getAvatar() != null ? fileMapper.toFileResponse(sender.getAvatar()) : null);
         messageDeliveryService.deliverMessageToConversation(conversationId, userMessageResponse);
         newestMessageBroadcastService.broadcastNewestMessage(conversationId, userMessageResponse);
 
@@ -142,7 +144,7 @@ public class AiChatService {
 
         // Create response and broadcast
         ChatMessageResponse aiMessageResponse = chatMessageMapper.toChatMessageResponse(aiMessage);
-        aiMessageResponse.setAvatar(aiUserDetail.getAvatar());
+        aiMessageResponse.setAvatar(aiUserDetail.getAvatar() != null ? fileMapper.toFileResponse(aiUserDetail.getAvatar()) : null);
         messageDeliveryService.deliverMessageToConversation(conversationId, aiMessageResponse);
         newestMessageBroadcastService.broadcastNewestMessage(conversationId, aiMessageResponse);
 

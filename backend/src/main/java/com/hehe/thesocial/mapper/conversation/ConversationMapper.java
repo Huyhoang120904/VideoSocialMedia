@@ -5,6 +5,9 @@ import com.hehe.thesocial.dto.response.conversation.ConversationListResponse;
 import com.hehe.thesocial.dto.response.conversation.ConversationResponse;
 import com.hehe.thesocial.entity.Conversation;
 import com.hehe.thesocial.entity.UserDetail;
+import com.hehe.thesocial.mapper.file.FileMapper;
+import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -14,12 +17,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+@Mapper(componentModel = "spring",
+        uses = {UserDetailMapper.class, FileMapper.class},
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface ConversationMapper {
     ConversationListResponse toConversationListResponse(Conversation conversation);
 
     @Mapping(target = "participantIds", source = "userDetails", qualifiedByName = "mapUserDetailsToParticipantIds")
-    ConversationResponse toConversationResponse(Conversation conversation);
+    ConversationResponse toConversationResponse(Conversation conversation, @Context FileMapper fileMapper);
 
     Conversation toConversation(ConversationRequest request);
 

@@ -8,9 +8,12 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-@Mapper(componentModel = "spring", uses = {UserDetailMapper.class})
+@Mapper(componentModel = "spring")
 public interface FileMapper {
     @Mapping(target = "fileType", source = "resourceType", qualifiedByName = "stringToFileType")
+    @Mapping(target = "uploader", ignore = true)
+    @Mapping(target = "flaggedBy", ignore = true)
+    @Mapping(target = "deletedBy", ignore = true)
     FileResponse toFileResponse(FileDocument fileDocument);
 
     @Named("stringToFileType")
