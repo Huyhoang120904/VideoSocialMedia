@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -68,8 +69,18 @@ public class FeedItem extends BaseDocument {
     @Builder.Default
     int reportCount = 0;
 
+    @Field("status")
+    @Builder.Default
+    boolean violated = false;
+
     @Field("active")
     @Builder.Default
     boolean active = true;
 
+    @DBRef
+    @Field("disabled_by_ref")
+    UserDetail disabledBy;
+
+    @Field("disabled_at")
+    LocalDateTime disabledAt;
 }

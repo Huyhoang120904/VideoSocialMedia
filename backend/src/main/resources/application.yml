@@ -13,20 +13,27 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
       enabled: true
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOSTRAP_SERVER}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    consumer:
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      properties:
-        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
-        spring.json.trusted.packages: "*"
+
   ai:
+    vectorstore:
+      qdrant:
+        host: ${QDRANT_HOST:localhost}
+        port: 6334
+        collection-name: thesocial_corp_knowledge_base
+        initialize-schema: true
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-3.5-turbo
+          temperature: 0.7
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 server:
   port: 8082
   host: ${SERVER_HOST}
@@ -43,7 +50,8 @@ jwt:
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads}
 
+
 logging:
   level:
-    org.apache.kafka.clients.NetworkClient: ERROR
-    org.apache.kafka.clients.admin.AdminClient: ERROR
+    org.springframework.ai.vectorstore: DEBUG
+    org.springframework.ai.rag: DEBUG

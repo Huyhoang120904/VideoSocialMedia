@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Notifications", description = "User notification endpoints - requires authentication")
-public class NotificationController {
+public class NotificationController extends BaseController {
 
     NotificationService notificationService;
 
@@ -45,10 +45,7 @@ public class NotificationController {
                 unreadOnly, pageable.getPageNumber(), pageable.getPageSize());
 
         Page<NotificationResponse> notifications = notificationService.getNotifications(pageable, unreadOnly);
-        return ResponseEntity.ok(ApiResponse.<Page<NotificationResponse>>builder()
-                .result(notifications)
-                .message("Notifications retrieved successfully")
-                .build());
+        return ok(notifications, "Notifications retrieved successfully");
     }
 
     @PatchMapping("/{notificationId}/read")
@@ -56,20 +53,16 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable String notificationId) {
         log.info("Marking notification {} as read", notificationId);
         notificationService.markNotificationAsRead(notificationId);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .message("Notification marked as read")
-                .build());
+        return okMessage("Notification marked as read");
     }
 
     @PatchMapping("/read-all")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> markAllAsRead() {
         int totalUpdated = notificationService.markAllNotificationsAsRead();
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .message(totalUpdated == 0
-                        ? "No unread notifications"
-                        : String.format("Marked %d notifications as read", totalUpdated))
-                .build());
+        return okMessage(totalUpdated == 0
+                ? "No unread notifications"
+                : String.format("Marked %d notifications as read", totalUpdated));
     }
 }
 

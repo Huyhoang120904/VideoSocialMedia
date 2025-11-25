@@ -3,8 +3,11 @@ package com.hehe.thesocial.dto.response.reportTicket;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.entity.enums.ReportCategory;
+import com.hehe.thesocial.entity.enums.ReportStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -16,6 +19,8 @@ public class ReportTicketResponse {
 
     String id;
 
+    String feedItemId;
+
     FeedItemType feedItemType;
 
     String videoId;
@@ -24,6 +29,16 @@ public class ReportTicketResponse {
 
     ReportCategory reportCategory;
 
-    String violationContent;
+    String reason; // Mapped from violationContent
+
+    String violationContent; // Keep for backward compatibility
+
+    ReportStatus status;
+
+    String reporterId; // Mapped from userDetail.id
+
+    LocalDateTime createdAt;
+
+    LocalDateTime updatedAt;
 }
 

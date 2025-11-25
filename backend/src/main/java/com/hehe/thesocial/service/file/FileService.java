@@ -1,5 +1,9 @@
 package com.hehe.thesocial.service.file;
 
+import com.hehe.thesocial.dto.request.file.FileActionRequest;
+import com.hehe.thesocial.dto.request.file.FileSearchRequest;
+import com.hehe.thesocial.dto.response.file.FileListResponse;
+import com.hehe.thesocial.dto.response.file.FileMetricsResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,5 +22,15 @@ public interface FileService {
 
     Page<FileResponse> findAllDocument(Pageable pageable);
 
-    void deleteFile(String id);
+    FileResponse deleteFile(String id, FileActionRequest request);
+
+    FileResponse restoreFile(String id, FileActionRequest request);
+
+    FileResponse flagFile(String id, FileActionRequest request);
+
+    FileResponse unflagFile(String id, FileActionRequest request);
+
+    FileListResponse searchFiles(FileSearchRequest request);
+
+    FileMetricsResponse getFileMetrics();
 }

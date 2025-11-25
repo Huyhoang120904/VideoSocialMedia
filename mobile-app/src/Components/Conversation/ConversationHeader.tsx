@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { Animated } from "react-native";
+import { UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 
 interface ConversationHeaderProps {
   conversationName: string;
@@ -55,7 +56,7 @@ export default function ConversationHeader({
           />
         ) : (
           <Image
-            source={require('../../../assets/unknown-avatar.png')}
+            source={UNKNOWN_AVATAR}
             className="w-10 h-10 rounded-full mr-3 border-2 border-gray-100"
             style={{ resizeMode: "cover" }}
           />

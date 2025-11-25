@@ -104,6 +104,24 @@ export interface PagedResponse<T> {
   empty: boolean;
 }
 
+export interface HateoasPageMetadata {
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
+export interface HateoasLink {
+  href: string;
+  templated?: boolean;
+}
+
+export interface HateoasPagedModel<T> {
+  _embedded?: Record<string, T[]>;
+  _links?: Record<string, HateoasLink | HateoasLink[]>;
+  page?: HateoasPageMetadata;
+}
+
 // ============================================================================
 // USER MANAGEMENT TYPES
 // ============================================================================
@@ -123,6 +141,17 @@ export interface RoleResponse {
   id: string;
   name: string;
   description: string;
+}
+
+export interface UserDetailResponse {
+  id: string;
+  displayName?: string;
+  bio?: string;
+  shownName?: string;
+  followingCount?: number;
+  followerCount?: number;
+  avatar?: FileResponse;
+  user?: UserResponse;
 }
 
 export interface CreateUserRequest {
@@ -162,21 +191,37 @@ export interface VideoResponse {
   updatedAt?: string;
 }
 
+export enum FileStatus {
+  ACTIVE = "ACTIVE",
+  FLAGGED = "FLAGGED",
+  DELETED = "DELETED",
+}
+
+export type FileSortDirection = "ASC" | "DESC";
+
 export interface FileResponse {
   id: string;
   fileName: string;
-  fileType: string;
-  resourceType: string;
-  format: string;
-  size: number;
-  url: string;
-  secureUrl: string;
+  originalFileName?: string;
+  resourceType?: string;
+  format?: string;
+  size?: number;
+  url?: string;
+  secureUrl?: string;
+  thumbnailUrl?: string;
   width?: number;
   height?: number;
-  bytes?: number;
-  uploaderId?: string;
+  description?: string;
+  status?: FileStatus;
+  flagReason?: string;
+  deleteReason?: string;
+  flaggedAt?: string;
+  deletedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  uploader?: UserDetailResponse;
+  flaggedBy?: UserDetailResponse;
+  deletedBy?: UserDetailResponse;
 }
 
 export interface UploadVideoRequest {
@@ -213,6 +258,36 @@ export interface FeedItemUploadResponse {
   description?: string;
 }
 
+export interface ImageSlideResponse {
+  id: string;
+  images: FileResponse[];
+  captions?: string;
+}
+
+export interface FeedItemResponse {
+  id: string;
+  feedItemType: FeedItemType;
+  video?: FileResponse;
+  imageSlide?: ImageSlideResponse;
+  title?: string;
+  description?: string;
+  hashTagIds?: string[];
+  commentIds?: string[];
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+  loved: boolean;
+  hashTags?: string[];
+  uploader?: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
+}
+
 export interface FeedItemListResponse {
   feedItems: PagedResponse<FeedItemUploadResponse>;
   message: string;
@@ -236,6 +311,59 @@ export interface UploadFeedItemRequest {
   // ImageSlide-specific
   images?: File[];
   captions?: string;
+}
+
+export interface FileSearchRequest {
+  keyword?: string;
+  fileType?: "video" | "image" | "other";
+  status?: FileStatus;
+  uploaderId?: string;
+  uploaderUsername?: string;
+  minSize?: number;
+  maxSize?: number;
+  createdFrom?: string;
+  createdTo?: string;
+  page?: number;
+  size?: number;
+  sortBy?: "createdAt" | "size" | "fileName";
+  sortDirection?: FileSortDirection;
+}
+
+export interface FileActionRequest {
+  actionReason?: string;
+}
+
+export interface FileListResponse {
+  files: PagedResponse<FileResponse>;
+  message: string;
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
+export interface FileMetricsResponse {
+  totalFiles: number;
+  totalVideos: number;
+  totalImages: number;
+  totalOtherFiles: number;
+  flaggedFiles: number;
+  deletedFiles: number;
+  totalStorageBytes: number;
+  formattedStorageUsed: string;
+}
+
+export interface FeedItemSearchRequest {
+  keyword?: string;
+  feedItemType?: FeedItemType;
+  active?: boolean;
+  violated?: boolean;
+  uploaderId?: string;
+  feedItemIds?: string[];
+  minReportCount?: number;
+  maxReportCount?: number;
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 // ============================================================================

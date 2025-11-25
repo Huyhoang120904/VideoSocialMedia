@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Views", description = "View tracking endpoints - requires authentication")
-public class ViewController {
+public class ViewController extends BaseController {
 
     ViewService viewService;
 
@@ -51,10 +51,7 @@ public class ViewController {
 
         ViewResponse response = viewService.addView(id, userDetailId);
 
-        return ResponseEntity.ok(ApiResponse.<ViewResponse>builder()
-                .result(response)
-                .message("View recorded successfully")
-                .build());
+        return ok(response, "View recorded successfully");
     }
 
     private String getCurrentUserDetailId() {

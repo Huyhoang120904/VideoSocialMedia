@@ -261,7 +261,7 @@ public class CommentServiceImpl implements CommentService {
             String parentCommentId, String currentUserDetailId, Pageable pageable) {
 
         Page<Comment> page = commentRepository
-                .findByParentCommentIdOrderByCreatedAtDesc(parentCommentId, pageable);
+                .findByFeedItemIdAndParentCommentIdIsNullOrderByCreatedAtDesc(parentCommentId, pageable);
 
         Map<String, UserDetail> users = loadUserDetails(page.getContent());
 

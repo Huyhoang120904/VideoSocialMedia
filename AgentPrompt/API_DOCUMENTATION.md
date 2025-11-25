@@ -910,6 +910,85 @@ Get the authenticated user's loved feed items.
 
 ---
 
+### User Interaction Endpoints
+
+#### POST /user-interactions
+
+Persist a batch of user interaction events (views, watch stats). Requires authentication.
+
+**Request Body** (`application/json`):
+
+```json
+[
+  {
+    "feedItemId": "feed_item_id",
+    "userDetailId": "user_detail_id",
+    "watchDuration": 42.5
+  }
+]
+```
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "User interactions saved successfully",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": null
+}
+```
+
+#### GET /user-interactions
+
+Retrieve paginated user interactions for the admin dashboard. Requires ADMIN role.
+
+**Query Parameters**:
+
+- `page` (int, default: 0)
+- `size` (int, default: 20)
+- `sort` (string, default: `createdAt,DESC`)
+
+**Response** (`200 OK`):
+
+```json
+{
+  "code": 1000,
+  "message": "Successful",
+  "timestamp": "2025-01-27T12:00:00Z",
+  "result": {
+    "content": [
+      {
+        "id": "interaction_id",
+        "userId": "user_detail_id",
+        "feedItemId": "feed_item_id",
+        "interactionType": "VIEW",
+        "duration": 42.5,
+        "timestamp": "2025-01-27T11:55:00Z"
+      }
+    ],
+    "totalElements": 120,
+    "totalPages": 6,
+    "number": 0,
+    "size": 20
+  }
+}
+```
+
+#### GET /user-interactions/user/{userDetailId}
+
+Retrieve paginated interactions for a specific user detail ID. Requires ADMIN role.
+
+**Path Parameters**:
+
+- `userDetailId` (string): ID of the user detail document.
+
+**Query Parameters**: Same as `GET /user-interactions`.
+
+**Response** (`200 OK`): Same structure as `GET /user-interactions`.
+
+---
+
 ## WebSocket Endpoints
 
 ### WebSocket Connection

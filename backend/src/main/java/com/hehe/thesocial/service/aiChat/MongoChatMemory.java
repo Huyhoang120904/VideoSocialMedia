@@ -53,7 +53,7 @@ public class MongoChatMemory implements ChatMemory {
         // Note: This method is called by MessageChatMemoryAdvisor for automatic message persistence.
         // However, since we now explicitly save messages in AiChatService.sendAiMessage(),
         // this method should check for duplicates to avoid saving the same message twice.
-        //
+        // 
         // For now, we'll skip saving here since messages are explicitly saved in the service layer.
         // The advisor is primarily used for retrieving conversation history via the get() method.
 

@@ -1,9 +1,13 @@
 package com.hehe.thesocial.dto.response.file;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hehe.thesocial.dto.response.userDetail.UserDetailResponse;
+import com.hehe.thesocial.entity.enums.FileStatus;
 import com.hehe.thesocial.entity.enums.FileType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -26,4 +30,14 @@ public class FileResponse {
     String title;
     String description;
     String thumbnailUrl;
+    FileStatus status;
+    String flagReason;
+    String deleteReason;
+    LocalDateTime flaggedAt;
+    LocalDateTime deletedAt;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
+    UserDetailResponse uploader;
+    UserDetailResponse flaggedBy;
+    UserDetailResponse deletedBy;
 }

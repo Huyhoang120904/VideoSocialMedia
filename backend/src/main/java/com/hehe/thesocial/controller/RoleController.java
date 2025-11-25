@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Tag(name = "Roles", description = "Role management endpoints - ADMIN only")
-public class RoleController {
+public class RoleController extends BaseController {
 
     RoleService roleService;
 
@@ -47,9 +47,7 @@ public class RoleController {
     @GetMapping("/{roleId}")
     public ResponseEntity<ApiResponse<RoleResponse>> getRoleById(
             @Parameter(description = "Role ID", required = true) @PathVariable String roleId) {
-        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
-                .result(roleService.findRoleById(roleId))
-                .build());
+        return ok(roleService.findRoleById(roleId));
     }
 
     @Operation(
@@ -65,9 +63,7 @@ public class RoleController {
     public ResponseEntity<ApiResponse<PagedModel<EntityModel<RoleResponse>>>> getRolesByPage(
             @Parameter(description = "Pagination parameters") @PageableDefault(size = 12, page = 0) Pageable pageable,
             PagedResourcesAssembler<RoleResponse> assembler) {
-        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<RoleResponse>>>builder()
-                .result(assembler.toModel(roleService.findAllRolesByPage(pageable)))
-                .build());
+        return ok(assembler.toModel(roleService.findAllRolesByPage(pageable)));
     }
 
     @Operation(
@@ -83,9 +79,7 @@ public class RoleController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RoleResponse>> createRole(@RequestBody RoleRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<RoleResponse>builder()
-                .result(roleService.createRole(request))
-                .build());
+        return created(roleService.createRole(request));
     }
 
     @Operation(
@@ -103,9 +97,7 @@ public class RoleController {
     public ResponseEntity<ApiResponse<RoleResponse>> updateRole(
             @Parameter(description = "Role ID", required = true) @PathVariable String roleId,
             @RequestBody RoleRequest request) {
-        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
-                .result(roleService.updateRole(roleId, request))
-                .build());
+        return ok(roleService.updateRole(roleId, request));
     }
 
     @Operation(
@@ -123,9 +115,7 @@ public class RoleController {
     public ResponseEntity<ApiResponse<Void>> deleteRole(
             @Parameter(description = "Role ID", required = true) @PathVariable String roleId) {
         roleService.deleteRole(roleId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
-                .message("Role deleted successfully")
-                .build());
+        return respond(HttpStatus.NO_CONTENT, "Role deleted successfully");
     }
 
     @Operation(
@@ -143,9 +133,7 @@ public class RoleController {
     public ResponseEntity<ApiResponse<RoleResponse>> addPermissionToRole(
             @Parameter(description = "Role ID", required = true) @PathVariable String roleId,
             @Parameter(description = "Permission ID", required = true) @PathVariable String permissionId) {
-        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
-                .result(roleService.addPermissionToRole(roleId, permissionId))
-                .build());
+        return ok(roleService.addPermissionToRole(roleId, permissionId));
     }
 
     @Operation(
@@ -163,8 +151,6 @@ public class RoleController {
     public ResponseEntity<ApiResponse<RoleResponse>> removePermissionFromRole(
             @Parameter(description = "Role ID", required = true) @PathVariable String roleId,
             @Parameter(description = "Permission ID", required = true) @PathVariable String permissionId) {
-        return ResponseEntity.ok(ApiResponse.<RoleResponse>builder()
-                .result(roleService.removePermissionFromRole(roleId, permissionId))
-                .build());
+        return ok(roleService.removePermissionFromRole(roleId, permissionId));
     }
 }

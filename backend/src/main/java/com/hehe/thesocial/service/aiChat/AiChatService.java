@@ -67,7 +67,7 @@ public class AiChatService {
     @Transactional
     public ChatMessageResponse sendAiMessage(AiChatMessageRequest request) {
         log.info("Processing AI chat request: {}", request.getMessage());
-
+        
         UserDetail aiUserDetail = getOrCreateAiUser();
         UserDetail currentUser = getCurrentUser();
 
@@ -82,7 +82,7 @@ public class AiChatService {
                 .edited(false)
                 .build();
         userMessage = chatMessageRepository.save(userMessage);
-
+        
         // Broadcast user message
         ChatMessageResponse userMessageResponse = chatMessageMapper.toChatMessageResponse(userMessage);
         UserDetail sender = getUserDetailById(userMessage.getSenderId());

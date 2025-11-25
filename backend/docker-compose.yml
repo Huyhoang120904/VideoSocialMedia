@@ -8,47 +8,31 @@ services:
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=superadmin
-      - MONGO_INITDB_ROOT_PASSWORD=123456
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword123
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init:/docker-entrypoint-initdb.d
     networks:
       - thesocial-network
     healthcheck:
-      test: [ "CMD", "mongosh", "--username=superadmin", "--password=123456", "--eval", "db.adminCommand('ping')", "--authenticationDatabase=admin" ]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--username=superadmin",
+          "--password=123456",
+          "--eval",
+          "db.adminCommand('ping')",
+          "--authenticationDatabase=admin",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
 
-  kafka:
-    image: redpanda/redpanda:latest
-    container_name: thesocial-redpanda
-    ports:
-      - "9092:9092"
-      - "8085:8082"
-      - "9644:9644"
-    command:
-      - redpanda
-      - start
-      - --overprovisioned
-      - --smp=1
-      - --memory=512M
-      - --reserve-memory=0M
-      - --node-id=0
-      - --check=false
-      - --kafka-addr=0.0.0.0:9092
-      - --advertise-kafka-addr=localhost:9092
-      - --pandaproxy-addr=0.0.0.0:8082
-      - --advertise-pandaproxy-addr=localhost:8081
-    networks:
-      - thesocial-network
-
-
 volumes:
   mongodb_data:
-  kafka_data:
 
 networks:
   thesocial-network:

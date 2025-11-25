@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ConversationResponse } from "../../Types/response/ConversationResponse";
 import { useConversations } from "../../Context/ConversationProvider";
 import { useNewestMessage } from "../../Context/NewestMessageProvider";
+import { useNotifications } from "../../Context/NotificationProvider";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
 import InboxHeader from "../../Components/Inbox/InboxHeader";
 import TabNavigation from "../../Components/Inbox/TabNavigation";
@@ -14,7 +15,7 @@ import NotificationsList from "../../Components/Inbox/NotificationsList";
 import RequestsList from "../../Components/Inbox/RequestsList";
 import NewestMessageIndicator from "../../Components/Inbox/NewestMessageIndicator";
 import UserDetailService from "../../Services/UserDetailService";
-import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
+import { getAvatarUrl, UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 
 type InboxNavigationProp = StackNavigationProp<AuthedStackParamList>;
 
@@ -25,6 +26,7 @@ export default function Inbox() {
   const navigation = useNavigation<InboxNavigationProp>();
   const { conversations, isLoading, getMyConversations } = useConversations();
   const { isConnected: newestMessageConnected } = useNewestMessage();
+  const { refreshNotifications } = useNotifications();
 
   useEffect(() => {
     // Load current user details to get their ID for avatar filtering
@@ -73,9 +75,7 @@ export default function Inbox() {
     navigation.navigate("Conversation", {
       conversationId: item.conversationId,
       conversationName: item.conversationName,
-      avatar: avatarUrl
-        ? { uri: avatarUrl }
-        : require("../../../assets/unknown-avatar.png"),
+      avatar: avatarUrl ? { uri: avatarUrl } : UNKNOWN_AVATAR,
     });
   };
 
@@ -98,21 +98,30 @@ export default function Inbox() {
     } as any);
   };
 
-  const handleAiChat = () => {
-    // Navigate to dedicated AI Chat screen
-    navigation.navigate("AIChat");
+  const handleAIChatPress = () => {
+    // Navigate to AIChat screen in the parent AuthedStack
+    const parentNavigation =
+      navigation.getParent<StackNavigationProp<AuthedStackParamList>>();
+    if (parentNavigation) {
+      parentNavigation.navigate("AIChat");
+    } else {
+      // Fallback: try direct navigation
+      navigation.navigate("AIChat" as never);
+    }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await getMyConversations();
+      if (activeTab === "Messages") {
+        await getMyConversations();
+      } else if (activeTab === "Notifications") {
+        await refreshNotifications();
+      }
+      // Add refresh logic for Requests tab if needed
     } catch (error) {
-      console.error("Error refreshing conversations:", error);
-      Alert.alert(
-        "Error",
-        "Failed to refresh conversations. Please try again."
-      );
+      console.error("Error refreshing:", error);
+      Alert.alert("Error", "Failed to refresh. Please try again.");
     } finally {
       setRefreshing(false);
     }
@@ -123,7 +132,7 @@ export default function Inbox() {
       <InboxHeader
         onSearchPress={navigateToSearch}
         onCreateGroupPress={handleCreateGroup}
-        onAiChatPress={handleAiChat}
+        onAIChatPress={handleAIChatPress}
       />
 
       <TabNavigation
@@ -133,11 +142,15 @@ export default function Inbox() {
       />
 
       {/* Newest Message Indicator for testing */}
-      <NewestMessageIndicator />
+      {/* <NewestMessageIndicator /> */}
 
       {activeTab === "Messages" && (
         <MessagesList
-          conversations={conversations}
+          conversations={conversations.filter(
+            (conv) =>
+              conv.conversationName !== "AI Assistant" &&
+              conv.conversationId !== "ai-assistant"
+          )}
           isLoading={isLoading}
           refreshing={refreshing}
           onRefresh={handleRefresh}

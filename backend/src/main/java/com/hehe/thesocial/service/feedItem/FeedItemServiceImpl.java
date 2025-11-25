@@ -1,12 +1,16 @@
 package com.hehe.thesocial.service.feedItem;
 
+import com.hehe.thesocial.dto.request.feedItem.FeedItemSearchRequest;
 import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
+import com.hehe.thesocial.dto.response.reportTicket.FeedItemReportSummaryResponse;
+import com.hehe.thesocial.dto.response.reportTicket.ReportCategorySummary;
 import com.hehe.thesocial.dto.response.reportTicket.ReportTicketResponse;
 import com.hehe.thesocial.entity.*;
 import com.hehe.thesocial.entity.enums.FeedItemType;
+import com.hehe.thesocial.entity.enums.ReportCategory;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.mapper.feedItem.FeedItemMapper;
@@ -15,6 +19,7 @@ import com.hehe.thesocial.mapper.reportTicket.ReportTicketMapper;
 import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.*;
 import com.hehe.thesocial.service.file.FileService;
+import com.hehe.thesocial.specification.FeedItemSpecification;
 import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +28,10 @@ import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,9 +40,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -59,6 +70,7 @@ public class FeedItemServiceImpl implements FeedItemService {
     UserPreferenceRepository userPreferenceRepository;
     ReportTicketRepository reportTicketRepository;
     ReportTicketMapper reportTicketMapper;
+    MongoTemplate mongoTemplate;
 
     @NonFinal
     @Value("${file.upload-dir:uploads}")
@@ -168,7 +180,7 @@ public class FeedItemServiceImpl implements FeedItemService {
     }
 
     @Override
-    public List<ReportTicketResponse> getReportsByFeedItemId(String feedItemId) {
+    public FeedItemReportSummaryResponse getReportsByFeedItemId(String feedItemId) {
         log.info("Fetching all reports for feedItem ID: {}", feedItemId);
 
         // Verify feedItem exists
@@ -180,7 +192,7 @@ public class FeedItemServiceImpl implements FeedItemService {
         log.info("Found {} reports for feedItem ID: {}", reportTickets.size(), feedItemId);
 
         // Map to response DTOs
-        return reportTickets.stream()
+        List<ReportTicketResponse> reportResponses = reportTickets.stream()
                 .map(reportTicket -> {
                     ReportTicketResponse response = reportTicketMapper.toReportTicketResponse(reportTicket);
                     // Set feedItemType from the feedItem
@@ -190,6 +202,30 @@ public class FeedItemServiceImpl implements FeedItemService {
                     return response;
                 })
                 .toList();
+
+        // Calculate top 5 report categories by count
+        List<ReportCategorySummary> topCategories = reportTickets.stream()
+                .collect(Collectors.groupingBy(
+                        ticket -> Optional.ofNullable(ticket.getReportCategory()).orElse(ReportCategory.OTHER),
+                        Collectors.counting()
+                ))
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.<ReportCategory, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(entry -> ReportCategorySummary.builder()
+                        .category(entry.getKey())
+                        .count(entry.getValue())
+                        .build())
+                .toList();
+
+        return FeedItemReportSummaryResponse.builder()
+                .feedItemId(feedItem.getId())
+                .feedItemType(feedItem.getFeedItemType())
+                .totalReports(reportResponses.size())
+                .topCategories(topCategories)
+                .reports(reportResponses)
+                .build();
     }
 
     @Override
@@ -200,12 +236,41 @@ public class FeedItemServiceImpl implements FeedItemService {
         FeedItem feedItem = feedItemRepository.findById(feedItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
 
-        // Set violated flag and disable the feedItem
+        // Set violated flag, disable the feedItem, and capture moderator info
+        UserDetail moderator = getCurrentUser();
         feedItem.setViolated(true);
         feedItem.setActive(false);
+        feedItem.setDisabledBy(moderator);
+        feedItem.setDisabledAt(LocalDateTime.now());
 
         feedItemRepository.save(feedItem);
-        log.info("FeedItem ID: {} has been disabled due to violation", feedItemId);
+        log.info("FeedItem ID: {} has been disabled due to violation by {}", feedItemId, moderator.getId());
+    }
+
+    @Override
+    public Page<FeedItemUploadResponse> getViolatedFeedItems(Pageable pageable) {
+        log.info("Getting violated feed items with page: {}, size: {}", pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<FeedItem> violatedFeedItems = feedItemRepository.findByActiveFalse(pageable);
+        log.info("Found {} violated feed items", violatedFeedItems.getTotalElements());
+
+        return violatedFeedItems.map(this::toFeedItemUploadResponse);
+    }
+
+    @Override
+    public Page<FeedItemUploadResponse> searchFeedItems(FeedItemSearchRequest request, Pageable pageable) {
+        log.info("Searching feed items with filters: {}", request);
+
+        Query baseQuery = FeedItemSpecification.buildQuery(request);
+        long total = mongoTemplate.count(baseQuery, FeedItem.class);
+
+        Query pagedQuery = FeedItemSpecification.buildQuery(request);
+        pagedQuery.with(pageable);
+
+        List<FeedItem> feedItems = mongoTemplate.find(pagedQuery, FeedItem.class);
+        Page<FeedItem> feedItemPage = new PageImpl<>(feedItems, pageable, total);
+
+        return feedItemPage.map(this::toFeedItemUploadResponse);
     }
 
     // Private helper methods
@@ -463,7 +528,10 @@ public class FeedItemServiceImpl implements FeedItemService {
                 .feedItemId(feedItem.getId())
                 .feedItemType(feedItem.getFeedItemType())
                 .title(feedItem.getTitle())
-                .description(feedItem.getDescription());
+                .description(feedItem.getDescription())
+                .active(feedItem.isActive())
+                .violated(feedItem.isViolated())
+                .disabledAt(feedItem.getDisabledAt());
 
         if (feedItem.getFeedItemType() == FeedItemType.VIDEO && feedItem.getVideo() != null) {
             Video video = feedItem.getVideo();
@@ -494,6 +562,10 @@ public class FeedItemServiceImpl implements FeedItemService {
             builder.commentCount(0L);
             builder.shareCount(0L);
             builder.viewCount(0L);
+        }
+
+        if (feedItem.getDisabledBy() != null) {
+            builder.disabledBy(userDetailMapper.toUserDetailResponse(feedItem.getDisabledBy(), fileMapper));
         }
 
         return builder.build();

@@ -23,13 +23,9 @@ public interface FeedItemRepository extends MongoRepository<FeedItem, String> {
     Page<FeedItem> findByIdIn(Collection<String> ids, Pageable pageable);
     List<FeedItem> findAllByHashTags_NameInAndIdNotIn(Set<String> hashTags, Set<String> id);
     List<FeedItem> findByIdNotIn(Collection<String> ids, Pageable pageable);
-    
-    // Find FeedItem by video reference
-    FeedItem findByVideo_Id(String videoId);
-    
-    // Find FeedItem by imageSlide reference
-    FeedItem findByImageSlide_Id(String imageSlideId);
 
+    // Find FeedItems by violated flag
+    Page<FeedItem> findByActiveFalse(Pageable pageable);
 
     @Aggregation(pipeline = {
         "{ $lookup: { from: 'metadata', localField: 'metadata_ref.$id', foreignField: '_id', as: 'metaData' } }",

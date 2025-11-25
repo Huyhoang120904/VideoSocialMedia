@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,41 +9,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   MessageSquare,
   Send,
   Loader2,
-  Search,
-  FileText,
   Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/molecules";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { ragService } from "@/services/admin/ragService";
+import {
+  aiChatService,
+  ConversationParticipantResponse,
+} from "@/services/admin/aiChatService";
+import {
+  chatMessageService,
+  ChatMessageResponse,
+} from "@/services/admin/chatMessageService";
 import { toast } from "sonner";
-import { RagQueryResponse, DocumentResponse } from "@/types";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  retrievedDocuments?: DocumentResponse[];
 }
+
+const AI_ASSISTANT_USER_KEY = "ai-system";
 
 function RagPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [query, setQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [topK, setTopK] = useState(5);
-  const [includeContext, setIncludeContext] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isConversationLoading, setIsConversationLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [aiUserDetailId, setAiUserDetailId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<DocumentResponse[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -53,80 +55,208 @@ function RagPageContent() {
     scrollToBottom();
   }, [messages]);
 
+  const mapChatMessageToDisplay = useCallback(
+    (
+      message: ChatMessageResponse,
+      assistantIdOverride?: string | null
+    ): Message => {
+      const createdAt = message.createdAt
+        ? new Date(message.createdAt)
+        : new Date();
+      const senderName = message.sender?.toLowerCase() || "";
+      const assistantCandidate =
+        assistantIdOverride ?? aiUserDetailId ?? null;
+      const isAssistant =
+        (assistantCandidate && message.senderId === assistantCandidate) ||
+        senderName.includes("assistant") ||
+        senderName.startsWith("ai");
+
+      return {
+        id: message.id,
+        role: isAssistant ? "assistant" : "user",
+        content: message.message || "",
+        timestamp: createdAt,
+      };
+    },
+    [aiUserDetailId]
+  );
+
+  const loadMessages = useCallback(
+    async (
+      targetConversationId: string | null,
+      assistantIdOverride?: string | null
+    ) => {
+      if (!targetConversationId) {
+        return;
+      }
+      setIsHistoryLoading(true);
+      try {
+        const response =
+          await chatMessageService.getChatMessagesByConversation(
+            targetConversationId,
+            0,
+            50
+          );
+
+        if (response.code === 1000 && response.result) {
+          const sortedMessages = [...(response.result.content || [])].sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+
+          setMessages(
+            sortedMessages.map((chatMessage) =>
+              mapChatMessageToDisplay(chatMessage, assistantIdOverride)
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load AI chat history:", error);
+        toast.error("Failed to load chat history. Please try again.");
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    },
+    [mapChatMessageToDisplay]
+  );
+
+  const resolveAiParticipantId = (
+    participants?: ConversationParticipantResponse[]
+  ): string | null => {
+    if (!participants) {
+      return null;
+    }
+
+    const aiParticipant = participants.find((participant) => {
+      const displayName = participant.displayName?.toLowerCase() || "";
+      const shownName = participant.shownName?.toLowerCase() || "";
+      const username =
+        participant.username?.toLowerCase() ||
+        participant.user?.username?.toLowerCase() ||
+        "";
+
+      return (
+        participant.user?.id === AI_ASSISTANT_USER_KEY ||
+        username.includes("assistant") ||
+        username.startsWith("ai") ||
+        displayName.includes("assistant") ||
+        displayName.startsWith("ai") ||
+        shownName.includes("assistant") ||
+        shownName.startsWith("ai")
+      );
+    });
+
+    return aiParticipant?.id || null;
+  };
+
+  const loadConversation = useCallback(async () => {
+    setIsConversationLoading(true);
+    try {
+      const response = await aiChatService.getConversation();
+      if (response.code === 1000 && response.result) {
+        const newConversationId =
+          response.result.conversationId ||
+          // Backward compatibility if API returns id field
+          (response.result as Record<string, string>).id;
+
+        const aiParticipantId = resolveAiParticipantId(
+          response.result.userDetails
+        );
+
+        setAiUserDetailId(aiParticipantId);
+
+        if (newConversationId) {
+          setConversationId(newConversationId);
+          await loadMessages(newConversationId, aiParticipantId);
+        } else {
+          toast.error("AI conversation is missing an identifier.");
+        }
+      } else {
+        toast.error("Unable to start AI conversation.");
+      }
+    } catch (error) {
+      console.error("Failed to initialize conversation:", error);
+      toast.error("Failed to initialize AI chat.");
+    } finally {
+      setIsConversationLoading(false);
+    }
+  }, [loadMessages]);
+
+  // Initialize conversation on mount
+  useEffect(() => {
+    loadConversation();
+  }, [loadConversation]);
+
   const handleQuery = async () => {
     if (!query.trim()) {
       toast.error("Please enter a question");
       return;
     }
 
+    if (!conversationId) {
+      toast.error("Conversation is not ready yet. Please wait a moment.");
+      return;
+    }
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `temp-${Date.now()}`,
       role: "user",
       content: query,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentQuery = query;
     setQuery("");
-    setIsLoading(true);
+    setIsSending(true);
 
     try {
-      const response = await ragService.queryWithRag({
-        question: query,
-        topK,
-        includeContext,
+      const response = await aiChatService.sendMessage({
+        message: currentQuery,
       });
 
-      if (response.result) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: response.result.answer,
-          timestamp: new Date(),
-          retrievedDocuments: response.result.retrievedDocuments,
-        };
+      if (response.code === 1000 && response.result) {
+        const assistantMessage = mapChatMessageToDisplay(
+          response.result,
+          aiUserDetailId
+        );
         setMessages((prev) => [...prev, assistantMessage]);
+
+        const nextConversationId =
+          response.result.conversationId || conversationId;
+
+        if (!conversationId && nextConversationId) {
+          setConversationId(nextConversationId);
+        }
+
+        await loadMessages(nextConversationId, aiUserDetailId);
+      } else {
+        throw new Error(response.message || "Failed to process query");
       }
     } catch (error: any) {
-      console.error("Error querying RAG:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to process query. Please try again."
+      console.error("Error sending AI chat message:", error);
+      setMessages((prev) =>
+        prev.filter((message) => !message.id.startsWith("temp-"))
       );
 
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Error: ${error.response?.data?.message || "Failed to process query"}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to process query. Please try again.";
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      toast.error("Please enter a search query");
-      return;
-    }
+      toast.error(errorMessage);
 
-    setIsSearching(true);
-    try {
-      const response = await ragService.searchDocuments(searchQuery, topK);
-      if (response.result) {
-        setSearchResults(response.result);
-        toast.success(`Found ${response.result.length} similar documents`);
-      }
-    } catch (error: any) {
-      console.error("Error searching documents:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to search documents. Please try again."
-      );
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: `Error: ${errorMessage}`,
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
-      setIsSearching(false);
+      setIsSending(false);
     }
   };
 
@@ -138,28 +268,31 @@ function RagPageContent() {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleQuery();
+      if (!isSending && !isConversationLoading) {
+        handleQuery();
+      }
     }
   };
+
+  const isInitialLoading = isConversationLoading && messages.length === 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="RAG Query Interface"
-        description="Query your knowledge base using Retrieval-Augmented Generation"
+        title="AI Chat Assistant"
+        description="Chat with AI assistant powered by your knowledge base"
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6">
         {/* Main Chat Interface */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Chat with RAG</CardTitle>
+                  <CardTitle>AI Chat</CardTitle>
                   <CardDescription>
-                    Ask questions and get AI-powered answers based on your
-                    ingested documents
+                    Chat with AI assistant - ask questions and get intelligent responses
                   </CardDescription>
                 </div>
                 {messages.length > 0 && (
@@ -177,7 +310,14 @@ function RagPageContent() {
             <CardContent className="space-y-4">
               {/* Messages */}
               <div className="h-[500px] overflow-y-auto space-y-4 rounded-lg border p-4">
-                {messages.length === 0 ? (
+                  {isInitialLoading ? (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading conversation...</span>
+                      </div>
+                    </div>
+                  ) : messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-muted-foreground">
                     <div>
                       <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -200,28 +340,6 @@ function RagPageContent() {
                         }`}
                       >
                         <p className="whitespace-pre-wrap">{message.content}</p>
-                        {message.retrievedDocuments &&
-                          message.retrievedDocuments.length > 0 && (
-                            <div className="mt-2 space-y-1 border-t pt-2">
-                              <p className="text-xs font-semibold">
-                                Retrieved Documents:
-                              </p>
-                              {message.retrievedDocuments.map((doc, index) => (
-                                <div
-                                  key={index}
-                                  className="text-xs opacity-75"
-                                >
-                                  <FileText className="inline h-3 w-3 mr-1" />
-                                  {doc.documentId}
-                                  {doc.similarityScore !== undefined && (
-                                    <span className="ml-1">
-                                      ({(doc.similarityScore * 100).toFixed(1)}%)
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         <p className="mt-1 text-xs opacity-75">
                           {message.timestamp.toLocaleTimeString()}
                         </p>
@@ -229,7 +347,14 @@ function RagPageContent() {
                     </div>
                   ))
                 )}
-                {isLoading && (
+                  {isHistoryLoading && (
+                    <div className="flex justify-center">
+                      <div className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                        Syncing latest messages...
+                      </div>
+                    </div>
+                  )}
+                  {isSending && (
                   <div className="flex justify-start">
                     <div className="rounded-lg bg-muted p-3">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -242,51 +367,21 @@ function RagPageContent() {
               {/* Query Input */}
               <div className="space-y-2">
                 <Textarea
-                  placeholder="Ask a question about your documents..."
+                  placeholder="Type your message..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  disabled={isLoading}
+                  disabled={isSending || isConversationLoading}
                   rows={3}
                 />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="topK" className="text-sm">
-                        Top K:
-                      </Label>
-                      <Input
-                        id="topK"
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={topK}
-                        onChange={(e) =>
-                          setTopK(parseInt(e.target.value) || 5)
-                        }
-                        className="w-16"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="includeContext"
-                        checked={includeContext}
-                        onChange={(e) => setIncludeContext(e.target.checked)}
-                        disabled={isLoading}
-                        className="rounded"
-                      />
-                      <Label htmlFor="includeContext" className="text-sm">
-                        Include Context
-                      </Label>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-end">
                   <Button
                     onClick={handleQuery}
-                    disabled={isLoading || !query.trim()}
+                    disabled={
+                      isSending || !query.trim() || isConversationLoading
+                    }
                   >
-                    {isLoading ? (
+                    {isSending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...
@@ -304,81 +399,6 @@ function RagPageContent() {
           </Card>
         </div>
 
-        {/* Search Sidebar */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Document Search</CardTitle>
-              <CardDescription>
-                Search for similar documents in the vector store
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  placeholder="Search documents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearch();
-                    }
-                  }}
-                  disabled={isSearching}
-                />
-                <Button
-                  onClick={handleSearch}
-                  disabled={isSearching || !searchQuery.trim()}
-                  className="w-full"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="mr-2 h-4 w-4" />
-                      Search
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Search Results */}
-              {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Search Results:</p>
-                  <div className="max-h-[400px] space-y-2 overflow-y-auto">
-                    {searchResults.map((doc, index) => (
-                      <div
-                        key={index}
-                        className="rounded-lg border p-3 text-sm"
-                      >
-                        <div className="flex items-start gap-2">
-                          <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 space-y-1">
-                            <p className="font-medium">{doc.documentId}</p>
-                            {doc.similarityScore !== undefined && (
-                              <p className="text-xs text-muted-foreground">
-                                Similarity: {(doc.similarityScore * 100).toFixed(1)}%
-                              </p>
-                            )}
-                            {doc.content && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {doc.content.substring(0, 100)}...
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

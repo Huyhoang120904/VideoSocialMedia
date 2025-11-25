@@ -1,11 +1,12 @@
 package com.hehe.thesocial.controller;
 
 import com.hehe.thesocial.dto.ApiResponse;
+import com.hehe.thesocial.dto.request.feedItem.FeedItemSearchRequest;
 import com.hehe.thesocial.dto.request.feedItem.FeedItemUploadRequest;
 import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemListResponse;
 import com.hehe.thesocial.dto.response.feedItem.FeedItemUploadResponse;
-import com.hehe.thesocial.dto.response.reportTicket.ReportTicketResponse;
+import com.hehe.thesocial.dto.response.reportTicket.FeedItemReportSummaryResponse;
 import com.hehe.thesocial.entity.enums.FeedItemType;
 import com.hehe.thesocial.service.feedItem.FeedItemService;
 import com.hehe.thesocial.util.AuthenticationHelper;
@@ -37,7 +38,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 @Tag(name = "Feed Items", description = "Feed item management endpoints - videos and image slides")
-public class FeedItemController {
+public class FeedItemController extends BaseController {
     FeedItemService feedItemService;
     private final AuthenticationHelper authenticationHelper;
 
@@ -66,9 +67,7 @@ public class FeedItemController {
                 .pageSize(feedItems.getSize())
                 .build();
 
-        return ResponseEntity.ok(ApiResponse.<FeedItemListResponse>builder()
-                .result(response)
-                .build());
+        return ok(response);
     }
 
     @Operation(
@@ -86,9 +85,7 @@ public class FeedItemController {
 
         log.info("Fetching feed items for user detail ID: {} with page: {}, size: {}", userDetailId, pageable.getPageNumber(), pageable.getPageSize());
 
-        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
-                .result(feedItemService.getFeedItemsByUserDetailId(userDetailId, pageable))
-                .build());
+        return ok(feedItemService.getFeedItemsByUserDetailId(userDetailId, pageable));
     }
 
     @Operation(
@@ -105,9 +102,7 @@ public class FeedItemController {
         log.info("Fetching feed item with id {}", feedItemId);
         FeedItemResponse feedItem = feedItemService.getFeedItemById(feedItemId);
 
-        return ResponseEntity.ok(ApiResponse.<FeedItemResponse>builder()
-                .result(feedItem)
-                .build());
+        return ok(feedItem);
     }
 
     @GetMapping("/type/{feedItemType}")
@@ -128,10 +123,7 @@ public class FeedItemController {
                 .pageSize(feedItems.getSize())
                 .build();
 
-        return ResponseEntity.ok(ApiResponse.<FeedItemListResponse>builder()
-                .result(response)
-                .message(response.getMessage())
-                .build());
+        return ok(response, response.getMessage());
     }
 
     /**
@@ -148,10 +140,8 @@ public class FeedItemController {
 
         Page<FeedItemResponse> lovedFeedItems = feedItemService.getLovedFeedItems(userDetailId, pageable);
 
-        return ResponseEntity.ok(ApiResponse.<Page<FeedItemResponse>>builder()
-                .result(lovedFeedItems)
-                .message(lovedFeedItems.isEmpty() ? "No loved feed items found" : "Loved feed items retrieved successfully")
-                .build());
+        return ok(lovedFeedItems,
+                lovedFeedItems.isEmpty() ? "No loved feed items found" : "Loved feed items retrieved successfully");
     }
 
     @Operation(
@@ -204,9 +194,7 @@ public class FeedItemController {
 
         FeedItemUploadResponse response = feedItemService.uploadFeedItem(request);
 
-        return ResponseEntity.ok(ApiResponse.<FeedItemUploadResponse>builder()
-                .result(response)
-                .build());
+        return ok(response);
     }
 
     @Operation(
@@ -221,16 +209,14 @@ public class FeedItemController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{feedItemId}/reports")
     @PreAuthorize("hasRole('ADMIN') or hasRole('MODERATOR')")
-    public ResponseEntity<ApiResponse<List<ReportTicketResponse>>> getReportsByFeedItemId(
+    public ResponseEntity<ApiResponse<FeedItemReportSummaryResponse>> getReportsByFeedItemId(
             @Parameter(description = "Feed item ID", required = true) @PathVariable String feedItemId) {
         log.info("Fetching all reports for feedItem ID: {}", feedItemId);
 
-        List<ReportTicketResponse> reports = feedItemService.getReportsByFeedItemId(feedItemId);
+        FeedItemReportSummaryResponse reports = feedItemService.getReportsByFeedItemId(feedItemId);
 
-        return ResponseEntity.ok(ApiResponse.<List<ReportTicketResponse>>builder()
-                .result(reports)
-                .message(reports.isEmpty() ? "No reports found for this feed item" : "Reports retrieved successfully")
-                .build());
+        return ok(reports,
+                reports.getTotalReports() == 0 ? "No reports found for this feed item" : "Reports retrieved successfully");
     }
 
     @Operation(
@@ -251,9 +237,70 @@ public class FeedItemController {
 
         feedItemService.disableFeedItemByViolation(feedItemId);
 
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .message("Feed item has been disabled due to violation")
-                .build());
+        return okMessage("Feed item has been disabled due to violation");
+    }
+
+    @Operation(
+            summary = "Get all violated feed items",
+            description = "Retrieve paginated list of all feed items that have been flagged as violated. Requires ADMIN or MODERATOR role."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Violated feed items retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = FeedItemListResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - requires ADMIN or MODERATOR role")
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/violated")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MODERATOR')")
+    public ResponseEntity<ApiResponse<FeedItemListResponse>> getViolatedFeedItems(
+            @Parameter(description = "Pagination parameters") @PageableDefault(size = 10, page = 0) Pageable pageable) {
+
+        log.info("Fetching violated feed items with page: {}, size: {}", pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<FeedItemUploadResponse> violatedFeedItems = feedItemService.getViolatedFeedItems(pageable);
+
+        FeedItemListResponse response = FeedItemListResponse.builder()
+                .feedItems(violatedFeedItems)
+                .message(violatedFeedItems.getTotalElements() == 0 ? "No violated feed items found" : "Violated feed items retrieved successfully")
+                .totalElements(violatedFeedItems.getTotalElements())
+                .totalPages(violatedFeedItems.getTotalPages())
+                .currentPage(violatedFeedItems.getNumber())
+                .pageSize(violatedFeedItems.getSize())
+                .build();
+
+        return ok(response, response.getMessage());
+    }
+
+    @Operation(
+            summary = "Search feed items with dynamic filters",
+            description = "Search feed items using keyword, status, uploader, report counts, date range and type filters. Requires ADMIN or MODERATOR role."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Feed items retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = FeedItemListResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - requires ADMIN or MODERATOR role")
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/search")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MODERATOR')")
+    public ResponseEntity<ApiResponse<FeedItemListResponse>> searchFeedItems(
+            @RequestBody(required = false) FeedItemSearchRequest request,
+            @Parameter(description = "Pagination parameters") @PageableDefault(size = 10, page = 0) Pageable pageable) {
+
+        log.info("Searching feed items with pageable: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<FeedItemUploadResponse> feedItems = feedItemService.searchFeedItems(request, pageable);
+
+        FeedItemListResponse response = FeedItemListResponse.builder()
+                .feedItems(feedItems)
+                .message(feedItems.getTotalElements() == 0 ? "No feed items match the search criteria" : "Feed items retrieved successfully")
+                .totalElements(feedItems.getTotalElements())
+                .totalPages(feedItems.getTotalPages())
+                .currentPage(feedItems.getNumber())
+                .pageSize(feedItems.getSize())
+                .build();
+
+        return ok(response, response.getMessage());
     }
 }
 

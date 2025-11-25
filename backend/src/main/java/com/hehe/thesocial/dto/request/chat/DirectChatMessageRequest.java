@@ -1,5 +1,7 @@
 package com.hehe.thesocial.dto.request.chat;
 
+import com.hehe.thesocial.entity.enums.ChatMessageType;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -17,7 +19,16 @@ public class DirectChatMessageRequest {
     @NotBlank(message = "Receiver ID cannot be blank")
     String receiverId;
 
-    @NotNull(message = "Message is required")
-    @NotBlank(message = "Message cannot be blank")
     String message;
+
+    ChatMessageType messageType;
+
+    String fileId;
+
+    String feedItemId;
+
+    @AssertTrue(message = "Either message text or fileId must be provided")
+    public boolean isValidPayload() {
+        return (message != null && !message.isBlank()) || (fileId != null && !fileId.isBlank());
+    }
 }

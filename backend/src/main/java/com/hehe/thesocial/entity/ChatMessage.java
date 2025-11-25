@@ -1,6 +1,7 @@
 package com.hehe.thesocial.entity;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hehe.thesocial.entity.enums.ChatMessageType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
@@ -8,7 +9,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Document(value = "chat_message")
@@ -20,7 +20,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public class ChatMessage extends BaseDocument{
+public class ChatMessage extends BaseDocument {
     @EqualsAndHashCode.Include
     @Id
     String id;
@@ -41,6 +41,12 @@ public class ChatMessage extends BaseDocument{
 
     @Field("read_participants_id")
     List<String> readParticipantsId;
+
+    ChatMessageType messageType;
+
+    //Share type-specific field
+    @Field("feedItem")
+    String feedItemId;
 
     //AI chat fields
     String role;

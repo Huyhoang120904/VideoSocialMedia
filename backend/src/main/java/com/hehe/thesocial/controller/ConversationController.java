@@ -23,32 +23,26 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Conversations", description = "Conversation management endpoints - requires authentication")
-public class ConversationController {
+public class ConversationController extends BaseController {
     ConversationService conversationService;
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PagedModel<EntityModel<ConversationResponse>>>> getMyConversations(
             @PageableDefault(size = 20) Pageable pageable, PagedResourcesAssembler<ConversationResponse> assembler){
-        return ResponseEntity.ok(ApiResponse.<PagedModel<EntityModel<ConversationResponse>>>builder()
-                .result(assembler.toModel(conversationService.getMyConversations(pageable)))
-                .build());
+        return ok(assembler.toModel(conversationService.getMyConversations(pageable)));
     }
 
     @GetMapping("/{conversationId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> getConversationById(@PathVariable String conversationId) {
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversationService.getConversationById(conversationId))
-                .build());
+        return ok(conversationService.getConversationById(conversationId));
     }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConversationResponse>> createConversation(@RequestBody ConversationRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<ConversationResponse>builder()
-                .result(conversationService.createConversation(request))
-                .build());
+        return created(conversationService.createConversation(request));
     }
 
     @PutMapping("/{conversationId}")
@@ -56,9 +50,7 @@ public class ConversationController {
     public ResponseEntity<ApiResponse<ConversationResponse>> updateConversation(
             @PathVariable String conversationId,
             @RequestBody ConversationRequest request) {
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversationService.updateConversation(conversationId, request))
-                .build());
+        return ok(conversationService.updateConversation(conversationId, request));
     }
 
     @PostMapping("/{conversationId}/members/{participantId}")
@@ -66,9 +58,7 @@ public class ConversationController {
     public ResponseEntity<ApiResponse<ConversationResponse>> addMemberToConversation(
             @PathVariable String conversationId,
             @PathVariable String participantId) {
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversationService.addMember(conversationId, participantId))
-                .build());
+        return ok(conversationService.addMember(conversationId, participantId));
     }
 
     @DeleteMapping("/{conversationId}/members/{participantId}")
@@ -76,17 +66,13 @@ public class ConversationController {
     public ResponseEntity<ApiResponse<ConversationResponse>> removeMemberFromConversation(
             @PathVariable String conversationId,
             @PathVariable String participantId) {
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversationService.removeMember(conversationId, participantId))
-                .build());
+        return ok(conversationService.removeMember(conversationId, participantId));
     }
 
     @DeleteMapping("/{conversationId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteConversation(@PathVariable String conversationId) {
         conversationService.deleteConversation(conversationId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ApiResponse.<Void>builder()
-                .message("Conversation deleted successfully")
-                .build());
+        return respond(HttpStatus.NO_CONTENT, "Conversation deleted successfully");
     }
 }

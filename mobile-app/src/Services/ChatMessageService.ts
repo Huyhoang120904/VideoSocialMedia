@@ -8,6 +8,7 @@ import {
   ChatMessageUpdateRequest,
   PaginationParams,
 } from "../Types/request";
+import { ChatMessageType } from "../Types/common/ChatMessageType";
 
 const ChatMessageService = {
   /**
@@ -102,6 +103,7 @@ const ChatMessageService = {
     const request: DirectChatMessageRequest = {
       message,
       receiverId,
+      messageType: ChatMessageType.TEXT,
     };
 
     return ChatMessageService.createDirectChatMessage(request);
@@ -141,6 +143,43 @@ const ChatMessageService = {
     const request: GroupChatMessageRequest = {
       message,
       groupId,
+      messageType: ChatMessageType.TEXT,
+    };
+
+    return ChatMessageService.createGroupChatMessage(request);
+  },
+
+  /**
+   * Send a shared video to a direct conversation
+   */
+  sendSharedVideoToDirectConversation: async (
+    receiverId: string,
+    feedItemId: string,
+    feedItemTitle?: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const request: DirectChatMessageRequest = {
+      receiverId,
+      message: feedItemTitle || "Shared a video",
+      messageType: ChatMessageType.SHARED_VIDEO,
+      feedItemId,
+    };
+
+    return ChatMessageService.createDirectChatMessage(request);
+  },
+
+  /**
+   * Send a shared video to a group conversation
+   */
+  sendSharedVideoToGroupConversation: async (
+    groupId: string,
+    feedItemId: string,
+    feedItemTitle?: string
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const request: GroupChatMessageRequest = {
+      groupId,
+      message: feedItemTitle || "Shared a video",
+      messageType: ChatMessageType.SHARED_VIDEO,
+      feedItemId,
     };
 
     return ChatMessageService.createGroupChatMessage(request);
@@ -193,6 +232,7 @@ const ChatMessageService = {
     const request: DirectChatMessageRequest = {
       message,
       receiverId,
+      messageType: ChatMessageType.TEXT,
     };
 
     console.log("Creating AI chat message:", JSON.stringify(request, null, 2));
@@ -237,6 +277,42 @@ const ChatMessageService = {
     console.log("Getting AI conversation");
     const response = await api.get("/chat-messages/ai/conversation");
     console.log("AI conversation response:", response.data);
+    return response.data;
+  },
+
+  /**
+   * Upload a media attachment to a conversation
+   * POST /chat-messages/attachment
+   */
+  sendAttachment: async (
+    conversationId: string,
+    file: {
+      uri: string;
+      type: string; // e.g., 'image/jpeg' or 'video/mp4'
+      name: string;
+    }
+  ): Promise<ApiResponse<ChatMessageResponse>> => {
+    const formData = new FormData();
+    formData.append("conversationId", conversationId);
+    formData.append("file", {
+      uri: file.uri,
+      type: file.type,
+      name: file.name,
+    } as any);
+
+    console.log(
+      "Uploading attachment to conversation:",
+      conversationId,
+      JSON.stringify(file, null, 2)
+    );
+
+    const response = await api.post("/chat-messages/attachment", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("Attachment upload response:", response.data);
     return response.data;
   },
 };

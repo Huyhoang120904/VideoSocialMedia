@@ -75,20 +75,20 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .collect(Collectors.toMap(ChatMessage::getId, message -> message));
 
         responses.getContent().forEach(response -> {
-            String senderId = response.getSender();
-            UserDetail sender = getUserDetailById(senderId);
-            response.setAvatar(sender.getAvatar());
-            response.setSender(senderId.equals(currentUser.getId()) ? "me" : "other");
-
-            // Set read status information using the message map
-            ChatMessage message = messageMap.get(response.getId());
-            if (message != null) {
-                response.setReadParticipantsId(message.getReadParticipantsId());
-                response.setIsReadByCurrentUser(message.getReadParticipantsId() != null &&
+                String senderId = response.getSender();
+                UserDetail sender = getUserDetailById(senderId);
+                response.setAvatar(sender.getAvatar());
+                response.setSender(senderId.equals(currentUser.getId()) ? "me" : "other");
+                
+                // Set read status information using the message map
+                ChatMessage message = messageMap.get(response.getId());
+                if (message != null) {
+                    response.setReadParticipantsId(message.getReadParticipantsId());
+                    response.setIsReadByCurrentUser(message.getReadParticipantsId() != null && 
                         message.getReadParticipantsId().contains(currentUser.getId()));
-                response.setReadCount(message.getReadParticipantsId() != null ?
+                    response.setReadCount(message.getReadParticipantsId() != null ? 
                         message.getReadParticipantsId().size() : 0);
-            }
+                }
         });
 
         return responses;
@@ -218,28 +218,28 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     public ChatMessageResponse markMessageAsRead(String messageId) {
         UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         ChatMessage message = getChatMessage(messageId);
-
+        
         Conversation conversation = getConversation(message.getConversationId());
         validateUserIsParticipant(conversation, currentUser.getId());
-
+        
         // Don't mark own messages as read
         if (message.getSenderId().equals(currentUser.getId())) {
             return chatMessageMapper.toChatMessageResponse(message);
         }
-
+        
         // Add current user to read participants if not already there
         if (message.getReadParticipantsId() == null) {
             message.setReadParticipantsId(new java.util.ArrayList<>());
         }
-
+        
         // Check if already read to avoid duplicate events
         boolean wasAlreadyRead = message.getReadParticipantsId().contains(currentUser.getId());
-
+        
         if (wasAlreadyRead) {
             // Return existing message without sending event
             return chatMessageMapper.toChatMessageResponse(message);
         }
-
+        
         // Mark as read and save to database first
         message.getReadParticipantsId().add(currentUser.getId());
         message = chatMessageRepository.save(message);
@@ -256,12 +256,12 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         UserDetail currentUser = authenticationHelper.getCurrentUserDetail();
         Conversation conversation = getConversation(conversationId);
         validateUserIsParticipant(conversation, currentUser.getId());
-
+        
         // Get all unread messages in this conversation for the current user
         java.util.List<ChatMessage> unreadMessages = chatMessageRepository
-                .findByConversationIdAndSenderIdNotAndReadParticipantsIdNotContaining(
-                        conversationId, currentUser.getId(), currentUser.getId());
-
+            .findByConversationIdAndSenderIdNotAndReadParticipantsIdNotContaining(
+                conversationId, currentUser.getId(), currentUser.getId());
+        
         // Mark all as read first
         for (ChatMessage message : unreadMessages) {
             if (message.getReadParticipantsId() == null) {
@@ -271,7 +271,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 message.getReadParticipantsId().add(currentUser.getId());
             }
         }
-
+        
         // Save all messages to database first
         if (!unreadMessages.isEmpty()) {
             chatMessageRepository.saveAll(unreadMessages);
@@ -372,7 +372,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
             }
             return;
         }
-
+        
         // Other message types need either message text or attachment
         boolean hasMessage = message != null && !message.isBlank();
         if (!hasMessage && attachment == null) {

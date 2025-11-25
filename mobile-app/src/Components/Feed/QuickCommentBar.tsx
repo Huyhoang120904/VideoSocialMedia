@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import GifPicker from "../Comment/GifPicker";
 
 interface QuickCommentBarProps {
     onSendComment: (text: string) => void;
@@ -28,7 +27,6 @@ export default function QuickCommentBar({
     avatarUrl,
 }: QuickCommentBarProps) {
     const [text, setText] = useState("");
-    const [gifPickerVisible, setGifPickerVisible] = useState(false);
     const insets = useSafeAreaInsets();
 
     const handleSend = () => {
@@ -84,12 +82,6 @@ export default function QuickCommentBar({
                     <TouchableOpacity onPress={() => onSendComment("😂")} style={styles.iconButton}>
                         <Text style={{ fontSize: 16 }}>😂</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.iconButton, styles.gifButton]}
-                        onPress={() => setGifPickerVisible(true)}
-                    >
-                        <Text style={styles.gifButtonText}>GIF</Text>
-                    </TouchableOpacity>
                 </View>
             </TouchableOpacity>
 
@@ -97,15 +89,6 @@ export default function QuickCommentBar({
             <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
                 <Ionicons name="send" size={24} color={text.trim().length > 0 ? "#EC4899" : "#666"} />
             </TouchableOpacity>
-
-            <GifPicker
-                visible={gifPickerVisible}
-                onClose={() => setGifPickerVisible(false)}
-                onSelect={(gifUrl) => {
-                    setGifPickerVisible(false);
-                    onSendGif?.(gifUrl);
-                }}
-            />
         </View>
     );
 }
@@ -157,18 +140,6 @@ const styles = StyleSheet.create({
     iconButton: {
         padding: 4,
         marginLeft: 4,
-    },
-    gifButton: {
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: "#fff",
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-    },
-    gifButtonText: {
-        color: "#fff",
-        fontSize: 12,
-        fontWeight: "600",
     },
     sendButton: {
         marginLeft: 12,

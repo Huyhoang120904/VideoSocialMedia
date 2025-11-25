@@ -4,6 +4,5 @@ public enum EventType {
     MESSAGE_CREATE,
     MESSAGE_EDITED,
     MESSAGE_DELETED
-
     ;
 }

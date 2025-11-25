@@ -12,15 +12,13 @@ type AuthContextType = {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  user: { imageUrl?: string } | null;
 };
 
 const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
-  login: async () => { },
-  logout: async () => { },
-  user: null,
+  login: async () => {},
+  logout: async () => {},
 });
 
 const TOKEN_KEY = "APP_TOKEN";
@@ -31,7 +29,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [hasSession, setHasSession] = useState<boolean>(false);
-  const [user, setUser] = useState<{ imageUrl?: string } | null>(null);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -45,9 +42,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
           if (response.result?.valid) {
             setHasSession(true);
             setIsAuthenticated(true);
-            // Ideally fetch user details here
-            // const userDetails = await fetchMyDetails();
-            // setUser(userDetails);
           } else {
             await SecureStore.deleteItemAsync(TOKEN_KEY);
             clearAuthToken();
@@ -78,7 +72,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       setAuthToken(token);
       await SecureStore.setItemAsync(TOKEN_KEY, token);
       setHasSession(true);
-      // Fetch user details after login
     } catch (error) {
       // Rethrow the error so it can be caught and displayed in the Login component
       throw error;
@@ -89,7 +82,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setHasSession(false);
     setIsAuthenticated(false);
-    setUser(null);
   };
 
   const value = useMemo(
@@ -99,9 +91,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
       // isAuthenticated: true,
       login,
       logout,
-      user,
     }),
-    [isLoading, hasSession, user]
+    [isLoading, hasSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

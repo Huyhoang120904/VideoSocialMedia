@@ -47,26 +47,6 @@ const InteractionBar: React.FC<InteractionBarProps> = ({
 
     // Animations
     const likeScale = useRef(new Animated.Value(1)).current;
-    const musicRotation = useRef(new Animated.Value(0)).current;
-
-    // Rotating music disc animation
-    useEffect(() => {
-        const animation = Animated.loop(
-            Animated.timing(musicRotation, {
-                toValue: 1,
-                duration: 3000,
-                useNativeDriver: true,
-            })
-        );
-        animation.start();
-
-        return () => animation.stop();
-    }, [musicRotation]);
-
-    const spin = musicRotation.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    });
 
     const handleLike = () => {
         // Animate like button
@@ -196,14 +176,11 @@ const InteractionBar: React.FC<InteractionBarProps> = ({
                 accessibilityLabel={`Share button. ${shares} shares`}
             />
 
-            {/* Music Icon with Rotation */}
+            {/* Music Icon */}
             <View style={styles.musicContainer}>
-                <Animated.Image
+                <Image
                     source={require('../../../assets/music-icon.png')}
-                    style={[
-                        styles.musicIcon,
-                        { transform: [{ rotate: spin }] }
-                    ]}
+                    style={styles.musicIcon}
                 />
             </View>
 
@@ -213,7 +190,6 @@ const InteractionBar: React.FC<InteractionBarProps> = ({
                 onClose={handleCloseComments}
                 videoId={id}
                 feedItemType={feedItemType}
-                comments={[]}
                 onAddComment={handleCommentAdded}
                 onUpdateCommentCount={handleUpdateCommentCount}
             />

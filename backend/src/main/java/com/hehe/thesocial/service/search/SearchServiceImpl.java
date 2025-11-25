@@ -1,6 +1,7 @@
 package com.hehe.thesocial.service.search;
 
 import com.hehe.thesocial.entity.FeedItem;
+import com.hehe.thesocial.entity.UserInteraction;
 import com.hehe.thesocial.entity.HashTag;
 import com.hehe.thesocial.entity.SearchHistory;
 import com.hehe.thesocial.entity.UserDetail;
@@ -157,7 +158,9 @@ public class SearchServiceImpl implements SearchService {
             // Liked items (interactions of type LIKE)
             List<com.hehe.thesocial.entity.UserInteraction> likedInteractions = userInteractionRepository
                     .findByUserDetailIdAndInteractionTypeIn(userDetailId,
-                            java.util.List.of(com.hehe.thesocial.entity.enums.InteractionType.LIKE));
+                            java.util.List.of(com.hehe.thesocial.entity.enums.InteractionType.LIKE)
+
+                    );
             if (likedInteractions != null) {
                 excludedIds.addAll(likedInteractions.stream()
                         .map(com.hehe.thesocial.entity.UserInteraction::getFeedItemId)
