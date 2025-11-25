@@ -1,22 +1,19 @@
 package com.hehe.thesocial.service.aiChat;
 
-import com.hehe.thesocial.dto.event.ChatMessageEventDTO;
-import com.hehe.thesocial.dto.response.chat.ChatMessageResponse;
+
 import com.hehe.thesocial.entity.ChatMessage;
 import com.hehe.thesocial.entity.Conversation;
 import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
-import com.hehe.thesocial.entity.enums.EventType;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
-import com.hehe.thesocial.mapper.chatMessage.ChatMessageMapper;
 import com.hehe.thesocial.repository.ChatMessageRepository;
 import com.hehe.thesocial.repository.ConversationRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
-import com.hehe.thesocial.service.kafka.KafkaProducer;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -26,12 +23,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MongoChatMemory implements ChatMemory {
@@ -40,69 +35,36 @@ public class MongoChatMemory implements ChatMemory {
     int maxMessages;
     UserDetailRepository userDetailRepository;
     UserRepository userRepository;
-    ChatMessageMapper chatMessageMapper;
-    KafkaProducer producer;
 
     public MongoChatMemory(ChatMessageRepository chatMessageRepository,
                            ConversationRepository conversationRepository,
                            UserDetailRepository userDetailRepository,
-                           UserRepository userRepository,
-                           ChatMessageMapper chatMessageMapper,
-                           KafkaProducer producer) {
+                           UserRepository userRepository
+    ) {
         this.chatMessageRepository = chatMessageRepository;
         this.conversationRepository = conversationRepository;
         this.maxMessages = 10;
         this.userDetailRepository = userDetailRepository;
         this.userRepository = userRepository;
-        this.chatMessageMapper = chatMessageMapper;
-        this.producer = producer;
     }
 
     @Override
     public void add(String conversationId, List<Message> messages) {
+        // Note: This method is called by MessageChatMemoryAdvisor for automatic message persistence.
+        // However, since we now explicitly save messages in AiChatService.sendAiMessage(),
+        // this method should check for duplicates to avoid saving the same message twice.
+        //
+        // For now, we'll skip saving here since messages are explicitly saved in the service layer.
+        // The advisor is primarily used for retrieving conversation history via the get() method.
+
         // Validate conversation exists
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
 
-        UserDetail aiUserDetail = getOrCreateAiUser();
-        UserDetail currentUser = getCurrentUser();
-
-        // Get participant IDs for broadcasting
-        Set<String> participantIds = conversation.getUserDetails().stream()
-                .map(UserDetail::getId)
-                .collect(Collectors.toSet());
-
-        // Save each message to the database and broadcast
-        for (Message message : messages) {
-            ChatMessage chatMessage = ChatMessage.builder()
-                    .conversationId(conversationId)
-                    .message(message.getText())
-                    .edited(false)
-                    .build();
-
-            // Determine sender based on message type
-            if (message instanceof AssistantMessage) {
-                chatMessage.setSenderId(aiUserDetail.getId());
-            } else if (message instanceof UserMessage) {
-                chatMessage.setSenderId(currentUser.getId());
-            }
-            ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
-            
-            // Create response and broadcast
-            ChatMessageResponse response = chatMessageMapper.toChatMessageResponse(savedMessage);
-            
-            // Add sender's avatar to the response
-            UserDetail sender = getUserDetailById(savedMessage.getSenderId());
-            response.setAvatar(sender.getAvatar());
-
-            ChatMessageEventDTO event = ChatMessageEventDTO.builder()
-                    .response(response)
-                    .eventType(EventType.MESSAGE_CREATE)
-                    .participantsIds(participantIds)
-                    .build();
-
-            producer.sendMessage(event);
-        }
+        // Skip automatic saving - messages are explicitly saved in AiChatService
+        // This prevents duplicate message saves while still allowing the advisor
+        // to retrieve conversation history via the get() method
+        log.debug("MongoChatMemory.add() called for conversation {}, but skipping save as messages are explicitly saved in service layer", conversationId);
     }
 
     @Override
@@ -111,7 +73,7 @@ public class MongoChatMemory implements ChatMemory {
         conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND));
 
-        // Retrieve messages from the conversation (limited by maxMessages)
+        // Retrieve messages from the conversation (limited by lastN or maxMessages)
         List<ChatMessage> chatMessages = chatMessageRepository
                 .findByConversationIdOrderByCreatedAtDesc(conversationId);
 

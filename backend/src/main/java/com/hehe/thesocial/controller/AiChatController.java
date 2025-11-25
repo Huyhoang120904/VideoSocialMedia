@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * RESTful controller for AI Chat functionality.
- * 
+ *
  * Endpoints:
  * - POST /ai-chat/messages - Send a message to AI and get response
  * - GET /ai-chat/conversation - Get or create AI conversation for current user
@@ -29,14 +29,14 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "AI Chat", description = "AI chat assistant endpoints - requires authentication")
-public class AiChatController {
+public class AiChatController extends BaseController {
     AiChatService aiChatService;
 
     /**
      * Send a message to AI and receive a response.
-     * 
+     *
      * POST /ai-chat/messages
-     * 
+     *
      * @param request AI chat message request
      * @return ChatMessageResponse containing the AI's response
      */
@@ -44,22 +44,18 @@ public class AiChatController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendMessage(
             @RequestBody @Valid AiChatMessageRequest request) {
-        
+
         log.info("Received AI chat message request");
         ChatMessageResponse response = aiChatService.sendAiMessage(request);
-        
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ChatMessageResponse>builder()
-                        .result(response)
-                        .message("AI message sent successfully")
-                        .build());
+
+        return created(response, "AI message sent successfully");
     }
 
     /**
      * Get or create the AI conversation for the current authenticated user.
-     * 
+     *
      * GET /ai-chat/conversation
-     * 
+     *
      * @return ConversationResponse for the AI conversation
      */
     @GetMapping("/conversation")
@@ -67,11 +63,8 @@ public class AiChatController {
     public ResponseEntity<ApiResponse<ConversationResponse>> getConversation() {
         log.info("Getting AI conversation for current user");
         ConversationResponse conversation = aiChatService.getAiConversation();
-        
-        return ResponseEntity.ok(ApiResponse.<ConversationResponse>builder()
-                .result(conversation)
-                .message("AI conversation retrieved successfully")
-                .build());
+
+        return ok(conversation, "AI conversation retrieved successfully");
     }
 }
 
