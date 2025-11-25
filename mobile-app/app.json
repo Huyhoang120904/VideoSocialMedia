@@ -2,26 +2,38 @@
   "expo": {
     "name": "TiktokClone",
     "slug": "TiktokClone",
+    "owner": "hoang120904",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "assetBundlePatterns": ["**/*"],
-    "assets": ["./src/fonts"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "assets": [
+      "./src/fonts"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
+      "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.anonymous.TiktokClone",
       "statusBar": {
@@ -48,6 +60,15 @@
         {
           "icon": "./assets/icon.png",
           "color": "#EC4899"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "networkSecurityConfig": "./network_security_config.xml"
+          }
         }
       ]
     ],
