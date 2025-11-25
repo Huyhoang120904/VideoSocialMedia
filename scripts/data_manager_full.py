@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     MONGO_URI, DATABASE_NAME, API_BASE_URL, SERVER_HOST, SERVER_PORT, CONTEXT_PATH,
-    BACKEND_UPLOADS_DIR, PROJECT_ROOT, BACKEND_DIR
+    BACKEND_UPLOADS_DIR, PROJECT_ROOT, BACKEND_DIR, PEXELS_API_KEY
 )
 from pexels_downloader import PexelsDownloader
 
@@ -114,7 +114,7 @@ class DataManagerFull:
         self.hashtag_ids = []
         
         # Pexels downloader for real videos/images
-        self.pexels_downloader = PexelsDownloader()
+        self.pexels_downloader = PexelsDownloader(api_key=PEXELS_API_KEY)
         
         # Map file_id to thumbnail_url for videos
         self.video_thumbnails = {}
@@ -1029,7 +1029,7 @@ class DataManagerFull:
         """Create UserPreference entities with watched list"""
         print(f"\nCreating user preferences...")
         
-        preferences = []
+        created_count = 0
         for user_detail_id in user_detail_ids:
             # Randomly assign some watched videos
             watched_count = random.randint(0, 10)
@@ -1045,22 +1045,34 @@ class DataManagerFull:
                 liked_count = random.randint(0, len(watched_list))
                 liked_list = random.sample(watched_list, liked_count)
             
-            preference = {
-                "_id": str(ObjectId()),  # String ID for Spring Boot
-                "user_detail_id": user_detail_id,
-                "hashtag_scores": {},
-                "creator_scores": {},
-                "preferred_video_duration": 0.0,
-                "last_seen_feed_items": [],
-                "watched_list": watched_list,
-                "liked_videos": liked_list,  # Added liked videos field
-                "updated_at": datetime.now()
-            }
-            preferences.append(preference)
+            # Use upsert to avoid duplicate key errors
+            # This will update existing preferences or create new ones
+            result = self.user_preferences_col.update_one(
+                {"user_detail_id": user_detail_id},
+                {
+                    "$setOnInsert": {
+                        "_id": str(ObjectId()),  # String ID for Spring Boot
+                        "user_detail_id": user_detail_id,
+                        "hashtag_scores": {},
+                        "creator_scores": {},
+                        "preferred_video_duration": 0.0,
+                        "last_seen_feed_items": []
+                    },
+                    "$addToSet": {
+                        "watched_list": {"$each": watched_list},
+                        "liked_videos": {"$each": liked_list}
+                    },
+                    "$set": {
+                        "updated_at": datetime.now()
+                    }
+                },
+                upsert=True
+            )
             
-        if preferences:
-            self.user_preferences_col.insert_many(preferences)
-            print(f"Created {len(preferences)} user preferences")
+            if result.upserted_id or result.modified_count > 0:
+                created_count += 1
+            
+        print(f"Created/Updated {created_count} user preferences")
     
     def _create_search_history(self, user_detail_ids: List[str], min_per_user: int, max_per_user: int):
         """Create search history for users"""

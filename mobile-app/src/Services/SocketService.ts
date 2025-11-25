@@ -1,6 +1,6 @@
 import SockJS from "sockjs-client";
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
-import { getAuthToken } from "./HttpClient";
+import { API_URL, getAuthToken } from "./HttpClient";
 
 export class SocketService {
   private stompClient: Client | null = null;
@@ -27,11 +27,29 @@ export class SocketService {
 
     this.currentToken = token;
 
-    // Get WebSocket URL
-    const baseUrl = process.env.EXPO_PUBLIC_WS_URL;
+    // Determine WebSocket URL (prefer env, fall back to API host + context path)
+    const envWsUrl = process.env.EXPO_PUBLIC_WS_URL?.replace(/\/$/, "");
+
+    const deriveBaseFromApi = () => {
+      try {
+        const parsed = new URL(API_URL);
+        const normalizedPath = parsed.pathname.endsWith("/")
+          ? parsed.pathname.slice(0, -1)
+          : parsed.pathname;
+        return `${parsed.origin}${normalizedPath}`;
+      } catch {
+        // If API_URL is not a valid URL, fall back to trimming trailing slash only
+        return API_URL.replace(/\/$/, "");
+      }
+    };
+
+    const fallbackBase = deriveBaseFromApi();
+    const baseUrl = envWsUrl || `${fallbackBase}/ws-native`;
 
     // Add auth token as query parameter
     const url = `${baseUrl}?token=${encodeURIComponent(token)}`;
+
+    console.log(`url`, url);
 
     this.isConnecting = true;
 
@@ -69,7 +87,7 @@ export class SocketService {
           },
           onWebSocketClose: () => {
             this.isConnecting = false;
-          }
+          },
         });
 
         // Activate the STOMP client
@@ -91,7 +109,7 @@ export class SocketService {
     });
     this.subscriptions.clear();
     this.messageQueue = [];
-    
+
     this.stompClient.deactivate();
     this.stompClient = null;
     this.isConnecting = false;
@@ -112,16 +130,19 @@ export class SocketService {
     if (!this.isConnected()) {
       return;
     }
-    
+
     // Subscribe using STOMP client
-    const subscription = this.stompClient!.subscribe(destination, (message: IMessage) => {
-      try {
-        const data = JSON.parse(message.body);
-        callback(data);
-      } catch (error) {
-        callback(message.body);
+    const subscription = this.stompClient!.subscribe(
+      destination,
+      (message: IMessage) => {
+        try {
+          const data = JSON.parse(message.body);
+          callback(data);
+        } catch (error) {
+          callback(message.body);
+        }
       }
-    });
+    );
 
     this.subscriptions.set(destination, subscription);
   }
@@ -143,13 +164,12 @@ export class SocketService {
     try {
       this.stompClient!.publish({
         destination,
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
     } catch (error) {
       // Silent error handling
     }
   }
-
 
   private processMessageQueue(): void {
     if (this.messageQueue.length === 0) return;

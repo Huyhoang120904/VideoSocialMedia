@@ -24,6 +24,8 @@ export const useConversationWebSocket = ({
   }, [isConnected, connect]);
 
   useEffect(() => {
+    console.log(`converastionId`, conversationId);
+
     if (isConnected && conversationId) {
       console.log(
         "🔔 Setting up WebSocket subscription for conversation:",
@@ -69,4 +71,3 @@ export const useConversationWebSocket = ({
     onMessageReceived,
   ]);
 };
-

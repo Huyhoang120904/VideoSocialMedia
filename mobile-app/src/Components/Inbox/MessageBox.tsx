@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ConversationResponse } from "../../Types/response/ConversationResponse";
 import { getAvatarUrl } from "../../Utils/ImageUrlHelper";
+import { ChatMessageType } from "../../Types/common/ChatMessageType";
 
 interface MessageBoxProps {
   item: ConversationResponse;
@@ -38,13 +39,55 @@ const MessageBox: React.FC<MessageBoxProps> = ({
 
   const avatarUrl = getConversationAvatar();
 
+  const truncateMessage = (text: string, length = 50) =>
+    text.length > length ? text.substring(0, length) + "..." : text;
+
+  const buildMediaPreviewLabel = () => {
+    const latest = item.newestChatMessage;
+    if (!latest || !latest.file) {
+      return null;
+    }
+
+    const defaultName =
+      latest.file.originalFileName ||
+      latest.file.fileName ||
+      latest.file.url ||
+      "";
+    const hasCustomCaption =
+      latest.message &&
+      latest.message.trim().length > 0 &&
+      latest.message.trim() !== defaultName.trim();
+
+    switch (latest.messageType) {
+      case ChatMessageType.IMAGE:
+        return hasCustomCaption
+          ? `📷 ${truncateMessage(latest.message!)}`
+          : "📷 Photo";
+      case ChatMessageType.VIDEO:
+        return hasCustomCaption
+          ? `🎬 ${truncateMessage(latest.message!)}`
+          : "🎬 Video";
+      default:
+        return null;
+    }
+  };
+
   // Get the latest message preview
   const getLatestMessage = () => {
-    if (item.newestChatMessage?.message) {
-      const message = item.newestChatMessage.message;
-      return message.length > 50 ? message.substring(0, 50) + "..." : message;
+    if (!item.newestChatMessage) {
+      return "No messages yet";
     }
-    return "No messages yet";
+
+    const mediaPreview = buildMediaPreviewLabel();
+    if (mediaPreview) {
+      return mediaPreview;
+    }
+
+    if (item.newestChatMessage.message) {
+      return truncateMessage(item.newestChatMessage.message);
+    }
+
+    return "New message";
   };
 
   // Get the time of the latest message

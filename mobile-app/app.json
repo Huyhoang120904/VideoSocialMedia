@@ -7,20 +7,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-
     "assetBundlePatterns": ["**/*"],
     "assets": ["./src/fonts"],
-
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -28,8 +24,6 @@
       },
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.anonymous.TiktokClone",
-
-      // 👇 phần mới thêm cho status bar và navigation bar
       "statusBar": {
         "backgroundColor": "#000000",
         "barStyle": "light-content",
@@ -38,23 +32,30 @@
       "navigationBar": {
         "backgroundColor": "#000000",
         "barStyle": "dark"
-        // 'dark' = icon sáng (hợp nền tối)
       }
     },
-
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png",
       "backgroundColor": "#000000"
     },
-
     "plugins": [
       "expo-video",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#EC4899"
+        }
+      ]
     ],
-
-    // 👇 màu nền toàn app (root background)
-    "backgroundColor": "#000000"
+    "backgroundColor": "#000000",
+    "extra": {
+      "eas": {
+        "projectId": "a2565bc0-a516-4325-aa7a-70ba25cad7f5"
+      }
+    }
   }
 }

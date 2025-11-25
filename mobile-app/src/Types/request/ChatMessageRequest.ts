@@ -1,8 +1,12 @@
 // Request interfaces for ChatMessage API endpoints
+import { ChatMessageType } from "../common/ChatMessageType";
 
 export interface DirectChatMessageRequest {
-  message: string;
+  message?: string;
   receiverId: string;
+  messageType: ChatMessageType;
+  fileId?: string;
+  feedItemId?: string;
 }
 
 export interface ChatMessageRequest {
@@ -11,8 +15,11 @@ export interface ChatMessageRequest {
 }
 
 export interface GroupChatMessageRequest {
-  message: string;
+  message?: string;
   groupId: string;
+  messageType: ChatMessageType;
+  fileId?: string;
+  feedItemId?: string;
 }
 
 export interface ChatMessageUpdateRequest {

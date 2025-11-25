@@ -3,15 +3,14 @@ package com.hehe.thesocial.mapper.file;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FileDocument;
 import com.hehe.thesocial.entity.enums.FileType;
+import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {UserDetailMapper.class})
 public interface FileMapper {
     @Mapping(target = "fileType", source = "resourceType", qualifiedByName = "stringToFileType")
-    @Mapping(target = "title", ignore = true)
-    @Mapping(target = "description", ignore = true)
     FileResponse toFileResponse(FileDocument fileDocument);
 
     @Named("stringToFileType")

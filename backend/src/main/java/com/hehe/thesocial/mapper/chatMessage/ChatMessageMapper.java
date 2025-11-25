@@ -13,5 +13,6 @@ public interface ChatMessageMapper {
     ChatMessage toChatMessage(DirectChatMessageRequest request);
 
     @Mapping(source = "senderId", target = "sender")
+    @Mapping(source = "fileDocument", target = "file")
     ChatMessageResponse toChatMessageResponse(ChatMessage chatMessage);
 }

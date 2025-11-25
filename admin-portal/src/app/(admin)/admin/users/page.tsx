@@ -31,9 +31,9 @@ function UsersPageContent() {
   } = useUsers(currentPage, pageSize);
   const deleteUserMutation = useDeleteUser();
 
-  const users = (usersResponse as any)?.result?.content || [];
-  const totalElements = (usersResponse as any)?.result?.totalElements || 0;
-  const totalPages = (usersResponse as any)?.result?.totalPages || 0;
+  const pagedUsers = usersResponse?.result;
+  const users = pagedUsers?.content ?? [];
+  const totalElements = pagedUsers?.totalElements ?? 0;
 
   const handleDeleteUser = async (user: UserResponse) => {
     if (

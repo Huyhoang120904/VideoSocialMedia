@@ -382,10 +382,8 @@ const styles = StyleSheet.create({
     },
     repliesContainer: {
         marginTop: 12,
-        marginLeft: 52, // Indent replies
-        paddingLeft: 12,
-        borderLeftWidth: 2,
-        borderLeftColor: "rgba(0, 0, 0, 0.08)",
+        marginLeft: 40, // Indent replies nhẹ
+        paddingLeft: 0,
     },
     replyItem: {
         flexDirection: "row",
@@ -412,8 +410,6 @@ const styles = StyleSheet.create({
         backgroundColor: "#f5f5f5",
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderTopWidth: 1,
-        borderTopColor: "rgba(0, 0, 0, 0.08)",
     },
     replyingToText: {
         fontSize: 13,

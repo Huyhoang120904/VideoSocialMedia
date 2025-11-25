@@ -1,26 +1,17 @@
 package com.hehe.thesocial.service.metadata.love;
 
-import com.hehe.thesocial.dto.response.feed.FeedItemResponse;
 import com.hehe.thesocial.dto.response.metadata.LoveResponse;
 import com.hehe.thesocial.entity.FeedItem;
-import com.hehe.thesocial.entity.MetaData;
 import com.hehe.thesocial.entity.UserDetail;
-import com.hehe.thesocial.entity.UserPreference;
 import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
-import com.hehe.thesocial.mapper.file.FileMapper;
-import com.hehe.thesocial.mapper.feedItem.FeedItemMapper;
-import com.hehe.thesocial.mapper.userDetail.UserDetailMapper;
 import com.hehe.thesocial.repository.FeedItemRepository;
-import com.hehe.thesocial.repository.MetaDataRepository;
-import com.hehe.thesocial.repository.UserPreferenceRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
+import com.hehe.thesocial.service.feed.FeedEngagementService;
 import com.hehe.thesocial.service.notification.NotificationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -33,13 +24,9 @@ import java.util.Set;
 public class LoveServiceImpl implements LoveService {
 
     FeedItemRepository feedItemRepository;
-    MetaDataRepository metaDataRepository;
-    UserPreferenceRepository userPreferenceRepository;
     UserDetailRepository userDetailRepository;
-    FeedItemMapper feedItemMapper;
-    FileMapper fileMapper;
-    UserDetailMapper userDetailMapper;
     NotificationService notificationService;
+    FeedEngagementService feedEngagementService;
 
     /**
      * Thêm love (tim/thích) cho một FeedItem
@@ -69,30 +56,10 @@ public class LoveServiceImpl implements LoveService {
         feedItemRepository.save(feedItem);
 
         // Tăng loveCount trong metadata
-        long newLoveCount = 1L;
-        if (feedItem.getMetaData() != null) {
-            MetaData metadata = feedItem.getMetaData();
-            newLoveCount = metadata.getLoveCount() + 1;
-            metadata.setLoveCount(newLoveCount);
-            metaDataRepository.save(metadata);
-        }
+        long newLoveCount = feedEngagementService.incrementLoveCount(feedItem);
 
         // Thêm feedItemId vào likedVideos trong UserPreference
-        UserPreference userPreference = userPreferenceRepository.findByUserDetailId(userDetailId)
-                .orElseGet(() -> {
-                    // Tạo mới UserPreference nếu chưa tồn tại
-                    UserPreference newPreference = UserPreference.builder()
-                            .userDetailId(userDetailId)
-                            .likedVideos(new HashSet<>())
-                            .build();
-                    return userPreferenceRepository.save(newPreference);
-                });
-
-        if (userPreference.getLikedVideos() == null) {
-            userPreference.setLikedVideos(new HashSet<>());
-        }
-        userPreference.getLikedVideos().add(feedItemId);
-        userPreferenceRepository.save(userPreference);
+        feedEngagementService.addLikedFeedItem(userDetailId, feedItemId);
 
         notificationService.notifyLikeOnFeedItem(feedItem, liker);
 
@@ -128,21 +95,10 @@ public class LoveServiceImpl implements LoveService {
         feedItemRepository.save(feedItem);
 
         // Giảm loveCount trong metadata
-        long newLoveCount = 0L;
-        if (feedItem.getMetaData() != null) {
-            MetaData metadata = feedItem.getMetaData();
-            newLoveCount = Math.max(0, metadata.getLoveCount() - 1);
-            metadata.setLoveCount(newLoveCount);
-            metaDataRepository.save(metadata);
-        }
+        long newLoveCount = feedEngagementService.decrementLoveCount(feedItem);
 
         // Xóa feedItemId khỏi likedVideos trong UserPreference
-        userPreferenceRepository.findByUserDetailId(userDetailId).ifPresent(userPreference -> {
-            if (userPreference.getLikedVideos() != null) {
-                userPreference.getLikedVideos().remove(feedItemId);
-                userPreferenceRepository.save(userPreference);
-            }
-        });
+        feedEngagementService.removeLikedFeedItem(userDetailId, feedItemId);
 
         return LoveResponse.builder()
                 .loved(false)

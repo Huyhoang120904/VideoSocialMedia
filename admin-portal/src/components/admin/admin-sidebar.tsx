@@ -7,16 +7,17 @@ import {
   LayoutDashboard,
   Users,
   Video,
-  BarChart3,
-  Settings,
   ChevronDown,
   UserCog,
   Shield,
-  TrendingUp,
-  MessageSquare,
   Flag,
   FileText,
   Brain,
+  Ticket,
+  Key,
+  Lock,
+  FileImage,
+  Activity,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
@@ -24,6 +25,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import useAuthStore from "@/hooks/useAuthStore";
 
 const menuItems = [
   {
@@ -49,15 +51,47 @@ const menuItems = [
     icon: Video,
     submenu: [
       { title: "Feed Items", href: "/admin/feed-items", icon: Video },
-      { title: "All Videos (Legacy)", href: "/admin/videos", icon: Video },
-      { title: "Flagged Content", href: "/admin/videos/flagged", icon: Flag },
-      { title: "Comments", href: "/admin/comments", icon: MessageSquare },
     ],
   },
   {
-    title: "Analytics",
-    href: "/admin/analytics",
-    icon: BarChart3,
+    title: "Moderation",
+    href: "/admin/moderation",
+    icon: Shield,
+  },
+  {
+    title: "Reports",
+    icon: Ticket,
+    submenu: [
+      { title: "Reports Dashboard", href: "/admin/reports", icon: Ticket },
+      { title: "Report Tickets", href: "/admin/report-tickets", icon: Ticket },
+      { title: "Violated Feed Items", href: "/admin/violated-feed-items", icon: Flag },
+    ],
+  },
+  {
+    title: "Access Control",
+    icon: Lock,
+    submenu: [
+      { title: "Roles", href: "/admin/roles", icon: Shield },
+      { title: "Permissions", href: "/admin/permissions", icon: Key },
+    ],
+  },
+  {
+    title: "Files & Media",
+    icon: FileImage,
+    submenu: [
+      { title: "File Management", href: "/admin/files", icon: FileImage },
+    ],
+  },
+  {
+    title: "Interactions",
+    icon: Activity,
+    submenu: [
+      {
+        title: "User Interactions",
+        href: "/admin/user-interactions",
+        icon: Activity,
+      },
+    ],
   },
   {
     title: "AI & Documents",
@@ -75,19 +109,36 @@ const menuItems = [
       },
     ],
   },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
+  const { user } = useAuthStore();
+
+  // Filter menu items based on user role
+  const getFilteredMenuItems = () => {
+    const isAdmin = user?.role === "admin";
+    const isModerator = user?.role === "moderator";
+
+    // If user is moderator, only show moderation-related items
+    if (isModerator && !isAdmin) {
+      return menuItems.filter(
+        (item) =>
+          item.title === "Dashboard" ||
+          item.title === "Moderation" ||
+          item.title === "Reports"
+      );
+    }
+
+    // Admin sees all menu items
+    return menuItems;
+  };
+
+  const filteredMenuItems = getFilteredMenuItems();
 
   useEffect(() => {
-    const activeParent = menuItems.find(
+    const activeParent = filteredMenuItems.find(
       (item) =>
         item.submenu &&
         item.submenu.some((sub) => pathname.startsWith(sub.href))
@@ -97,7 +148,7 @@ export function AdminSidebar() {
       setOpenMenus((prev) => [...prev, activeParent.title]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, filteredMenuItems]);
 
   const toggleMenu = (title: string) => {
     setOpenMenus((prev) =>
@@ -118,7 +169,7 @@ export function AdminSidebar() {
         </div>
       </div>
       <nav className="flex-1 space-y-1 p-4">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           if (item.submenu) {
             const isOpen = openMenus.includes(item.title);
             const isActive = item.submenu.some((sub) =>

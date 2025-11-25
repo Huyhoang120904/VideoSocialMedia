@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * RESTful controller for AI Chat functionality.
- *
+ * 
  * Endpoints:
  * - POST /ai-chat/messages - Send a message to AI and get response
  * - GET /ai-chat/conversation - Get or create AI conversation for current user
@@ -34,9 +34,9 @@ public class AiChatController extends BaseController {
 
     /**
      * Send a message to AI and receive a response.
-     *
+     * 
      * POST /ai-chat/messages
-     *
+     * 
      * @param request AI chat message request
      * @return ChatMessageResponse containing the AI's response
      */
@@ -44,18 +44,18 @@ public class AiChatController extends BaseController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendMessage(
             @RequestBody @Valid AiChatMessageRequest request) {
-
+        
         log.info("Received AI chat message request");
         ChatMessageResponse response = aiChatService.sendAiMessage(request);
-
+        
         return created(response, "AI message sent successfully");
     }
 
     /**
      * Get or create the AI conversation for the current authenticated user.
-     *
+     * 
      * GET /ai-chat/conversation
-     *
+     * 
      * @return ConversationResponse for the AI conversation
      */
     @GetMapping("/conversation")
@@ -63,7 +63,7 @@ public class AiChatController extends BaseController {
     public ResponseEntity<ApiResponse<ConversationResponse>> getConversation() {
         log.info("Getting AI conversation for current user");
         ConversationResponse conversation = aiChatService.getAiConversation();
-
+        
         return ok(conversation, "AI conversation retrieved successfully");
     }
 }

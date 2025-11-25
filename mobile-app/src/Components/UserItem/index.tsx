@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { UNKNOWN_AVATAR } from "../../Utils/ImageUrlHelper";
 
 export interface UserItemData {
   id: string;
@@ -37,10 +38,7 @@ const UserItem: React.FC<UserItemProps> = ({
             className="w-12 h-12 rounded-full"
           />
         ) : (
-          <Image
-            source={require('../../../assets/unknown-avatar.png')}
-            className="w-12 h-12 rounded-full"
-          />
+          <Image source={UNKNOWN_AVATAR} className="w-12 h-12 rounded-full" />
         )}
         {user.isOnline && (
           <View className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />

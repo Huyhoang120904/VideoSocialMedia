@@ -1,12 +1,9 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 
-
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL;
-
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.239.147:8082/api/v1";
 
 console.log("USING API: " + API_URL);
-
 
 let accessToken: string | null = null;
 let isRefreshing = false;
@@ -44,9 +41,8 @@ export const clearAuthToken: () => void = () => {
   accessToken = null;
 };
 
-
 // Helper function to delay execution
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -64,7 +60,6 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<any>) => {
-
     const original = error.config as any;
     const status = error.response?.status;
 

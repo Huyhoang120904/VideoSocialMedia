@@ -37,7 +37,6 @@ public class SecuritySetting {
             "/swagger-config/**"         // Add this
     };
 
-
     @Bean
     SecurityFilterChain httpSecurity(HttpSecurity httpSecurity, CustomJwtDecoder customJwtDecoder) throws Exception {
         return httpSecurity
