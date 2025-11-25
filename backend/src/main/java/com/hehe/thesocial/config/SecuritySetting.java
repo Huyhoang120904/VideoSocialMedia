@@ -46,9 +46,9 @@ public class SecuritySetting {
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2Security ->
-                                oauth2Security.jwt(jwtConfigurer -> jwtConfigurer.decoder(customJwtDecoder)
+                        oauth2Security.jwt(jwtConfigurer -> jwtConfigurer.decoder(customJwtDecoder)
                                         .jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                                        .authenticationEntryPoint(new AuthenticationEntryPoint()))
+                                .authenticationEntryPoint(new AuthenticationEntryPoint()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .build();

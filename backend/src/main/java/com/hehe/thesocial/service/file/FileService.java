@@ -14,7 +14,7 @@ import java.util.List;
 
 @Service
 public interface FileService {
-    FileResponse storeFile(MultipartFile multipartFile);
+    FileResponse storeFile(MultipartFile multipartFile, String thumbUrl);
 
     List<FileResponse> storeMultipleFile(MultipartFile[] multipartFiles);
 

@@ -161,7 +161,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
         validateUserIsParticipant(conversation, sender.getId());
 
-        FileResponse storedFile = fileService.storeFile(file);
+        FileResponse storedFile = fileService.storeFile(file, "");
         FileDocument attachment = resolveAttachment(storedFile.getId());
 
         ChatMessageType messageType = resolveMessageType(null, attachment);

@@ -77,4 +77,22 @@ public interface CommentService {
             String currentUserDetailId,
             Pageable pageable
     );
+
+    /**
+     * Lấy danh sách replies của một comment
+     * @param parentCommentId - ID của comment cha
+     * @param currentUserDetailId - ID của user hiện tại
+     * @param page - Trang hiện tại (bắt đầu từ 0)
+     * @param size - Số lượng reply trên mỗi trang
+     * @return Page<CommentResponse>
+     */
+    org.springframework.data.domain.Page<CommentResponse> getRepliesByCommentId(
+            String parentCommentId,
+            String currentUserDetailId,
+            int page,
+            int size
+    );
+
+    Page<CommentResponse> getRepliesByCommentId(
+            String parentCommentId, String currentUserDetailId, Pageable pageable);
 }

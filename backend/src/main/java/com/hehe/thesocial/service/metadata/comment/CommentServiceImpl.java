@@ -6,6 +6,7 @@ import com.hehe.thesocial.dto.response.comment.CommentResponse;
 import com.hehe.thesocial.dto.response.metadata.CommentActionResponse;
 import com.hehe.thesocial.entity.Comment;
 import com.hehe.thesocial.entity.FeedItem;
+import com.hehe.thesocial.entity.MetaData;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.UserInteraction;
 import com.hehe.thesocial.entity.enums.InteractionType;
@@ -13,9 +14,9 @@ import com.hehe.thesocial.exception.AppException;
 import com.hehe.thesocial.exception.ErrorCode;
 import com.hehe.thesocial.repository.CommentRepository;
 import com.hehe.thesocial.repository.FeedItemRepository;
+import com.hehe.thesocial.repository.MetaDataRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserInteractionRepository;
-import com.hehe.thesocial.service.feed.FeedEngagementService;
 import com.hehe.thesocial.service.notification.NotificationService;
 import com.hehe.thesocial.util.TimeFormatter;
 import lombok.AccessLevel;
@@ -29,13 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -49,64 +44,102 @@ public class CommentServiceImpl implements CommentService {
 
     CommentRepository commentRepository;
     FeedItemRepository feedItemRepository;
+    MetaDataRepository metaDataRepository;
     UserDetailRepository userDetailRepository;
     UserInteractionRepository userInteractionRepository;
     NotificationService notificationService;
-    FeedEngagementService feedEngagementService;
 
+    // -------------------------
+    // ADD COMMENT (SUPPORT REPLY)
+    // -------------------------
     @Override
     @Transactional
     public CommentCreateResponse addComment(String feedItemId, CommentCreateRequest request) {
+
         FeedItem feedItem = feedItemRepository.findById(feedItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
 
         UserDetail commenter = userDetailRepository.findById(request.getUserDetailId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        Comment comment = commentRepository.save(Comment.builder()
-                .content(request.getContent())
-                .userDetailId(commenter.getId())
-                .feedItemId(feedItemId)
-                .avatarUrl(commenter.getAvatar() != null ? commenter.getAvatar().getUrl() : null)
-                .build());
+        // Parent comment (reply)
+        String parentCommentId = request.getParentCommentId();
+        if (parentCommentId != null && !parentCommentId.isBlank()) {
+            Comment parent = commentRepository.findById(parentCommentId)
+                    .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
-        long totalComments = feedEngagementService.updateCommentCount(feedItem, 1);
+            if (!Objects.equals(parent.getFeedItemId(), feedItemId)) {
+                throw new AppException(ErrorCode.UNCATEGORIZED);
+            }
+        }
+
+        // Save new comment
+        Comment comment = commentRepository.save(
+                Comment.builder()
+                        .content(request.getContent())
+                        .userDetailId(commenter.getId())
+                        .feedItemId(feedItemId)
+                        .parentCommentId(parentCommentId)
+                        .avatarUrl(commenter.getAvatar() != null ? commenter.getAvatar().getUrl() : null)
+                        .replyCount(0)
+                        .loveCount(0L)
+                        .dislikeCount(0L)
+                        .lovedBy(new HashSet<>())
+                        .dislikedBy(new HashSet<>())
+                        .build()
+        );
+
+        // If reply => increase parent's replyCount
+        if (parentCommentId != null && !parentCommentId.isBlank()) {
+            Comment parent = commentRepository.findById(parentCommentId)
+                    .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
+            parent.setReplyCount(parent.getReplyCount() + 1);
+            commentRepository.save(parent);
+        }
+
+        long totalComments = updateCommentCount(feedItem.getMetaData(), 1);
         recordCommentInteraction(feedItemId, request.getUserDetailId());
         notificationService.notifyCommentOnFeedItem(feedItem, comment, commenter);
 
-        Map<String, UserDetail> commenters = Collections.singletonMap(commenter.getId(), commenter);
-        log.info("Added new comment with id {} to feed item {}", comment.getId(), feedItemId);
-
         return CommentCreateResponse.builder()
-                .comment(mapToCommentResponse(comment, request.getUserDetailId(), commenters))
+                .comment(mapToCommentResponse(comment, request.getUserDetailId(),
+                        Collections.singletonMap(commenter.getId(), commenter)))
                 .totalComments(totalComments)
                 .build();
     }
 
+    // -------------------------
+    // REMOVE COMMENT
+    // -------------------------
     @Override
     @Transactional
     public boolean removeComment(String commentId, String userDetailId) {
+
         Comment comment = getCommentOrThrow(commentId);
 
-        if (!comment.getUserDetailId().equals(userDetailId)) {
+        if (!Objects.equals(comment.getUserDetailId(), userDetailId)) {
             throw new AppException(ErrorCode.COMMENT_ACCESS_DENIED);
         }
 
         FeedItem feedItem = feedItemRepository.findById(comment.getFeedItemId())
                 .orElseThrow(() -> new AppException(ErrorCode.FEED_ITEM_NOT_FOUND));
 
-        feedEngagementService.updateCommentCount(feedItem, -1);
+        updateCommentCount(feedItem.getMetaData(), -1);
         commentRepository.delete(comment);
+
         return true;
     }
 
+    // -------------------------
+    // LIKE / UNLIKE / DISLIKE / UNDISLIKE
+    // -------------------------
     @Override
     @Transactional
     public CommentActionResponse likeComment(String commentId, String userDetailId) {
         Comment comment = getCommentOrThrow(commentId);
 
-        Set<String> lovedBy = ensureMutableSet(comment.getLovedBy());
-        Set<String> dislikedBy = ensureMutableSet(comment.getDislikedBy());
+        Set<String> lovedBy = ensureMutable(comment.getLovedBy());
+        Set<String> dislikedBy = ensureMutable(comment.getDislikedBy());
 
         if (lovedBy.contains(userDetailId)) {
             return buildActionResponse(comment, true, dislikedBy.contains(userDetailId));
@@ -132,19 +165,21 @@ public class CommentServiceImpl implements CommentService {
     public CommentActionResponse unlikeComment(String commentId, String userDetailId) {
         Comment comment = getCommentOrThrow(commentId);
 
-        Set<String> lovedBy = ensureMutableSet(comment.getLovedBy());
+        Set<String> lovedBy = ensureMutable(comment.getLovedBy());
 
         if (!lovedBy.remove(userDetailId)) {
-            boolean stillDisliked = comment.getDislikedBy() != null && comment.getDislikedBy().contains(userDetailId);
-            return buildActionResponse(comment, false, stillDisliked);
+            boolean disliked = comment.getDislikedBy() != null &&
+                    comment.getDislikedBy().contains(userDetailId);
+            return buildActionResponse(comment, false, disliked);
         }
 
         comment.setLovedBy(lovedBy);
         comment.setLoveCount(Math.max(0, comment.getLoveCount() - 1));
         commentRepository.save(comment);
 
-        boolean stillDisliked = comment.getDislikedBy() != null && comment.getDislikedBy().contains(userDetailId);
-        return buildActionResponse(comment, false, stillDisliked);
+        boolean disliked = comment.getDislikedBy() != null &&
+                comment.getDislikedBy().contains(userDetailId);
+        return buildActionResponse(comment, false, disliked);
     }
 
     @Override
@@ -152,8 +187,8 @@ public class CommentServiceImpl implements CommentService {
     public CommentActionResponse dislikeComment(String commentId, String userDetailId) {
         Comment comment = getCommentOrThrow(commentId);
 
-        Set<String> lovedBy = ensureMutableSet(comment.getLovedBy());
-        Set<String> dislikedBy = ensureMutableSet(comment.getDislikedBy());
+        Set<String> lovedBy = ensureMutable(comment.getLovedBy());
+        Set<String> dislikedBy = ensureMutable(comment.getDislikedBy());
 
         if (dislikedBy.contains(userDetailId)) {
             return buildActionResponse(comment, lovedBy.contains(userDetailId), true);
@@ -177,42 +212,80 @@ public class CommentServiceImpl implements CommentService {
     public CommentActionResponse undislikeComment(String commentId, String userDetailId) {
         Comment comment = getCommentOrThrow(commentId);
 
-        Set<String> dislikedBy = ensureMutableSet(comment.getDislikedBy());
+        Set<String> dislikedBy = ensureMutable(comment.getDislikedBy());
 
         if (!dislikedBy.remove(userDetailId)) {
-            boolean stillLiked = comment.getLovedBy() != null && comment.getLovedBy().contains(userDetailId);
-            return buildActionResponse(comment, stillLiked, false);
+            boolean liked = comment.getLovedBy() != null &&
+                    comment.getLovedBy().contains(userDetailId);
+            return buildActionResponse(comment, liked, false);
         }
 
         comment.setDislikedBy(dislikedBy);
         comment.setDislikeCount(Math.max(0, comment.getDislikeCount() - 1));
         commentRepository.save(comment);
 
-        boolean stillLiked = comment.getLovedBy() != null && comment.getLovedBy().contains(userDetailId);
-        return buildActionResponse(comment, stillLiked, false);
+        boolean liked = comment.getLovedBy() != null &&
+                comment.getLovedBy().contains(userDetailId);
+        return buildActionResponse(comment, liked, false);
     }
 
+    // -------------------------
+    // GET COMMENT(S)
+    // -------------------------
     @Override
     public CommentResponse getComment(String commentId, String currentUserDetailId) {
         Comment comment = getCommentOrThrow(commentId);
-        Map<String, UserDetail> users = loadUserDetails(Collections.singletonList(comment));
-        return mapToCommentResponse(comment, currentUserDetailId, users);
+        Map<String, UserDetail> map = loadUserDetails(Collections.singletonList(comment));
+        return mapToCommentResponse(comment, currentUserDetailId, map);
     }
 
     @Override
-    public Page<CommentResponse> getCommentsByFeedItem(String feedItemId,
-                                                       String currentUserDetailId,
-                                                       Pageable pageable) {
+    public Page<CommentResponse> getCommentsByFeedItem(
+            String feedItemId, String currentUserDetailId, Pageable pageable) {
 
-        Page<Comment> commentsPage = commentRepository.findByFeedItemIdOrderByCreatedAtDesc(feedItemId, pageable);
-        Map<String, UserDetail> userDetails = loadUserDetails(commentsPage.getContent());
+        Page<Comment> page = commentRepository
+                .findByFeedItemIdAndParentCommentIdIsNullOrderByCreatedAtDesc(feedItemId, pageable);
 
-        return commentsPage.map(comment -> mapToCommentResponse(comment, currentUserDetailId, userDetails));
+        Map<String, UserDetail> users = loadUserDetails(page.getContent());
+
+        return page.map(c -> mapToCommentResponse(c, currentUserDetailId, users));
     }
 
-    private Comment getCommentOrThrow(String commentId) {
-        return commentRepository.findById(commentId)
+    @Override
+    public Page<CommentResponse> getRepliesByCommentId(String parentCommentId, String currentUserDetailId, int page, int size) {
+        return null;
+    }
+
+    @Override
+    public Page<CommentResponse> getRepliesByCommentId(
+            String parentCommentId, String currentUserDetailId, Pageable pageable) {
+
+        Page<Comment> page = commentRepository
+                .findByFeedItemIdAndParentCommentIdIsNullOrderByCreatedAtDesc(parentCommentId, pageable);
+
+        Map<String, UserDetail> users = loadUserDetails(page.getContent());
+
+        return page.map(c -> mapToCommentResponse(c, currentUserDetailId, users));
+    }
+
+    // -------------------------
+    // HELPERS
+    // -------------------------
+    private Comment getCommentOrThrow(String id) {
+        return commentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
+    }
+
+    private long updateCommentCount(MetaData meta, int delta) {
+        if (meta == null) return 0;
+
+        long current = meta.getCommentsCount() == null ? 0 : meta.getCommentsCount();
+        long updated = Math.max(0, current + delta);
+
+        meta.setCommentsCount(updated);
+        metaDataRepository.save(meta);
+
+        return updated;
     }
 
     private void recordCommentInteraction(String feedItemId, String userDetailId) {
@@ -223,88 +296,67 @@ public class CommentServiceImpl implements CommentService {
                 .build());
     }
 
-    private Set<String> ensureMutableSet(Set<String> source) {
-        return source == null ? new HashSet<>() : new HashSet<>(source);
+    private Set<String> ensureMutable(Set<String> set) {
+        return set == null ? new HashSet<>() : new HashSet<>(set);
     }
 
-    private CommentActionResponse buildActionResponse(Comment comment, boolean liked, boolean disliked) {
+    private CommentActionResponse buildActionResponse(Comment c, boolean liked, boolean disliked) {
         return CommentActionResponse.builder()
                 .liked(liked)
                 .disliked(disliked)
-                .likeCount(comment.getLoveCount())
-                .dislikeCount(comment.getDislikeCount())
+                .likeCount(c.getLoveCount())
+                .dislikeCount(c.getDislikeCount())
                 .build();
     }
 
     private Map<String, UserDetail> loadUserDetails(Collection<Comment> comments) {
-        Set<String> userIds = comments.stream()
+        Set<String> ids = comments.stream()
                 .map(Comment::getUserDetailId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        if (userIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
+        if (ids.isEmpty()) return Collections.emptyMap();
 
-        List<UserDetail> users = userDetailRepository.findAllById(userIds);
-        return users.stream()
-                .collect(Collectors.toMap(UserDetail::getId, userDetail -> userDetail));
+        List<UserDetail> users = userDetailRepository.findAllById(ids);
+        return users.stream().collect(Collectors.toMap(UserDetail::getId, u -> u));
     }
 
-    private CommentResponse mapToCommentResponse(Comment comment,
-                                                 String currentUserDetailId,
-                                                 Map<String, UserDetail> userDetailsById) {
-        boolean isLiked = comment.getLovedBy() != null && comment.getLovedBy().contains(currentUserDetailId);
-        UserDetail owner = userDetailsById != null ? userDetailsById.get(comment.getUserDetailId()) : null;
+    private CommentResponse mapToCommentResponse(
+            Comment c, String currentUserId, Map<String, UserDetail> users) {
 
-        Instant createdInstant = comment.getCreatedAt() != null
-                ? comment.getCreatedAt().toInstant(DEFAULT_ZONE_OFFSET)
-                : null;
-        Instant updatedInstant = comment.getUpdatedAt() != null
-                ? comment.getUpdatedAt().toInstant(DEFAULT_ZONE_OFFSET)
-                : null;
+        UserDetail owner = users.get(c.getUserDetailId());
+        boolean isLiked = c.getLovedBy() != null && c.getLovedBy().contains(currentUserId);
+
+        Instant created = c.getCreatedAt() != null ? c.getCreatedAt().toInstant(DEFAULT_ZONE_OFFSET) : null;
+        Instant updated = c.getUpdatedAt() != null ? c.getUpdatedAt().toInstant(DEFAULT_ZONE_OFFSET) : null;
 
         return CommentResponse.builder()
-                .id(comment.getId())
-                .content(comment.getContent())
-                .likeCount(comment.getLoveCount())
-                .dislikeCount(comment.getDislikeCount())
-                .replyCount(comment.getReplyCount())
-                .userDetailId(comment.getUserDetailId())
+                .id(c.getId())
+                .content(c.getContent())
+                .replyCount(c.getReplyCount())
+                .likeCount(c.getLoveCount())
+                .dislikeCount(c.getDislikeCount())
+                .userDetailId(c.getUserDetailId())
                 .username(resolveUsername(owner))
-                .avatarUrl(resolveAvatarUrl(comment, owner))
-                .createdAt(createdInstant)
-                .updatedAt(updatedInstant)
+                .avatarUrl(resolveAvatar(c, owner))
+                .createdAt(created)
+                .updatedAt(updated)
                 .isLikedByCurrentUser(isLiked)
-                .timeAgo(TimeFormatter.formatTimeAgo(createdInstant))
+                .timeAgo(TimeFormatter.formatTimeAgo(created))
+                .parentCommentId(c.getParentCommentId())
                 .build();
     }
 
-    private String resolveUsername(UserDetail userDetail) {
-        if (userDetail == null) {
-            return "User";
-        }
-
-        if (userDetail.getDisplayName() != null && !userDetail.getDisplayName().isBlank()) {
-            return userDetail.getDisplayName();
-        }
-
-        if (userDetail.getShownName() != null && !userDetail.getShownName().isBlank()) {
-            return userDetail.getShownName();
-        }
-
+    private String resolveUsername(UserDetail u) {
+        if (u == null) return "User";
+        if (u.getDisplayName() != null && !u.getDisplayName().isBlank()) return u.getDisplayName();
+        if (u.getShownName() != null && !u.getShownName().isBlank()) return u.getShownName();
         return "User";
     }
 
-    private String resolveAvatarUrl(Comment comment, UserDetail owner) {
-        if (comment.getAvatarUrl() != null) {
-            return comment.getAvatarUrl();
-        }
-
-        if (owner != null && owner.getAvatar() != null) {
-            return owner.getAvatar().getUrl();
-        }
-
+    private String resolveAvatar(Comment c, UserDetail u) {
+        if (c.getAvatarUrl() != null) return c.getAvatarUrl();
+        if (u != null && u.getAvatar() != null) return u.getAvatar().getUrl();
         return null;
     }
 }

@@ -18,6 +18,7 @@ import {
   fetchFeedItems,
   fetchExploreFeedItems,
   fetchFollowingFeedItems,
+  fetchFriendsFeedItems,
   recordFeedItemView,
 } from "../../Services/FeedService";
 import TopVideo from "../../Components/Post/TopVideo";
@@ -60,6 +61,18 @@ export default function Home() {
   const [followingError, setFollowingError] = useState<string | null>(null);
   const [followingHasLoaded, setFollowingHasLoaded] = useState(false);
   const followingLoadingRef = useRef(false);
+  
+  const [friendsFeed, setFriendsFeed] = useState<FeedItem[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsRefreshing, setFriendsRefreshing] = useState(false);
+  const [friendsError, setFriendsError] = useState<string | null>(null);
+  const [friendsHasLoaded, setFriendsHasLoaded] = useState(false);
+  const friendsLoadingRef = useRef(false);
+
+  // Top tabs logic - khai báo sớm để dùng trong useEffect
+  const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
+  type TabType = (typeof tabs)[number];
+  const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
   const watchedFeedItemsRef = useRef<Set<string>>(new Set());
 
   // Log dimensions
@@ -114,13 +127,28 @@ export default function Home() {
 
       try {
         const response = await fetchExploreFeedItems({ size: 40 });
-        if (response.code === 1000 && response.result) {
-          setExploreFeedItems(response.result);
+        console.log("🔍 Explore feed response:", {
+          code: response.code,
+          hasResult: !!response.result,
+          resultLength: response.result?.length || 0,
+          message: response.message,
+        });
+        
+        if (response.code === 1000) {
+          const items = response.result || [];
+          setExploreFeedItems(items);
           setExploreHasLoaded(true);
+          console.log("✅ Explore feed loaded:", items.length, "items");
+          if (items.length === 0) {
+            console.warn("⚠️ Explore feed is empty");
+          }
         } else {
-          setExploreError(response.message || "Không thể tải nội dung khám phá");
+          const errorMsg = response.message || "Không thể tải nội dung khám phá";
+          console.error("❌ Explore feed error:", errorMsg, response);
+          setExploreError(errorMsg);
         }
       } catch (err: any) {
+        console.error("❌ Explore feed exception:", err);
         setExploreError(err.message || "Không thể tải nội dung khám phá");
       } finally {
         setExploreLoading(false);
@@ -132,7 +160,10 @@ export default function Home() {
 
   const loadFollowingFeed = useCallback(
     async (force = false) => {
-      if (followingLoadingRef.current || (followingHasLoaded && !force)) {
+      console.log("🚀 loadFollowingFeed called, force:", force, "followingLoadingRef:", followingLoadingRef.current);
+      
+      if (followingLoadingRef.current) {
+        console.log("⏭️ Already loading, skip");
         return;
       }
 
@@ -141,21 +172,31 @@ export default function Home() {
       setFollowingError(null);
 
       try {
-        const response = await fetchFollowingFeedItems();
-        if (response.code === 1000 && response.result) {
-          setFollowingFeed(response.result);
+        console.log("📡 Fetching following feed...");
+        const response = await fetchFollowingFeedItems({ size: 50 });
+        console.log("📥 Following feed response:", {
+          code: response.code,
+          hasResult: !!response.result,
+          resultLength: response.result?.length || 0,
+        });
+        if (response.code === 1000) {
+          const items = response.result || [];
+          console.log("✅ Setting followingFeed with", items.length, "items");
+          setFollowingFeed(items);
           setFollowingHasLoaded(true);
         } else {
+          console.error("❌ Following feed error code:", response.code, response.message);
           setFollowingError(response.message || "Không thể tải feed đã follow");
         }
       } catch (err: any) {
+        console.error("❌ Following feed exception:", err);
         setFollowingError(err.message || "Không thể tải feed đã follow");
       } finally {
         setFollowingLoading(false);
         followingLoadingRef.current = false;
       }
     },
-    [followingHasLoaded]
+    []
   );
 
   const recordViewForFeedItem = useCallback(async (feedItemId: string) => {
@@ -226,12 +267,70 @@ export default function Home() {
   const refreshFollowingFeed = useCallback(async () => {
     setFollowingRefreshing(true);
     setFollowingHasLoaded(false);
+    followingLoadingRef.current = false;
     try {
       await loadFollowingFeed(true);
     } finally {
       setFollowingRefreshing(false);
     }
   }, [loadFollowingFeed]);
+
+  const loadFriendsFeed = useCallback(
+    async (force = false) => {
+      console.log("🚀 loadFriendsFeed called, force:", force, "friendsLoadingRef:", friendsLoadingRef.current, "friendsHasLoaded:", friendsHasLoaded);
+      
+      if (friendsLoadingRef.current) {
+        console.log("⏭️ Already loading, skip");
+        return;
+      }
+      
+      if (friendsHasLoaded && !force) {
+        console.log("⏭️ Already loaded and not force, skip");
+        return;
+      }
+
+      friendsLoadingRef.current = true;
+      setFriendsLoading(true);
+      setFriendsError(null);
+
+      try {
+        console.log("📡 Fetching friends feed...");
+        const response = await fetchFriendsFeedItems({ size: 50 });
+        console.log("📥 Friends feed response:", {
+          code: response.code,
+          hasResult: !!response.result,
+          resultLength: response.result?.length || 0,
+        });
+        if (response.code === 1000) {
+          const items = response.result || [];
+          console.log("✅ Setting friendsFeed with", items.length, "items");
+          setFriendsFeed(items);
+          setFriendsHasLoaded(true);
+        } else {
+          console.error("❌ Friends feed error code:", response.code, response.message);
+          setFriendsError(response.message || "Không thể tải feed bạn bè");
+        }
+      } catch (err: any) {
+        console.error("❌ Friends feed exception:", err);
+        setFriendsError(err.message || "Không thể tải feed bạn bè");
+      } finally {
+        setFriendsLoading(false);
+        friendsLoadingRef.current = false;
+      }
+    },
+    [friendsHasLoaded]
+  );
+
+  const refreshFriendsFeed = useCallback(async () => {
+    setFriendsRefreshing(true);
+    setFriendsHasLoaded(false);
+    friendsLoadingRef.current = false;
+    try {
+      await loadFriendsFeed(true);
+    } finally {
+      setFriendsRefreshing(false);
+    }
+  }, [loadFriendsFeed]);
 
   // Function to reload when clicking on active tab - scroll to top first
   const reloadFromTabClick = useCallback(async () => {
@@ -241,10 +340,12 @@ export default function Home() {
     }
 
     const currentListLength =
-      activeTab === "Đã follow" ? followingFeed.length : feedItems.length;
+      (activeTab === "Đã follow" || activeTab === "Bạn bè")
+        ? followingFeed.length 
+        : feedItems.length;
 
     if (
-      (activeTab === "Đề xuất" || activeTab === "Đã follow") &&
+      (activeTab === "Đề xuất" || activeTab === "Đã follow" || activeTab === "Bạn bè") &&
       flatListRef.current &&
       currentListLength > 0
     ) {
@@ -252,7 +353,7 @@ export default function Home() {
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
-    if (activeTab === "Đã follow") {
+    if (activeTab === "Đã follow" || activeTab === "Bạn bè") {
       await refreshFollowingFeed();
       return;
     }
@@ -264,8 +365,10 @@ export default function Home() {
     activeTab,
     feedItems.length,
     followingFeed.length,
+    friendsFeed.length,
     refreshExploreFeed,
     refreshFollowingFeed,
+    refreshFriendsFeed,
     refreshVideos,
   ]);
 
@@ -279,16 +382,21 @@ export default function Home() {
   }, []); // Empty dependency - only run once on mount
 
   useEffect(() => {
-    if (activeTab === "Khám phá" && !exploreHasLoaded) {
+    if (activeTab === "Khám phá" && !exploreHasLoaded && !exploreLoadingRef.current) {
       loadExploreFeed();
     }
-  }, [activeTab, exploreHasLoaded, loadExploreFeed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, exploreHasLoaded]);
 
   useEffect(() => {
-    if (activeTab === "Đã follow" && !followingHasLoaded) {
-      loadFollowingFeed();
+    if (activeTab === "Đã follow" || activeTab === "Bạn bè") {
+      // Force load mỗi lần chuyển tab
+      if (!followingLoadingRef.current) {
+        loadFollowingFeed(true);
+      }
     }
-  }, [activeTab, followingHasLoaded, loadFollowingFeed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Handle tab focus/blur to pause/resume video
   useFocusEffect(
@@ -347,7 +455,7 @@ export default function Home() {
 
     if (activeTab === "Đề xuất") {
       items = feedItems;
-    } else if (activeTab === "Đã follow") {
+    } else if (activeTab === "Đã follow" || activeTab === "Bạn bè") {
       items = followingFeed;
     } else {
       return;
@@ -478,10 +586,7 @@ export default function Home() {
     []
   );
 
-  // Top tabs logic
-  const tabs = ["Khám phá", "Bạn bè", "Đã follow", "Đề xuất"] as const;
-  type TabType = (typeof tabs)[number];
-  const [activeTab, setActiveTab] = useState<TabType>("Đề xuất");
+  // activeTab và tabs đã được khai báo ở trên
 
   // PanResponder để xử lý swipe ngang giữa các tab
   const panResponder = useRef(
@@ -550,6 +655,13 @@ export default function Home() {
     onRefresh: () => Promise<void>;
     onRetry: () => void;
   }) => {
+    console.log("🎨 renderVerticalFeedBlock:", {
+      itemsLength: items.length,
+      loadingState,
+      errorState,
+      emptyMessage,
+    });
+    
     if (loadingState) {
       return (
         <View style={styles.centerContainer}>
@@ -624,13 +736,16 @@ export default function Home() {
           />
         );
       case "Bạn bè":
-        return (
-          <View style={styles.centerContainer}>
-            <Text style={styles.emptyText}>
-              Tính năng bạn bè đang được phát triển.
-            </Text>
-          </View>
-        );
+        return renderVerticalFeedBlock({
+          items: followingFeed,
+          loadingState: followingLoading,
+          errorState: followingError,
+          emptyMessage:
+            "Theo dõi thêm người dùng để khám phá nội dung tại đây.",
+          refreshingState: followingRefreshing,
+          onRefresh: refreshFollowingFeed,
+          onRetry: () => loadFollowingFeed(true),
+        });
       case "Đã follow":
         return renderVerticalFeedBlock({
           items: followingFeed,

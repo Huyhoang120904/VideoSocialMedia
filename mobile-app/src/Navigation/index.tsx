@@ -17,6 +17,7 @@ import AIChatScreen from "../Srceens/AIChat";
 import SharedVideoPreviewScreen from "../Srceens/SharedVideoPreview";
 import UserFeedScreen from "../Srceens/UserFeed";
 import LikedFeedScreen from "../Srceens/LikedFeed";
+import SearchScreen from "../Srceens/Search";
 import { AuthProvider, useAuth } from "../Context/AuthProvider";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { ConversationProvider } from "../Context/ConversationProvider";
@@ -53,6 +54,7 @@ export default function RootNavigation() {
         component={SharedVideoPreviewScreen}
       />
       <Stack.Screen name="LikedFeed" component={LikedFeedScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
     </Stack.Navigator>
   );
 

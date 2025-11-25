@@ -62,7 +62,7 @@ public class UserDetailServiceImpl implements UserDetailService {
 
         FileDocument avatar = null;
         if (request.getAvatar() != null) {
-            FileResponse fileResponse = fileService.storeFile(request.getAvatar());
+            FileResponse fileResponse = fileService.storeFile(request.getAvatar(), "");
             avatar = fileRepository.findById(fileResponse.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
         }
@@ -175,7 +175,7 @@ public class UserDetailServiceImpl implements UserDetailService {
         FileDocument fileDocument = null;
 
         if (request.getAvatar() != null) {
-            FileResponse fileResponse = fileService.storeFile(request.getAvatar());
+            FileResponse fileResponse = fileService.storeFile(request.getAvatar(), "");
             fileDocument = fileRepository.findById(fileResponse.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 

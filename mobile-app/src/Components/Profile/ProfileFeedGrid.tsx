@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { VideoItem } from "../../Services/FeedItemService";
-import { ProfileFeedItem } from "./ProfileFeedItem";
+import { ProfileFeedItem, PROFILE_ITEM_GAP } from "./ProfileFeedItem";
 
 interface ProfileFeedGridProps {
   feedItems: VideoItem[];
@@ -20,8 +20,7 @@ export const ProfileFeedGrid: React.FC<ProfileFeedGridProps> = ({
 }) => {
   const noPostsTitle = emptyTitle ?? "No posts yet";
   const noPostsDescription =
-    emptyDescription ??
-    "When you post videos or images, they'll appear here";
+    emptyDescription ?? "When you post videos or images, they'll appear here";
 
   if (isLoading) {
     return (
@@ -47,17 +46,31 @@ export const ProfileFeedGrid: React.FC<ProfileFeedGridProps> = ({
   }
 
   return (
-    <View className="flex-1 px-2 py-2">
+    <View className="flex-1 bg-white">
       <FlatList
         data={feedItems}
         numColumns={3}
         keyExtractor={(item) => item.id}
         scrollEnabled={false}
-        renderItem={({ item }) => (
-          <ProfileFeedItem item={item} onPress={() => onFeedItemPress(item)} />
-        )}
+        columnWrapperStyle={{ width: "100%" }}
+        contentContainerStyle={{
+          paddingHorizontal: PROFILE_ITEM_GAP,
+        }}
+        renderItem={({ item, index }) => {
+          const isEndOfRow = (index + 1) % 3 === 0;
+          const itemStyle = {
+            marginRight: isEndOfRow ? 0 : PROFILE_ITEM_GAP,
+            marginBottom: PROFILE_ITEM_GAP,
+          };
+          return (
+            <ProfileFeedItem
+              item={item}
+              onPress={() => onFeedItemPress(item)}
+              style={itemStyle}
+            />
+          );
+        }}
       />
     </View>
   );
 };
-

@@ -52,7 +52,7 @@ public class FileController extends BaseController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FileResponse>> uploadFile(@RequestParam("file") MultipartFile file) {
         log.info("Uploading file: {}", file.getOriginalFilename());
-        FileResponse response = fileService.storeFile(file);
+        FileResponse response = fileService.storeFile(file, "");
         return created(response, "File uploaded successfully");
     }
 

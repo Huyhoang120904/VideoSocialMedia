@@ -286,8 +286,13 @@ public class FeedItemServiceImpl implements FeedItemService {
 
         validateVideoFile(request.getVideoFile());
 
+        FileDocument thumbnailFileDocument = null;
+        if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
+            thumbnailFileDocument = processThumbnail(request.getThumbnail());
+        }
+
         // Store video file
-        FileResponse savedFile = fileService.storeFile(request.getVideoFile());
+        FileResponse savedFile = fileService.storeFile(request.getVideoFile(), thumbnailFileDocument.getUrl());
         log.info("Video file stored with ID: {}", savedFile.getId());
 
         FileDocument videoFileDocument = fileRepository.findById(savedFile.getId())
@@ -297,10 +302,8 @@ public class FeedItemServiceImpl implements FeedItemService {
         UserDetail uploader = getCurrentUser();
 
         // Process thumbnail if provided
-        FileDocument thumbnailFileDocument = null;
-        if (request.getThumbnail() != null && !request.getThumbnail().isEmpty()) {
-            thumbnailFileDocument = processThumbnail(request.getThumbnail());
-        }
+        videoFileDocument.setThumbnailUrl(thumbnailFileDocument.getUrl());
+        fileRepository.save(videoFileDocument);
 
         // Create MetaData
         MetaData metaData = MetaData.builder()
@@ -320,6 +323,7 @@ public class FeedItemServiceImpl implements FeedItemService {
         // Create Video entity
         Video video = Video.builder()
                 .file(videoFileDocument)
+                .thumbnailUrl(thumbnailFileDocument.getUrl())
                 .duration(request.getDuration() != null ? request.getDuration() : 0.0)
                 .build();
         video = videoRepository.save(video);
@@ -343,6 +347,7 @@ public class FeedItemServiceImpl implements FeedItemService {
                 .feedItemId(feedItem.getId())
                 .feedItemType(FeedItemType.VIDEO)
                 .video(savedFile)
+                .thumbnailUrl(thumbnailFileDocument.getThumbnailUrl())
                 .title(feedItem.getTitle())
                 .description(feedItem.getDescription())
                 .thumbnailUrl(thumbnailFileDocument != null ? thumbnailFileDocument.getUrl() : null)
@@ -372,7 +377,7 @@ public class FeedItemServiceImpl implements FeedItemService {
         List<FileResponse> imageResponses = new ArrayList<>();
 
         for (MultipartFile image : request.getImages()) {
-            FileResponse savedFile = fileService.storeFile(image);
+            FileResponse savedFile = fileService.storeFile(image, "");
             FileDocument fileDocument = fileRepository.findById(savedFile.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
             imageFiles.add(fileDocument);
@@ -412,6 +417,7 @@ public class FeedItemServiceImpl implements FeedItemService {
         FeedItem feedItem = FeedItem.builder()
                 .feedItemType(FeedItemType.IMAGE_SLIDE)
                 .imageSlide(imageSlide)
+                .thumbnail(thumbnailFileDocument)
                 .title(request.getTitle() != null ? request.getTitle() : "")
                 .description(request.getDescription() != null ? request.getDescription() : request.getCaptions())
                 .uploader(uploader)
@@ -430,7 +436,7 @@ public class FeedItemServiceImpl implements FeedItemService {
                 .captions(request.getCaptions())
                 .title(feedItem.getTitle())
                 .description(feedItem.getDescription())
-                .thumbnailUrl(thumbnailFileDocument != null ? thumbnailFileDocument.getUrl() : null)
+                .thumbnailUrl(thumbnailFileDocument.getUrl())
                 .message("Image slide uploaded successfully")
                 .build();
     }
@@ -456,9 +462,8 @@ public class FeedItemServiceImpl implements FeedItemService {
 
             String uploader = getCurrentUserId();
 
-            // Create thumbnail directory
-            String thumbnailDir = uploadDir + "/thumbnailImage/" + uploader;
-            Path thumbnailPath = Paths.get(thumbnailDir);
+            // Create thumbnail directory using OS-safe path joining
+            Path thumbnailPath = Paths.get(uploadDir, uploader);
             Files.createDirectories(thumbnailPath);
 
             // Generate unique filename
@@ -472,7 +477,7 @@ public class FeedItemServiceImpl implements FeedItemService {
             // Create URL
             String host = (serverHost != null && !serverHost.isEmpty()) ? serverHost : "172.20.82.76";
             String thumbnailUrl = "http://" + host + ":" + serverPort + contextPath +
-                    "/files/thumbnailImage/" + uploader + "/" + uniqueFilename;
+                    "/files/" + uploader + "/" + uniqueFilename;
 
             // Create FileDocument for thumbnail
             FileDocument thumbnailFileDocument = FileDocument.builder()

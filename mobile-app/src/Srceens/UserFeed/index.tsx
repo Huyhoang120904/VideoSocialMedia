@@ -1,30 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  RouteProp,
-  useFocusEffect,
-  useNavigation,
-  useRoute,
-} from "@react-navigation/native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { KeyboardAvoidingView, Platform, View, Dimensions } from "react-native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import FeedPost from "../../Components/Post/FeedPost";
 import { FeedItem } from "../../Store/feedSlice";
 import { AuthedStackParamList } from "../../Types/response/navigation.types";
-import {
-  fetchUserFeedItems,
-  recordFeedItemView,
-} from "../../Services/FeedService";
+import { fetchUserFeedPage } from "../../Services/FeedService";
+import VerticalFeedList from "../../Components/Feed/VerticalFeedList";
+import FeedHeader from "../../Components/Feed/FeedHeader";
+import QuickCommentBar from "../../Components/Feed/QuickCommentBar";
+import VideoCommentModal from "../../Components/Comment/VideoCommentModal";
+import { useAuth } from "../../Context/AuthProvider";
+import commentService from "../../Services/CommentService";
 
 type UserFeedNavigationProp = StackNavigationProp<
   AuthedStackParamList,
@@ -33,11 +21,10 @@ type UserFeedNavigationProp = StackNavigationProp<
 
 type UserFeedRouteProp = RouteProp<AuthedStackParamList, "UserFeed">;
 
-const { height } = Dimensions.get("window");
-
 const UserFeedScreen = () => {
   const navigation = useNavigation<UserFeedNavigationProp>();
   const route = useRoute<UserFeedRouteProp>();
+  const { user } = useAuth();
 
   const { userDetailId, initialFeedItemId, userDisplayName } = route.params;
 
@@ -45,297 +32,179 @@ const UserFeedScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isScreenActive, setIsScreenActive] = useState(true);
+  const [currentFeedItem, setCurrentFeedItem] = useState<FeedItem | null>(null);
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [feedHeight, setFeedHeight] = useState(0);
+  const [cursor, setCursor] = useState<number | null>(0);
+  const feedItemsRef = useRef<FeedItem[]>([]);
+  const PAGE_SIZE = 10;
+  const MAX_BUFFER = 30;
+  const PREFETCH_THRESHOLD = 3;
 
-  const flatListRef = useRef<FlatList<FeedItem>>(null);
-  const hasScrolledToInitialRef = useRef(false);
-  const watchedFeedItemsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    feedItemsRef.current = feedItems;
+  }, [feedItems]);
 
-  const headerTitle =
-    userDisplayName?.trim() && userDisplayName.trim().length > 0
-      ? userDisplayName
-      : "User Videos";
+  const appendItems = useCallback(
+    (newItems: FeedItem[], reset = false) => {
+      const base = reset ? [] : feedItemsRef.current;
+      const map = new Map<string, FeedItem>();
+      base.forEach((item) => map.set(item.id, item));
+      newItems.forEach((item) => map.set(item.id, item));
+      const merged = Array.from(map.values());
+      const trimmed =
+        merged.length > MAX_BUFFER
+          ? merged.slice(merged.length - MAX_BUFFER)
+          : merged;
+      feedItemsRef.current = trimmed;
+      setFeedItems(trimmed);
+    },
+    []
+  );
 
   const loadUserFeed = useCallback(
-    async (showLoader: boolean = true) => {
+    async (reset = false) => {
       if (!userDetailId) {
         setError("Missing user information.");
         setLoading(false);
         return;
       }
 
-      if (showLoader) {
+      const targetCursor = reset ? 0 : cursor;
+      if (targetCursor === null && !reset) {
+        return;
+      }
+
+      const shouldShowLoader = reset || feedItemsRef.current.length === 0;
+      if (shouldShowLoader) {
         setLoading(true);
       }
 
       setError(null);
 
       try {
-        const response = await fetchUserFeedItems(userDetailId, { size: 40 });
-        if (response.result) {
-          setFeedItems(response.result);
-          console.log(`response.result: `, response.result);
-          watchedFeedItemsRef.current.clear();
-        } else {
-          setFeedItems([]);
-        }
-        hasScrolledToInitialRef.current = false;
+        const { items, nextPage } = await fetchUserFeedPage(
+          userDetailId,
+          targetCursor ?? 0,
+          PAGE_SIZE
+        );
+        appendItems(items, reset);
+        setCursor(nextPage);
       } catch (err: any) {
         console.error("Error loading user feed:", err);
         setError(err?.message || "Failed to load user feed.");
       } finally {
-        if (showLoader) {
+        if (shouldShowLoader) {
           setLoading(false);
         }
       }
     },
-    [userDetailId]
+    [appendItems, cursor, userDetailId]
   );
 
   useEffect(() => {
     loadUserFeed(true);
   }, [loadUserFeed]);
 
-  useFocusEffect(
-    useCallback(() => {
-      setIsScreenActive(true);
-      return () => setIsScreenActive(false);
-    }, [])
-  );
-
-  useEffect(() => {
-    if (
-      !initialFeedItemId ||
-      feedItems.length === 0 ||
-      hasScrolledToInitialRef.current
-    ) {
-      return;
-    }
-
-    const targetIndex = feedItems.findIndex(
-      (item) => item.id === initialFeedItemId
-    );
-
-    if (targetIndex !== -1) {
-      hasScrolledToInitialRef.current = true;
-      setCurrentIndex(targetIndex);
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: targetIndex,
-          animated: false,
-        });
-      }, 100);
-    }
-  }, [initialFeedItemId, feedItems]);
-
-  useEffect(() => {
-    const activeItem = feedItems[currentIndex];
-    if (!activeItem) {
-      return;
-    }
-
-    const feedItemId = activeItem.id;
-    if (watchedFeedItemsRef.current.has(feedItemId)) {
-      return;
-    }
-
-    watchedFeedItemsRef.current.add(feedItemId);
-    recordFeedItemView(feedItemId).catch((err) => {
-      console.warn("Failed to record feed item view:", err);
-      watchedFeedItemsRef.current.delete(feedItemId);
-    });
-  }, [currentIndex, feedItems]);
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    setCursor(0);
     try {
-      await loadUserFeed(false);
+      await loadUserFeed(true);
     } finally {
       setRefreshing(false);
     }
   }, [loadUserFeed]);
 
-  const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: false,
-      });
-    }, 300);
+  const initialScrollIndex = useMemo(() => {
+    if (!initialFeedItemId || feedItems.length === 0) return 0;
+    const index = feedItems.findIndex((item) => item.id === initialFeedItemId);
+    return index >= 0 ? index : 0;
+  }, [initialFeedItemId, feedItems]);
+
+  // Update current feed item when list scrolls
+  const handleCurrentItemChange = useCallback((item: FeedItem) => {
+    setCurrentFeedItem(item);
   }, []);
 
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
-      if (viewableItems.length === 0) {
-        return;
-      }
-
-      const nextIndex = viewableItems[0].index;
-      if (nextIndex !== null && nextIndex !== currentIndex) {
-        setCurrentIndex(nextIndex);
-      }
+  const handleSendComment = useCallback(async (text: string) => {
+    if (!currentFeedItem) return;
+    try {
+      await commentService.addComment(currentFeedItem.id, text);
+      console.log("Comment added successfully");
+    } catch (error) {
+      console.error("Error sending comment:", error);
     }
-  ).current;
+  }, [currentFeedItem]);
 
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 80,
-  }).current;
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: FeedItem; index: number }) => (
-      <FeedPost
-        feedItem={item}
-        isActive={index === currentIndex && isScreenActive}
-        itemHeight={height}
-      />
-    ),
-    [currentIndex, isScreenActive]
+  const handleSendGifComment = useCallback(
+    async (gifUrl: string) => {
+      if (!currentFeedItem) return;
+      try {
+        await commentService.addComment(currentFeedItem.id, gifUrl, undefined, "GIF");
+      } catch (error) {
+        console.error("Error sending GIF comment:", error);
+      }
+    },
+    [currentFeedItem]
   );
 
-  const keyExtractor = useCallback((item: FeedItem) => item.id, []);
+  const placeholder =
+    userDisplayName?.trim() && userDisplayName.trim().length > 0
+      ? `Search in ${userDisplayName}'s videos`
+      : "Search user videos";
 
-  const renderLoading = () => (
-    <View style={styles.centerContent}>
-      <ActivityIndicator size="large" color="#EC4899" />
-      <Text style={styles.statusText}>Loading videos...</Text>
-    </View>
-  );
+  const handleLayout = useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+    setFeedHeight(height);
+  }, []);
 
-  const renderError = () => (
-    <View style={styles.centerContent}>
-      <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
-      <Text style={styles.errorText}>{error}</Text>
-      <TouchableOpacity
-        style={styles.retryButton}
-        onPress={() => loadUserFeed(true)}
-      >
-        <Text style={styles.retryText}>Try again</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.centerContent}>
-      <Text style={styles.statusText}>No videos available.</Text>
-    </View>
+  const handleIndexChange = useCallback(
+    (index: number) => {
+      const remaining = feedItemsRef.current.length - index - 1;
+      if (remaining <= PREFETCH_THRESHOLD) {
+        loadUserFeed();
+      }
+    },
+    [loadUserFeed]
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View style={styles.screen}>
-        <View style={styles.content}>
-          {loading && renderLoading()}
-          {!loading && error && renderError()}
-          {!loading && !error && feedItems.length === 0 && renderEmptyState()}
-          {!loading && !error && feedItems.length > 0 && (
-            <FlatList
-              ref={flatListRef}
-              data={feedItems}
-              renderItem={renderItem}
-              keyExtractor={keyExtractor}
-              pagingEnabled
-              snapToInterval={height}
-              snapToAlignment="start"
-              decelerationRate="fast"
-              showsVerticalScrollIndicator={false}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
-              initialNumToRender={3}
-              maxToRenderPerBatch={3}
-              windowSize={5}
-              removeClippedSubviews
-              getItemLayout={(_, index) => ({
-                length: height,
-                offset: height * index,
-                index,
-              })}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              onScrollToIndexFailed={handleScrollToIndexFailed}
-            />
-          )}
-        </View>
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <FeedHeader placeholder={placeholder} />
 
-        <View style={styles.headerOverlay}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="chevron-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{headerTitle}</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+      <View style={{ flex: 1 }} onLayout={handleLayout}>
+        {feedHeight > 0 && (
+          <VerticalFeedList
+            data={feedItems}
+            loading={loading}
+            error={error}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onRetry={() => loadUserFeed(true)}
+            initialScrollIndex={initialScrollIndex}
+            emptyMessage="No videos available."
+            onCurrentItemChange={handleCurrentItemChange}
+            onCurrentIndexChange={handleIndexChange}
+            hasBottomCommentBar={true}
+            viewHeight={feedHeight}
+          />
+        )}
       </View>
-    </SafeAreaView>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <QuickCommentBar
+          onSendComment={handleSendComment}
+          onSendGif={handleSendGifComment}
+          placeholder="Thêm bình luận..."
+          avatarUrl={user?.imageUrl}
+        />
+      </KeyboardAvoidingView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  content: {
-    flex: 1,
-  },
-  centerContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  statusText: {
-    marginTop: 12,
-    color: "#F3F4F6",
-    textAlign: "center",
-  },
-  errorText: {
-    marginTop: 12,
-    color: "#F87171",
-    textAlign: "center",
-  },
-  retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  retryText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  headerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "transparent",
-  },
-  backButton: {
-    padding: 6,
-    borderRadius: 999,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  headerSpacer: {
-    width: 28,
-  },
-});
 
 export default UserFeedScreen;

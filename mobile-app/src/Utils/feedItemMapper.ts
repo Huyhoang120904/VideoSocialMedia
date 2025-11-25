@@ -42,6 +42,9 @@ const buildVideoFeedItem = (
     hashtags: feedItem.hashTags || [],
     loved: feedItem.loved || false,
     uploader: feedItem.uploader,
+    uploaderUserId: feedItem.uploader?.id,
+    username: feedItem.uploader?.displayName || feedItem.uploader?.shownName,
+    avatarUrl: feedItem.uploader?.avatar?.url || feedItem.uploader?.avatar?.secureUrl || undefined,
   };
 };
 
@@ -95,6 +98,9 @@ const buildImageSlideFeedItem = (
     hashtags: feedItem.hashTags || [],
     loved: feedItem.loved || false,
     uploader: feedItem.uploader,
+    uploaderUserId: feedItem.uploader?.id,
+    username: feedItem.uploader?.displayName || feedItem.uploader?.shownName,
+    avatarUrl: feedItem.uploader?.avatar?.url || feedItem.uploader?.avatar?.secureUrl || undefined,
   };
 };
 

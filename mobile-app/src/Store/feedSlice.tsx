@@ -46,6 +46,10 @@ export interface FeedItem {
   hashtags?: string[]; // Add hashtags
   loved?: boolean; // Trạng thái đã yêu thích hay chưa
   uploader?: UserDetailResponse; // Thông tin người upload
+  // Convenience fields extracted from uploader
+  uploaderUserId?: string; // UserDetail ID
+  username?: string; // Display name
+  avatarUrl?: string; // Avatar URL
 }
 
 interface FeedState {

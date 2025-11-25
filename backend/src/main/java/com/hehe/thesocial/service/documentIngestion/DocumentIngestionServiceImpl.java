@@ -42,7 +42,7 @@ public class DocumentIngestionServiceImpl implements DocumentIngestionService {
             throw new AppException(ErrorCode.DOCUMENT_EMPTY_FILE);
         }
 
-        fileService.storeFile(file);
+        fileService.storeFile(file, "");
 
         log.info("Received and stored file for ingestion: {}, size: {} bytes, type: {}",
                 file.getOriginalFilename(),

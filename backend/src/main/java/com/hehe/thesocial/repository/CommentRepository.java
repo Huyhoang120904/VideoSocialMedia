@@ -11,5 +11,5 @@ import java.util.List;
 @Repository
 public interface CommentRepository extends MongoRepository<Comment, String> {
     List<Comment> findByUserDetailId(String userDetailId);
-    Page<Comment> findByFeedItemIdOrderByCreatedAtDesc(String feedItemId, Pageable pageable);
+    Page<Comment> findByFeedItemIdAndParentCommentIdIsNullOrderByCreatedAtDesc(String feedItemId, Pageable pageable);
 }

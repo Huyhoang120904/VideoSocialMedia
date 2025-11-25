@@ -206,6 +206,11 @@ export default function ExploreScreen({
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={renderEmptyState}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
       />
     </View>
   );

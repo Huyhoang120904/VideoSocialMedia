@@ -7,7 +7,6 @@ import com.hehe.thesocial.dto.response.file.FileMetricsResponse;
 import com.hehe.thesocial.dto.response.file.FileResponse;
 import com.hehe.thesocial.entity.FileAuditLog;
 import com.hehe.thesocial.entity.FileDocument;
-import com.hehe.thesocial.entity.User;
 import com.hehe.thesocial.entity.UserDetail;
 import com.hehe.thesocial.entity.enums.FileActionType;
 import com.hehe.thesocial.entity.enums.FileStatus;
@@ -19,40 +18,34 @@ import com.hehe.thesocial.repository.FileAuditLogRepository;
 import com.hehe.thesocial.repository.FileRepository;
 import com.hehe.thesocial.repository.UserDetailRepository;
 import com.hehe.thesocial.repository.UserRepository;
+import com.hehe.thesocial.specification.FileSpecification;
+import com.hehe.thesocial.util.AuthenticationHelper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.hehe.thesocial.specification.FileSpecification;
-import com.hehe.thesocial.util.AuthenticationHelper;
-import org.springframework.util.StringUtils;
-
-import java.time.LocalDateTime;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-
-import org.bson.Document;
 
 @Service
 @Slf4j
@@ -85,7 +78,7 @@ public class FileServiceImpl implements FileService {
     String serverHost;
 
     @Override
-    public FileResponse storeFile(MultipartFile multipartFile) {
+    public FileResponse storeFile(MultipartFile multipartFile, String thumbUrl) {
         UserDetail uploader = authenticationHelper.getCurrentUserDetail();
 
         if (multipartFile.isEmpty()) {
@@ -119,20 +112,11 @@ public class FileServiceImpl implements FileService {
 
             // Generate thumbnail for video files
             String thumbnailUrl = null;
-            if ("video".equals(resourceType)) {
-                try {
 
-                    log.info("Generated thumbnail for video: {}", thumbnailUrl);
-                    
-                    // If thumbnail generation failed, create a default one
-                    if (thumbnailUrl == null) {
-                        log.warn("Thumbnail generation failed, creating default thumbnail");
-                        thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to generate thumbnail for video: {}", e.getMessage());
-                    thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
-                }
+            if (StringUtils.hasText(thumbnailUrl)) {
+                thumbnailUrl = thumbUrl;
+            } else {
+                thumbnailUrl = "http://" + host + ":" + serverPort + contextPath + "/files/default-thumbnail.jpg";
             }
 
             FileDocument fileDocument = FileDocument.builder()
@@ -156,7 +140,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public List<FileResponse> storeMultipleFile(MultipartFile[] multipartFiles) {
-        return Arrays.stream(multipartFiles).map(this::storeFile).toList();
+        return Arrays.stream(multipartFiles).map(file -> storeFile(file, "")).toList();
     }
 
     @Override

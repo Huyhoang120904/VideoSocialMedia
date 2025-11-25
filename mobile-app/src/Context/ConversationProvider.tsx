@@ -36,13 +36,13 @@ type ConversationsContextType = {
 const ConversationContext = createContext<ConversationsContextType>({
   isLoading: false,
   conversations: [],
-  getMyConversations: () => {},
-  clearConversations: () => {},
-  addConversation: () => {},
-  refreshConversations: async () => {},
-  updateConversationNewestMessage: () => {},
-  updateConversationMessageReadStatus: () => {},
-  markConversationAsRead: () => {},
+  getMyConversations: () => { },
+  clearConversations: () => { },
+  addConversation: () => { },
+  refreshConversations: async () => { },
+  updateConversationNewestMessage: () => { },
+  updateConversationMessageReadStatus: () => { },
+  markConversationAsRead: () => { },
 });
 
 export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
@@ -61,7 +61,11 @@ export const ConversationProvider: React.FC<React.PropsWithChildren> = ({
     if (!isAuthenticated) return;
     setIsLoading(true);
     const response = await ConversationService.getMyConversation();
-    setConversations(response.result.content);
+    if (response?.result?.content) {
+      setConversations(response.result.content);
+    } else {
+      setConversations([]);
+    }
     console.log(response);
     setIsLoading(false);
   }

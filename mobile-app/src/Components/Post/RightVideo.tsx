@@ -79,7 +79,6 @@ export default function RightVideo({
 
   // Animations
   const likeScale = useRef(new Animated.Value(1)).current;
-  const musicRotation = useRef(new Animated.Value(0)).current;
 
   // commentsList đã bị XÓA - VideoCommentModal tự load comments từ API
 
@@ -97,22 +96,6 @@ export default function RightVideo({
   useEffect(() => {
     setCurrentComments(comments);
   }, [comments]);
-
-  // Rotating music disc animation
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(musicRotation, {
-        toValue: 1,
-        duration: 3000,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, []);
-
-  const spin = musicRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
 
   // Compute bottom position dynamically so RightVideo aligns with BottomVideo
   // and the tab bar icons across devices (mirrors BottomVideo logic).
@@ -357,11 +340,11 @@ export default function RightVideo({
         onPress={() => setShareModalVisible(true)}
       />
 
-      {/* Music Icon with rotation animation */}
+      {/* Music Icon */}
       <View style={styles.iconContainer}>
-        <Animated.Image
+        <Image
           source={img}
-          style={[styles.musicIcon, { transform: [{ rotate: spin }] }]}
+          style={styles.musicIcon}
         />
       </View>
 

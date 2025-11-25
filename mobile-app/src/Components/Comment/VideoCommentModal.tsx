@@ -34,6 +34,8 @@ interface Comment {
     likes: number;
     isLiked?: boolean;
     replies?: Comment[];
+    replyCount?: number;
+    parentCommentId?: string;
 }
 
 interface VideoCommentModalProps {
@@ -62,6 +64,10 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
     const [commentsList, setCommentsList] = useState<Comment[]>([]);
     const [currentUserAvatar, setCurrentUserAvatar] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [replyingTo, setReplyingTo] = useState<Comment | null>(null); // Comment đang được reply
+    const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set()); // Set các comment ID đã mở replies
+    const [repliesMap, setRepliesMap] = useState<Map<string, Comment[]>>(new Map()); // Map comment ID -> replies
+    const [loadingReplies, setLoadingReplies] = useState<Set<string>>(new Set()); // Set các comment ID đang load replies
     const inputRef = React.useRef<TextInput>(null);
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -94,7 +100,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
             // Reset khi đóng modal để tránh cache
             setCommentsList([]);
         }
-    }, [visible, videoId]);
+}, [visible, videoId]);
 
     const loadComments = async () => {
         try {
@@ -118,6 +124,8 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                     likes: comment.likeCount || 0,
                     isLiked: comment.isLikedByCurrentUser || false,
                     replies: [],
+                    replyCount: comment.replyCount || 0,
+                    parentCommentId: comment.parentCommentId,
                 };
             });
 
@@ -165,7 +173,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                 // Snap back to original position
                 Animated.spring(translateY, {
                     toValue: 0,
-                    useNativeDriver: true,
+useNativeDriver: true,
                 }).start();
             }
         },
@@ -182,38 +190,87 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         try {
             setIsSubmitting(true);
 
-            // Gọi API để lưu comment vào database - response có cả comment và totalComments
-            const response = await commentService.addComment(
-                videoId,
-                newComment.trim()
-            );
+            let response;
+            if (replyingTo) {
+                // Reply to a comment
+                response = await commentService.replyComment(
+                    videoId,
+                    replyingTo.id,
+                    newComment.trim()
+                );
+                console.log(`✅ Reply added - timeAgo: "${response.comment.timeAgo}"`);
 
-            console.log(`✅ New comment added - timeAgo: "${response.comment.timeAgo}"`);
+                // Thêm reply vào repliesMap
+                const newReply: Comment = {
+                    id: response.comment.id,
+                    username: response.comment.username || 'You',
+                    avatar: response.comment.avatarUrl || '',
+                    comment: response.comment.content,
+                    timeAgo: response.comment.timeAgo || 'vừa xong',
+                    likes: response.comment.likeCount || 0,
+                    isLiked: response.comment.isLikedByCurrentUser || false,
+                    replies: [],
+                    replyCount: 0,
+                    parentCommentId: replyingTo.id,
+                };
 
-            // Thêm comment mới vào đầu danh sách (từ backend response)
-            const comment: Comment = {
-                id: response.comment.id,
-                username: response.comment.username || 'You',
-                avatar: response.comment.avatarUrl || '',
-                comment: response.comment.content,
-                timeAgo: response.comment.timeAgo || 'vừa xong', // Backend trả về
-                likes: response.comment.likeCount || 0,
-                isLiked: response.comment.isLikedByCurrentUser || false,
-            };
-            setCommentsList([comment, ...commentsList]);
-            onAddComment(newComment.trim());
+                setRepliesMap(prev => {
+                    const newMap = new Map(prev);
+                    const existingReplies = newMap.get(replyingTo.id) || [];
+                    newMap.set(replyingTo.id, [newReply, ...existingReplies]);
+                    return newMap;
+                });
+
+                // Update reply count in parent comment
+                setCommentsList(prev =>
+                    prev.map(comment =>
+                        comment.id === replyingTo.id
+                            ? { ...comment, replyCount: (comment.replyCount || 0) + 1 }
+                            : comment
+                    )
+                );
+
+                // Expand replies if not already expanded
+                if (!expandedReplies.has(replyingTo.id)) {
+                    setExpandedReplies(prev => new Set(prev).add(replyingTo.id));
+                }
+            } else {
+                // Add new top-level comment
+                response = await commentService.addComment(
+                    videoId,
+                    newComment.trim()
+                );
+
+                console.log(`✅ New comment added - timeAgo: "${response.comment.timeAgo}"`);
+
+                // Thêm comment mới vào đầu danh sách (từ backend response)
+                const comment: Comment = {
+                    id: response.comment.id,
+                    username: response.comment.username || 'You',
+                    avatar: response.comment.avatarUrl || '',
+                    comment: response.comment.content,
+                    timeAgo: response.comment.timeAgo || 'vừa xong', // Backend trả về
+                    likes: response.comment.likeCount || 0,
+                    isLiked: response.comment.isLikedByCurrentUser || false,
+                    replies: [],
+                    replyCount: response.comment.replyCount || 0,
+                };
+                setCommentsList([comment, ...commentsList]);
+                onAddComment(newComment.trim());
+
+                // Cập nhật số lượng comment về component cha
+                if (onUpdateCommentCount) {
+                    onUpdateCommentCount(response.totalComments);
+                }
+            }
 
             // Lưu avatar của user để hiển thị ở input box
             if (response.comment.avatarUrl) {
                 setCurrentUserAvatar(response.comment.avatarUrl);
             }
 
-            // Cập nhật số lượng comment về component cha
-            if (onUpdateCommentCount) {
-                onUpdateCommentCount(response.totalComments);
-            }
-
             setNewComment('');
+            setReplyingTo(null);
 
         } catch (error) {
             console.error('Error adding comment:', error);
@@ -245,7 +302,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
             );
 
             // Gọi API
-            const response = await commentService.toggleCommentLike(commentId, isCurrentlyLiked);
+const response = await commentService.toggleCommentLike(commentId, isCurrentlyLiked);
 
             // Update với số liệu thật từ backend
             setCommentsList(prev =>
@@ -296,69 +353,198 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
         // TODO: Navigate to user profile
     };
 
-    const renderComment = ({ item }: { item: Comment }) => (
-        <View style={styles.commentItem}>
+    const handleReplyPress = (comment: Comment) => {
+        setReplyingTo(comment);
+        inputRef.current?.focus();
+    };
+
+    const handleCancelReply = () => {
+        setReplyingTo(null);
+    };
+
+    const handleLoadReplies = async (commentId: string) => {
+        if (loadingReplies.has(commentId) || repliesMap.has(commentId)) {
+            // Toggle expanded state
+            setExpandedReplies(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(commentId)) {
+                    newSet.delete(commentId);
+                } else {
+                    newSet.add(commentId);
+                }
+                return newSet;
+            });
+            return;
+        }
+
+        try {
+            setLoadingReplies(prev => new Set(prev).add(commentId));
+            const response = await commentService.getReplies(commentId, 0, 50);
+
+            const mappedReplies: Comment[] = response.content.map((reply) => ({
+                id: reply.id,
+                username: reply.username || 'User',
+                avatar: reply.avatarUrl || '',
+                comment: reply.content,
+                timeAgo: reply.timeAgo || 'vừa xong',
+                likes: reply.likeCount || 0,
+                isLiked: reply.isLikedByCurrentUser || false,
+                replies: [],
+                replyCount: reply.replyCount || 0,
+                parentCommentId: reply.parentCommentId,
+            }));
+
+            setRepliesMap(prev => {
+                const newMap = new Map(prev);
+                newMap.set(commentId, mappedReplies);
+                return newMap;
+            });
+
+            setExpandedReplies(prev => new Set(prev).add(commentId));
+        } catch (error) {
+            console.error('Error loading replies:', error);
+            Alert.alert('Lỗi', 'Không thể tải câu trả lời. Vui lòng thử lại.');
+        } finally {
+            setLoadingReplies(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(commentId);
+                return newSet;
+            });
+        }
+    };
+
+    const renderReply = (reply: Comment, parentId: string) => (
+        <View key={reply.id} style={[styles.commentItem, styles.replyItem]}>
             <TouchableOpacity
-                onPress={() => handleAvatarPress(item.username)}
+                onPress={() => handleAvatarPress(reply.username)}
                 activeOpacity={0.8}
             >
-                <Image 
-                    source={item.avatar ? { uri: item.avatar } : UNKNOWN_AVATAR} 
-                    style={styles.commentAvatar} 
+                <Image
+                    source={reply.avatar ? { uri: reply.avatar } : UNKNOWN_AVATAR}
+                    style={styles.commentAvatar}
                 />
             </TouchableOpacity>
             <View style={styles.commentContent}>
                 <View style={styles.commentTopRow}>
                     <View style={styles.commentLeft}>
-                        <Text style={styles.commentUsername}>{item.username}</Text>
-                        <Text style={styles.commentText}>{item.comment}</Text>
+                        <Text style={styles.commentUsername}>{reply.username}</Text>
+                        <Text style={styles.commentText}>{reply.comment}</Text>
                         <View style={styles.commentMeta}>
-                            <Text style={styles.commentTime}>{item.timeAgo}</Text>
+                            <Text style={styles.commentTime}>{reply.timeAgo}</Text>
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 style={styles.replyLink}
+                                onPress={() => handleReplyPress(reply)}
                             >
                                 <Text style={styles.replyLinkText}>Trả lời</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.likeButton}
-                                onPress={() => handleLikeComment(item.id)}
+                                onPress={() => handleLikeComment(reply.id)}
                                 activeOpacity={0.7}
                             >
                                 <Ionicons
-                                    name={item.isLiked ? 'heart' : 'heart-outline'}
+                                    name={reply.isLiked ? 'heart' : 'heart-outline'}
                                     size={16}
-                                    color={item.isLiked ? '#FE2C55' : '#666'}
+                                    color={reply.isLiked ? '#FE2C55' : '#666'}
                                 />
                                 <Text style={[
                                     styles.likeCount,
-                                    { color: item.isLiked ? '#FE2C55' : '#666' }
+                                    { color: reply.isLiked ? '#FE2C55' : '#666' }
                                 ]}>
-                                    {item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)} N` : item.likes}
+                                    {reply.likes >= 1000 ? `${(reply.likes / 1000).toFixed(1)} N` : reply.likes}
                                 </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.dislikeButton}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons
-                                    name="thumbs-down"
-                                    size={16}
-                                    color="#666"
-                                />
-                            </TouchableOpacity>
                         </View>
-                        {item.replies && item.replies.length > 0 && (
-                            <TouchableOpacity style={styles.viewRepliesButton}>
-                                <Text style={styles.viewRepliesText}>Xem {item.replies.length} câu trả lời</Text>
-                                <Ionicons name="chevron-down" size={12} color="#666" style={{ marginLeft: 4 }} />
-                            </TouchableOpacity>
-                        )}
                     </View>
                 </View>
             </View>
         </View>
     );
+
+    const renderComment = ({ item }: { item: Comment }) => {
+        const isExpanded = expandedReplies.has(item.id);
+        const replies = repliesMap.get(item.id) || [];
+        const hasReplies = (item.replyCount || 0) > 0 || replies.length > 0;
+        const isLoadingReplies = loadingReplies.has(item.id);
+
+        return (
+            <View style={styles.commentItem}>
+                <TouchableOpacity
+                    onPress={() => handleAvatarPress(item.username)}
+                    activeOpacity={0.8}
+                >
+                    <Image
+                        source={item.avatar ? { uri: item.avatar } : UNKNOWN_AVATAR}
+                        style={styles.commentAvatar}
+                    />
+                </TouchableOpacity>
+                <View style={styles.commentContent}>
+                    <View style={styles.commentTopRow}>
+                        <View style={styles.commentLeft}>
+                            <Text style={styles.commentUsername}>{item.username}</Text>
+                            <Text style={styles.commentText}>{item.comment}</Text>
+                            <View style={styles.commentMeta}>
+                                <Text style={styles.commentTime}>{item.timeAgo}</Text>
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    style={styles.replyLink}
+                                    onPress={() => handleReplyPress(item)}
+                                >
+                                    <Text style={styles.replyLinkText}>Trả lời</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.likeButton}
+                                    onPress={() => handleLikeComment(item.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={item.isLiked ? 'heart' : 'heart-outline'}
+                                        size={16}
+                                        color={item.isLiked ? '#FE2C55' : '#666'}
+                                    />
+                                    <Text style={[
+                                        styles.likeCount,
+                                        { color: item.isLiked ? '#FE2C55' : '#666' }
+                                    ]}>
+                                        {item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)} N` : item.likes}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            {hasReplies && (
+                                <TouchableOpacity
+                                    style={styles.viewRepliesButton}
+                                    onPress={() => handleLoadReplies(item.id)}
+                                    disabled={isLoadingReplies}
+                                >
+                                    {isLoadingReplies ? (
+                                        <ActivityIndicator size="small" color="#FE2C55" />
+                                    ) : (
+                                        <>
+                                            <Text style={styles.viewRepliesText}>
+                                                {isExpanded ? 'Ẩn' : 'Xem'} {item.replyCount || replies.length} câu trả lời
+                                            </Text>
+                                            <Ionicons
+                                                name={isExpanded ? "chevron-up" : "chevron-down"}
+                                                size={12}
+                                                color="#666"
+                                                style={{ marginLeft: 4 }}
+                                            />
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            {isExpanded && replies.length > 0 && (
+                                <View style={styles.repliesContainer}>
+                                    {replies.map(reply => renderReply(reply, item.id))}
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </View>
+        );
+    };
 
     return (
         <Modal
@@ -383,7 +569,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 <TouchableOpacity style={styles.filterButton}>
                                     <Ionicons name="options-outline" size={20} color="#000" />
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.searchTitleContainer}>
+<TouchableOpacity style={styles.searchTitleContainer}>
                                     <Text style={styles.searchLabel}>Tìm kiếm: </Text>
                                     <Text style={styles.searchText} numberOfLines={1}>
                                         {searchQuery || 'bé điều hỏi xưa con trai'}
@@ -430,7 +616,7 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                                 <Text style={styles.emptySubText}>Hãy là người đầu tiên bình luận!</Text>
                                             </>
                                         )}
-                                    </View>
+</View>
                                 )}
                             />
 
@@ -459,55 +645,75 @@ const VideoCommentModal: React.FC<VideoCommentModalProps> = ({
                                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                                 style={styles.inputContainer}
                             >
-                                <Image
-                                    source={currentUserAvatar && currentUserAvatar !== 'https://i.pravatar.cc/150?u=default' 
-                                        ? { uri: currentUserAvatar } 
-                                        : UNKNOWN_AVATAR}
-                                    style={styles.userAvatar}
-                                />
-                                <View style={styles.inputWrapper}>
-                                    <TextInput
-                                        ref={inputRef}
-                                        style={styles.commentInput}
-                                        placeholder="Thêm bình luận..."
-                                        placeholderTextColor="#999"
-                                        value={newComment}
-                                        onChangeText={setNewComment}
-                                        multiline={false}
-                                        maxLength={500}
-                                        returnKeyType="send"
-                                        onSubmitEditing={handleSendComment}
+                                {replyingTo && (
+                                    <View style={styles.replyingToContainer}>
+                                        <Text style={styles.replyingToText}>
+                                            Đang trả lời <Text style={styles.replyingToUsername}>{replyingTo.username}</Text>
+                                        </Text>
+                                        <TouchableOpacity onPress={handleCancelReply}>
+                                            <Ionicons name="close-circle" size={18} color="#666" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                                <View style={styles.inputRow}>
+                                    <Image
+                                        source={currentUserAvatar && currentUserAvatar !== 'https://i.pravatar.cc/150?u=default'
+                                            ? { uri: currentUserAvatar }
+                                            : UNKNOWN_AVATAR}
+                                        style={styles.userAvatar}
                                     />
-                                    <TouchableOpacity
-                                        style={styles.iconButton}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Ionicons name="image-outline" size={20} color="#666" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.imageButton}
-                                        onPress={toggleEmojiPicker}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Ionicons
-                                            name={showEmojiPicker ? "close-circle" : "happy-outline"}
-                                            size={22}
-                                            color={showEmojiPicker ? "#FE2C55" : "#666"}
+                                    <View style={styles.inputWrapper}>
+                                        <TextInput
+                                            ref={inputRef}
+                                            style={styles.commentInput}
+                                            placeholder={replyingTo ? `Trả lời ${replyingTo.username}...` : "Thêm bình luận..."}
+                                            placeholderTextColor="#999"
+                                            value={newComment}
+                                            onChangeText={setNewComment}
+                                            multiline={false}
+                                            maxLength={500}
+                                            returnKeyType="send"
+                                            onSubmitEditing={handleSendComment}
                                         />
-                                    </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.iconButton}
+activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="image-outline" size={20} color="#666" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.imageButton}
+                                            onPress={toggleEmojiPicker}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons
+                                                name={showEmojiPicker ? "close-circle" : "happy-outline"}
+                                                size={22}
+                                                color={showEmojiPicker ? "#FE2C55" : "#666"}
+                                            />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.iconButton}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="at" size={20} color="#666" />
+                                        </TouchableOpacity>
+                                    </View>
+                                    {newComment.trim().length > 0 && (
+                                        <TouchableOpacity
+                                            style={styles.sendButton}
+                                            onPress={handleSendComment}
+                                            activeOpacity={0.7}
+                                            disabled={isSubmitting}
+                                        >
+                                            <Ionicons
+                                                name={isSubmitting ? "hourglass-outline" : "send"}
+                                                size={20}
+                                                color="#FE2C55"
+                                            />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                <TouchableOpacity
-                                    style={styles.sendButton}
-                                    onPress={handleSendComment}
-                                    activeOpacity={0.7}
-                                    disabled={!newComment.trim() || isSubmitting}
-                                >
-                                    <Ionicons
-                                        name={isSubmitting ? "hourglass-outline" : "send"}
-                                        size={20}
-                                        color={newComment.trim() && !isSubmitting ? "#FE2C55" : "#999"}
-                                    />
-                                </TouchableOpacity>
                             </KeyboardAvoidingView>
                         </Animated.View>
                     </TouchableWithoutFeedback>

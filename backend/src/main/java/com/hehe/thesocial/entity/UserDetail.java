@@ -2,6 +2,7 @@ package com.hehe.thesocial.entity;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -31,12 +32,15 @@ public class UserDetail extends BaseDocument {
     @Field("avatar_ref")
     FileDocument avatar;
 
+    @TextIndexed(weight = 10)
     @Field("display_name")
     String displayName;
 
+    @TextIndexed(weight = 1)
     @Field("bio")
     String bio;
 
+    @TextIndexed(weight = 5)
     @Field("shown_name")
     String shownName;
 

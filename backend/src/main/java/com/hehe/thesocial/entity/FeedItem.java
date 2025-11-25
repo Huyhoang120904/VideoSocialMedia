@@ -38,6 +38,10 @@ public class FeedItem extends BaseDocument {
     @Field("image_slide_ref")
     ImageSlide imageSlide;
 
+    @DBRef
+    @Field("thumbnail_ref")
+    FileDocument thumbnail;
+
     @Field("title")
     String title;
 

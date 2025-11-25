@@ -4,7 +4,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.mapping.*;
 
-import java.util.HashSet;
 import java.util.Set;
 
 @Document(collection = "comments")
@@ -24,32 +23,34 @@ public class Comment extends BaseDocument {
     @Field("content")
     String content;
 
-    @Builder.Default
     @Field("like_count")
-    long loveCount = 0L;
+    long loveCount;
 
-    @Builder.Default
     @Field("dislike_count")
-    long dislikeCount = 0L;
+    long dislikeCount;
 
-    @Builder.Default
     @Field("reply_count")
-    int replyCount = 0;
+    int replyCount;
 
-    @Builder.Default
     @Field("love_by")
-    Set<String> lovedBy = new HashSet<>();
+    Set<String> lovedBy;
 
-    @Builder.Default
     @Field("disliked_by")
-    Set<String> dislikedBy = new HashSet<>();
+    Set<String> dislikedBy;
 
     @Field("user_detail_id")
     String userDetailId;
 
+    @Field("avatar_url")
+    String avatarUrl;
+
     @Field("feed_item_id")
     String feedItemId;
 
-    @Field("avatar_url")
-    String avatarUrl;
+    @Field("parent_comment_id")
+    String parentCommentId; // null for top-level comments
+
+    @Field("reply_ids")
+    Set<String> replyIds; // IDs of direct reply comments
+
 }

@@ -216,8 +216,7 @@ public class RecommendationServiceImpl {
             List<UserInteraction> theirLikes = userInteractionRepository
                     .findByUserDetailIdAndInteractionTypeIn(
                             similarUserId,
-                            List.of(InteractionType.LIKE, InteractionType.COMMENT),
-                            PageRequest.of(0, 20)
+                            List.of(InteractionType.LIKE, InteractionType.COMMENT)
                     );
 
             theirLikes.stream()

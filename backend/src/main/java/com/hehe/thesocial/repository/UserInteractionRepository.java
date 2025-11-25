@@ -18,7 +18,7 @@ public interface UserInteractionRepository extends MongoRepository<UserInteracti
 
     Set<UserInteraction> findByUserDetailIdAndCreatedAtAfter(String userDetailId, LocalDateTime createdAt);
 
-    List<UserInteraction> findByUserDetailIdAndInteractionTypeIn(String userDetailId, List<InteractionType> interactionTypes, PageRequest pageable);
+    List<UserInteraction> findByUserDetailIdAndInteractionTypeIn(String userDetailId, List<InteractionType> interactionTypes);
 
     Page<UserInteraction> findByUserDetailId(String userDetailId, Pageable pageable);
 }

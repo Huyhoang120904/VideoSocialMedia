@@ -114,6 +114,16 @@ export const fetchFollowingFeedItems = async (
   });
 };
 
+export const fetchFriendsFeedItems = async (
+  options?: FeedFetchOptions
+): Promise<ApiResponse<FeedItem[]>> => {
+  // Tạm thời dùng endpoint following vì chưa có làm bạn bè
+  return fetchFeedFromEndpoint("/feed/following", 0, {
+    page: options?.page,
+    size: options?.size ?? 50,
+  });
+};
+
 export const fetchUserFeedItems = async (
   userDetailId: string,
   options?: FeedFetchOptions
@@ -166,6 +176,92 @@ export const fetchLovedFeedItemsList = async (
     page: options?.page,
     size: options?.size ?? 30,
   });
+};
+
+/**
+ * Fetch user feed items with pagination
+ * @param userDetailId - User detail ID
+ * @param page - Page number (0-based)
+ * @param size - Page size
+ * @returns Object with items and nextPage (null if last page)
+ */
+export const fetchUserFeedPage = async (
+  userDetailId: string,
+  page: number = 0,
+  size: number = 10
+): Promise<{ items: FeedItem[]; nextPage: number | null }> => {
+  try {
+    const { data } = await api.get<ApiResponse<PageResponse<FeedItemResponse>>>(
+      `/feed-items/user/${userDetailId}`,
+      {
+        params: {
+          page,
+          size,
+        },
+      }
+    );
+
+    const content = data.result?.content || [];
+    const feedItems = mapFeedItemResponses(content);
+    const pageResponse = data.result;
+
+    // Calculate next page: if not last page, return next page number, otherwise null
+    const nextPage = pageResponse && !pageResponse.last 
+      ? pageResponse.number + 1 
+      : null;
+
+    return {
+      items: feedItems,
+      nextPage,
+    };
+  } catch (error: any) {
+    console.error("API Fetch User Feed Page Error:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch user feed page"
+    );
+  }
+};
+
+/**
+ * Fetch loved feed items with pagination
+ * @param page - Page number (0-based)
+ * @param size - Page size
+ * @returns Object with items and nextPage (null if last page)
+ */
+export const fetchLovedFeedPage = async (
+  page: number = 0,
+  size: number = 10
+): Promise<{ items: FeedItem[]; nextPage: number | null }> => {
+  try {
+    const { data } = await api.get<ApiResponse<PaginatedResponse<FeedItemResponse>>>(
+      "/feed-items/loved",
+      {
+        params: {
+          page,
+          size,
+        },
+      }
+    );
+
+    const content = data.result?.content || [];
+    const feedItems = mapFeedItemResponses(content);
+    const pageResponse = data.result;
+
+    // Calculate next page: if not last page, return next page number, otherwise null
+    const nextPage = pageResponse && !pageResponse.last 
+      ? pageResponse.number + 1 
+      : null;
+
+    return {
+      items: feedItems,
+      nextPage,
+    };
+  } catch (error: any) {
+    console.error("API Fetch Loved Feed Page Error:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch loved feed page"
+    );
+  }
 };
 
 /**
