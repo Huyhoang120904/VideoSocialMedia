@@ -50,7 +50,6 @@ jwt:
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads}
 
-
 logging:
   level:
     org.springframework.ai.vectorstore: DEBUG

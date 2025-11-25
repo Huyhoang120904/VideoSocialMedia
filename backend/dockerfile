@@ -1,0 +1,41 @@
+# ===============================
+# Stage 1: Build the Application
+# ===============================
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+
+WORKDIR /app
+
+# Copy the pom.xml first to cache dependencies
+COPY pom.xml .
+
+# Download dependencies (this layer will be cached unless pom.xml changes)
+RUN mvn dependency:go-offline -B
+
+# Copy the source code
+COPY src ./src
+
+# Build the application (skipping tests for faster builds in CI/CD)
+RUN mvn clean package -DskipTests
+
+# ===============================
+# Stage 2: Run the Application
+# ===============================
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+# Create a non-root user for security
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+# Copy the JAR file from the builder stage
+# The wildcard *.jar ensures it works even if version numbers change
+COPY --from=builder /app/target/*.jar app.jar
+
+# Expose the default Spring Boot port
+EXPOSE 8082
+
+# Configure JVM options for containers (respects memory limits)
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
